@@ -41,6 +41,7 @@ from .ui.qgisred_toolLength_dialog import QGISRedLengthToolDialog
 from .ui.qgisred_toolConnections_dialog import QGISRedServiceConnectionsToolDialog
 from .ui.qgisred_toolConnectivity_dialog import QGISRedConnectivityToolDialog
 from .ui.qgisred_loadproject_dialog import QGISRedImportProjectDialog
+from .ui.qgisred_queriesThematicmaps_dialog import QGISRedThematicMapsDialog
 from .tools.qgisred_utils import QGISRedUtils
 from .tools.qgisred_dependencies import QGISRedDependencies as GISRed
 from .tools.qgisred_moveNodes import QGISRedMoveNodesTool
@@ -4312,3 +4313,9 @@ class QGISRed:
     # Queries and Thematic Maps
     def runThematicMaps(self):
         print("Thematic Maps Clicked")
+        if not self.checkDependencies():
+            return
+
+        dlg = QGISRedThematicMapsDialog()
+        # Run the dialog event loop
+        dlg.exec_()
