@@ -114,7 +114,7 @@ class QGISRed:
         self.toolbar = self.iface.addToolBar("QGISRed")
         self.toolbar.setObjectName("QGISRed")
         # Menu
-        self.qgisredmenu = QMenu("&QGISRed", self.iface.mainWindow().menuBar())
+        self.qgisredmenu = QMenu("&QGISRed-BID", self.iface.mainWindow().menuBar())
         actions = self.iface.mainWindow().menuBar().actions()
         lastAction = actions[-1]
         self.iface.mainWindow().menuBar().insertMenu(lastAction, self.qgisredmenu)
