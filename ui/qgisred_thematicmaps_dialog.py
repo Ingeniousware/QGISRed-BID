@@ -13,5 +13,5 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         self.setupUi(self)
 
         # Set window icon
-        icon_path = os.path.join(os.path.dirname(__file__), 'images', 'iconThematicMaps.png')
+        icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconThematicMaps.png')
         self.setWindowIcon(QIcon(icon_path))
