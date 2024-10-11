@@ -12,6 +12,8 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         super(QGISRedThematicMapsDialog, self).__init__(parent)
         self.setupUi(self)
         self.setDialogStyle()
+        self.btAccept.clicked.connect(self.accept)
+        self.btCancel.clicked.connect(self.reject)
 
     def setDialogStyle(self):
         #Some design aspects of the dialog in Python can only be done via code
@@ -40,3 +42,6 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             widget.setStyleSheet("font-weight: normal;")
         for widget in self.gbReservoirs.findChildren(QWidget):
             widget.setStyleSheet("font-weight: normal;")
+    
+    def accept(self):
+        ...
