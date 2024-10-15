@@ -101,7 +101,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             queries.append({
                 'layer_name': 'Pipe Diameters',
                 'field': 'Diameter',
-                'qml_file': 'test2.qml',
+                'qml_file': 'test2.qml.bak',
                 'tooltip_prefix': 'Diam'
             })
 
