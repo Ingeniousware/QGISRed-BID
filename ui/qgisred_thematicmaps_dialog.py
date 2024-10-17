@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtWidgets import QDialog, QWidget, QMessageBox
 from PyQt5.QtGui import QIcon, QColor
+from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt import uic
 import os
 import random
@@ -14,7 +15,10 @@ from qgis.core import (
     QgsRendererCategory,
     QgsLayerTreeNode,
     QgsUnitTypes, 
-    QgsSymbol
+    QgsSymbol,
+    QgsField,
+    QgsExpression,
+    edit
 )
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_thematicmaps_dialog.ui"))
@@ -101,7 +105,9 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
 
     def find_layer_in_group(self, group, layer_name):
         for child in group.children():
-            if isinstance(child, QgsLayerTreeLayer) and child.name() == layer_name:
+            if child.nodeType() == QgsLayerTreeNode.NodeLayer and child.name() == layer_name and child.checkedLayers():
+                return child.checkedLayers()[0]
+            elif isinstance(child, QgsLayerTreeLayer) and child.name() == layer_name:
                 return child.layer()
             elif isinstance(child, QgsLayerTreeGroup):
                 layer = self.find_layer_in_group(child, layer_name)
@@ -166,10 +172,10 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             queries_group.removeChildNode(existing_layer)
 
         new_layer = QgsVectorLayer(pipes_layer.source(), layer_name, pipes_layer.providerType())
-
         project = QgsProject.instance()
         project.addMapLayer(new_layer, False)
-        queries_group.addLayer(new_layer)
+        
+        layer_tree_layer = queries_group.addLayer(new_layer)
 
         if field == 'Material':
             self.apply_categorized_renderer(new_layer, field)
@@ -181,6 +187,9 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         #Assign map tooltips
         html_map_tip = f'<html><body><p>{tooltip_prefix} [% "{field}" %]</p></body></html>'
         new_layer.setMapTipTemplate(html_map_tip)
+
+        layer_tree_layer.setCustomProperty("showFeatureCount", True)
+
 
     def apply_categorized_renderer(self, layer, field):
         material_field_index = layer.fields().indexFromName(field)
