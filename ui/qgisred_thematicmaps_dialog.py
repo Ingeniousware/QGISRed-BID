@@ -199,6 +199,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
                 random.randint(0, 255)
             )
             symbol.setColor(random_color)
+            symbol.setWidth(0.6)
             category = QgsRendererCategory(value, symbol, str(value))
             categories.append(category)
 
