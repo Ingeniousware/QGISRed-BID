@@ -142,7 +142,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
                 'layer_name': 'Pipe Lengths',
                 'field': 'Length',
                 'qml_file': f'pipes_length_{units}.qml.bak',
-                'tooltip_prefix': 'Long'
+                'tooltip_prefix': 'Len'
             })
 
         if self.cbPipesMaterial.isChecked():
