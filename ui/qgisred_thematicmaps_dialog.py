@@ -119,9 +119,13 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
     def get_project_units(self):
         units, ok = QgsProject.instance().readEntry("QGISRed", "project_units", "LPS")
 
-        american_units = ["CFS", "GPM", "AFD", "LPS"]
-        international_units = ["MGD", "IMGD", "LPM", "MLD", "CMH", "CMD"]
+        # International Units
+        international_units = ["LPS", "LPM", "MLD", "CMH", "CMD"]
 
+        # American Units 
+        american_units = ["CFS", "GPM", "MGD", "IMGD", "AFD"]
+
+        print("units: ", units)
         if units in american_units:
             return 'feet'
         elif units in international_units:
