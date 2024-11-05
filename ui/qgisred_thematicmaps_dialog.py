@@ -128,12 +128,12 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
 
         print("units: ", units)
         if units in american_units:
-            return 'feet'
+            return 'US'
         elif units in international_units:
-            return 'meters'
+            return 'SI'
         else:
             # Default to meters
-            return 'meters'
+            return 'SI'
 
     def get_selected_queries(self):
         units = self.get_project_units()
@@ -143,7 +143,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             queries.append({
                 'layer_name': 'Pipe Diameters',
                 'field': 'Diameter',
-                'qml_file': f'pipesDiameter_{units}.qml.bak',
+                'qml_file': f'pipes_diameter_{units}.qml.bak',
                 'file_name': f'diameter_{units}',
                 'tooltip_prefix': 'Diam'
             })
@@ -152,7 +152,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             queries.append({
                 'layer_name': 'Pipe Lengths',
                 'field': 'Length',
-                'qml_file': f'pipesLength_{units}.qml.bak',
+                'qml_file': f'pipes_length_{units}.qml.bak',
                 'file_name': f'length_{units}',
                 'tooltip_prefix': 'Len'
             })
@@ -161,7 +161,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             queries.append({
                 'layer_name': 'Pipe Materials',
                 'field': 'Material',
-                'qml_file': 'pipesMaterials.qml.bak',
+                'qml_file': '',
                 'file_name': 'material',
                 'tooltip_prefix': 'Mat '
             })
@@ -179,7 +179,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         derived_layer = self.create_derived_layer(main_layer, layer_name)
         
         if field == 'Material':
-            self.apply_categorized_renderer(new_layer, field)
+            self.apply_categorized_renderer(derived_layer, field)
         else:
             self.load_qml_style(derived_layer, qml_file)
 
@@ -187,7 +187,6 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         
         if queries_group:
             layer_tree_layer = queries_group.addLayer(derived_layer)
-            layer_tree_layer.setCustomProperty("showFeatureCount", True)
 
         derived_layer.dataChanged.connect(
             lambda: derived_layer.triggerRepaint()
@@ -269,9 +268,6 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             layer.setLabeling(label_settings)
 
     def sync_symbology(self, main_layer, derived_layer):
-        """
-        Sync the symbology from main layer to derived layer
-        """
         if derived_layer and main_layer:
             new_renderer = main_layer.renderer().clone()
             derived_layer.setRenderer(new_renderer)
