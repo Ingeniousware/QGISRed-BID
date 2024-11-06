@@ -143,7 +143,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             queries.append({
                 'layer_name': 'Pipe Diameters',
                 'field': 'Diameter',
-                'qml_file': f'pipes_diameter_{units}.qml.bak',
+                'qml_file': f'pipes_diameters_{units}.qml.bak',
                 'file_name': f'diameter_{units}',
                 'tooltip_prefix': 'Diam'
             })
@@ -152,7 +152,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             queries.append({
                 'layer_name': 'Pipe Lengths',
                 'field': 'Length',
-                'qml_file': f'pipes_length_{units}.qml.bak',
+                'qml_file': f'pipes_lengths_{units}.qml.bak',
                 'file_name': f'length_{units}',
                 'tooltip_prefix': 'Len'
             })
@@ -161,7 +161,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             queries.append({
                 'layer_name': 'Pipe Materials',
                 'field': 'Material',
-                'qml_file': '',
+                'qml_file': 'pipes_materials.qml.bak',
                 'file_name': 'material',
                 'tooltip_prefix': 'Mat '
             })
@@ -178,10 +178,10 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         self.check_existing_layer(queries_group, layer_name)
         derived_layer = self.create_derived_layer(main_layer, layer_name)
         
-        if field == 'Material':
-            self.apply_categorized_renderer(derived_layer, field)
-        else:
-            self.load_qml_style(derived_layer, qml_file)
+        # if field == 'Material':
+        #     self.apply_categorized_renderer(derived_layer, field)
+        # else:
+        self.load_qml_style(derived_layer, qml_file)
 
         QgsProject.instance().addMapLayer(derived_layer, False) 
         
