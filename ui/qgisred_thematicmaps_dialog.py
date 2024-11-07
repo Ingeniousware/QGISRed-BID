@@ -164,6 +164,10 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         self.load_qml_style(derived_layer, qml_file)
         derived_layer.setLabelsEnabled(False)
 
+        if field == 'Material':
+            self.apply_categorized_renderer(derived_layer, field)
+
+
         QgsProject.instance().addMapLayer(derived_layer, False) 
         
         if queries_group:

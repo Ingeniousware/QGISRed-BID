@@ -4347,8 +4347,8 @@ class QGISRed:
 
     def storeQueryLayers(self):
         query_layers = []
-        
         queries_group = self.getQueryGroup()
+        
         if queries_group:
             for child in queries_group.children():
                 if isinstance(child, QgsLayerTreeLayer):
@@ -4376,6 +4376,7 @@ class QGISRed:
             if new_layer.isValid():
                 if 'style_string' in query_info and query_info['style_string']:
                     style_success = new_layer.loadNamedStyle(query_info['style_string'])
+                    new_layer.setCustomProperty("styleURI", query_info['style_string'])
                     
                 QgsProject.instance().addMapLayer(new_layer, False)
 
