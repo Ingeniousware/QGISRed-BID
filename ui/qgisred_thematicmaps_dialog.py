@@ -2,8 +2,8 @@
 from PyQt5.QtWidgets import QDialog, QWidget, QMessageBox
 from PyQt5.QtGui import QIcon, QColor
 from PyQt5.QtCore import QObject, QVariant
-
 from qgis.PyQt import uic
+from ..tools.qgisred_utils import QGISRedUtils
 
 from qgis.core import (
     QgsProject,
@@ -118,25 +118,8 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
                     return layer
         return None
 
-    def get_project_units(self):
-        units, ok = QgsProject.instance().readEntry("QGISRed", "project_units", "LPS")
-
-        # International Units
-        international_units = ["LPS", "LPM", "MLD", "CMH", "CMD"]
-        # American Units 
-        american_units = ["CFS", "GPM", "MGD", "IMGD", "AFD"]
-
-        print("units: ", units)
-        if units in american_units:
-            return 'US'
-        elif units in international_units:
-            return 'SI'
-        else:
-            # Default to meters
-            return 'SI'
-
     def get_selected_queries(self):
-        units = self.get_project_units()
+        units = QGISRedUtils().getUnits()
         queries = []
 
         if self.cbPipesDiameter.isChecked():
@@ -187,17 +170,6 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             layer_tree_layer = queries_group.addLayer(derived_layer)
             layer_tree_layer.setCustomProperty("showFeatureCount", True)
 
-        # derived_layer.dataChanged.connect(
-        #     lambda: derived_layer.triggerRepaint()
-        # )
-
-        # main_layer.dataChanged.connect(
-        #     lambda: derived_layer.triggerRepaint()
-        # )
-        
-        # return derived_layer
-
-        # Conectar sinais para sincronização
         main_layer.dataChanged.connect(lambda: self.sync_layers(main_layer, derived_layer))
         main_layer.styleChanged.connect(lambda: self.sync_layers(main_layer, derived_layer))
         derived_layer.dataChanged.connect(lambda: derived_layer.triggerRepaint())
@@ -205,7 +177,6 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         return derived_layer
 
     def sync_layers(self, main_layer, derived_layer):
-        # Sincroniza dados e estilo
         derived_layer.dataProvider().forceReload()
         new_renderer = main_layer.renderer().clone()
         derived_layer.setRenderer(new_renderer)
@@ -269,6 +240,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
     def load_qml_style(self, layer, qml_file):
         qml_path = os.path.join(os.path.dirname(__file__), '..', 'layerStyles', qml_file)
         if os.path.exists(qml_path):
+            layer.setCustomProperty("styleURI", qml_path)
             layer.loadNamedStyle(qml_path)
             layer.triggerRepaint()
 
