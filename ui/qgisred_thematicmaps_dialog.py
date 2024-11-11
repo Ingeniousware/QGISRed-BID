@@ -91,7 +91,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
 
         queries = self.get_selected_queries()
 
-        for query in queries:
+        for query in reversed(queries):
             self.process_query(query, pipes_layer, queries_group)
 
         # Close dialog
@@ -190,7 +190,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         self.hide_fields(derived_layer, field)
         
         if queries_group:
-            layer_tree_layer = queries_group.addLayer(derived_layer)
+            layer_tree_layer = queries_group.insertLayer(0, derived_layer)
             layer_tree_layer.setCustomProperty("showFeatureCount", True)
 
         main_layer.dataChanged.connect(lambda: self.sync_layers(main_layer, derived_layer))
