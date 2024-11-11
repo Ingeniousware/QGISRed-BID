@@ -3,8 +3,12 @@ from PyQt5.QtWidgets import QDialog, QWidget, QMessageBox
 from PyQt5.QtGui import QIcon, QColor
 from PyQt5.QtCore import QObject, QVariant
 from qgis.PyQt import uic
+<<<<<<< Updated upstream
 from ..tools.qgisred_utils import QGISRedUtils
+=======
+>>>>>>> Stashed changes
 
+# QGIS core imports
 from qgis.core import (
     QgsProject,
     QgsVectorLayer,
@@ -18,9 +22,33 @@ from qgis.core import (
     QgsField,
     QgsExpression,
     QgsVectorFileWriter,
+<<<<<<< Updated upstream
     edit
 )
 
+=======
+    QgsAttributeTableConfig,
+    QgsVectorLayerCache,
+    QgsEditorWidgetSetup,
+    edit,
+    NULL
+)
+
+# QGIS GUI imports
+from qgis.gui import (
+    QgsAttributeTableView,
+    QgsAttributeTableFilterModel,
+    QgsAttributeTableModel
+)
+
+# QGIS utils import
+from qgis.utils import iface
+
+# Local imports
+from ..tools.qgisred_utils import QGISRedUtils
+
+# Standard library imports
+>>>>>>> Stashed changes
 import os
 import random
 
@@ -159,17 +187,29 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         file_name = query['file_name']
         
         self.check_existing_layer(queries_group, layer_name)
+<<<<<<< Updated upstream
         derived_layer = self.create_derived_layer(main_layer, layer_name)
         
+=======
+        derived_layer = self.create_derived_layer(main_layer, layer_name, field)
+    
+>>>>>>> Stashed changes
         self.load_qml_style(derived_layer, qml_file)
         derived_layer.setLabelsEnabled(False)
 
         if field == 'Material':
             self.apply_categorized_renderer(derived_layer, field)
 
+<<<<<<< Updated upstream
 
         QgsProject.instance().addMapLayer(derived_layer, False) 
         
+=======
+        QgsProject.instance().addMapLayer(derived_layer, False) 
+        
+        self.hide_fields(derived_layer, field)
+        
+>>>>>>> Stashed changes
         if queries_group:
             layer_tree_layer = queries_group.addLayer(derived_layer)
             layer_tree_layer.setCustomProperty("showFeatureCount", True)
@@ -178,6 +218,11 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         main_layer.styleChanged.connect(lambda: self.sync_layers(main_layer, derived_layer))
         derived_layer.dataChanged.connect(lambda: derived_layer.triggerRepaint())
         
+<<<<<<< Updated upstream
+=======
+        #derived_layer.setReadOnly(True)
+        
+>>>>>>> Stashed changes
         return derived_layer
 
     def sync_layers(self, main_layer, derived_layer):
@@ -202,7 +247,11 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         
         return False
 
+<<<<<<< Updated upstream
     def create_derived_layer(self, source_layer, new_layer_name):
+=======
+    def create_derived_layer(self, source_layer, new_layer_name, field):
+>>>>>>> Stashed changes
         uri = source_layer.source()
         
         geometry_type = source_layer.geometryType()
@@ -216,8 +265,13 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         derived_layer.setCrs(source_layer.crs())
         
         return derived_layer
+<<<<<<< Updated upstream
 
     def apply_categorized_renderer(self, layer, field):
+=======
+        
+    def apply_categorized_renderer(self, layer, field): 
+>>>>>>> Stashed changes
         material_field_index = layer.fields().indexFromName(field)
         if material_field_index == -1:
             QMessageBox.critical(self, 'Error', f'{field} field not found in Pipes layer.')
@@ -226,7 +280,10 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         unique_values = layer.uniqueValues(material_field_index)
         categories = []
 
-        for value in unique_values:
+        non_null_values = [value for value in unique_values if value != NULL]
+        null_values = [value for value in unique_values if value == NULL]
+
+        for value in non_null_values:
             symbol = QgsSymbol.defaultSymbol(layer.geometryType())
             random_color = QColor.fromRgb(
                 random.randint(0, 255),
@@ -237,6 +294,20 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             symbol.setWidth(0.6)
             category = QgsRendererCategory(value, symbol, str(value))
             categories.append(category)
+
+        if null_values:
+            for null_value in null_values:
+                symbol = QgsSymbol.defaultSymbol(layer.geometryType())
+                random_color = QColor.fromRgb(
+                    random.randint(0, 255),
+                    random.randint(0, 255),
+                    random.randint(0, 255)
+                )
+                symbol.setColor(random_color)
+                symbol.setWidth(0.6)
+                category = QgsRendererCategory(null_value, symbol, str("#NA"))
+                categories.append(category)
+                break
 
         renderer = QgsCategorizedSymbolRenderer(field, categories)
         layer.setRenderer(renderer)
@@ -260,4 +331,31 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         if derived_layer and main_layer:
             new_renderer = main_layer.renderer().clone()
             derived_layer.setRenderer(new_renderer)
+<<<<<<< Updated upstream
             derived_layer.triggerRepaint()
+=======
+            derived_layer.triggerRepaint()
+
+    def hide_fields(self, layer, fieldname):
+        config = layer.attributeTableConfig()
+        columns = config.columns()
+        
+        fields_to_keep = ['Id', fieldname]
+        
+        for column in columns:
+            column.hidden = column.name not in fields_to_keep
+        
+        config.setColumns(columns)
+        
+        layer_cache = QgsVectorLayerCache(layer, layer.featureCount())
+
+        source_model = QgsAttributeTableModel(layer_cache)
+        source_model.loadLayer()
+        
+        attribute_table_view = QgsAttributeTableView()
+        attribute_table_filter_model = QgsAttributeTableFilterModel(iface.mapCanvas(), source_model)
+        
+        layer.setAttributeTableConfig(config)
+        attribute_table_filter_model.setAttributeTableConfig(config)
+        attribute_table_view.setAttributeTableConfig(config)
+>>>>>>> Stashed changes
