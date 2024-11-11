@@ -1,46 +1,22 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtWidgets import QDialog, QWidget, QMessageBox
-from PyQt5.QtGui import QIcon, QColor
-from PyQt5.QtCore import QObject, QVariant
+
+# Standard library imports
+import os
+
+# Third-party imports
+from PyQt5.QtCore import QObject
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QDialog, QMessageBox, QWidget
 from qgis.PyQt import uic
 
-# QGIS core imports
-from qgis.core import (
-    QgsProject,
-    QgsVectorLayer,
-    QgsLayerTreeGroup,
-    QgsLayerTreeLayer,
-    QgsLayerTreeNode,
-    QgsCategorizedSymbolRenderer,
-    QgsRendererCategory,
-    QgsUnitTypes,
-    QgsSymbol,
-    QgsField,
-    QgsExpression,
-    QgsVectorFileWriter,
-    QgsAttributeTableConfig,
-    QgsVectorLayerCache,
-    QgsEditorWidgetSetup,
-    edit,
-    NULL
-)
-
-# QGIS GUI imports
-from qgis.gui import (
-    QgsAttributeTableView,
-    QgsAttributeTableFilterModel,
-    QgsAttributeTableModel
-)
-
-# QGIS utils import
+# QGIS imports
+from qgis.core import QgsAttributeTableConfig, QgsLayerTreeGroup, QgsLayerTreeLayer, QgsLayerTreeNode, QgsProject
+from qgis.core import QgsVectorFileWriter, QgsVectorLayer, QgsVectorLayerCache
+from qgis.gui import QgsAttributeTableFilterModel, QgsAttributeTableModel, QgsAttributeTableView
 from qgis.utils import iface
 
 # Local imports
 from ..tools.qgisred_utils import QGISRedUtils
-
-# Standard library imports
-import os
-import random
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_thematicmaps_dialog.ui"))
 
@@ -183,7 +159,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         derived_layer.setLabelsEnabled(False)
 
         if field == 'Material':
-            self.apply_categorized_renderer(derived_layer, field)
+            QGISRedUtils().apply_categorized_renderer(derived_layer, field)
 
         QgsProject.instance().addMapLayer(derived_layer, False) 
         
@@ -237,47 +213,6 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         derived_layer.setCrs(source_layer.crs())
         
         return derived_layer
-        
-    def apply_categorized_renderer(self, layer, field): 
-        material_field_index = layer.fields().indexFromName(field)
-        if material_field_index == -1:
-            QMessageBox.critical(self, 'Error', f'{field} field not found in Pipes layer.')
-            return
-
-        unique_values = layer.uniqueValues(material_field_index)
-        categories = []
-
-        non_null_values = [value for value in unique_values if value != NULL]
-        null_values = [value for value in unique_values if value == NULL]
-
-        for value in non_null_values:
-            symbol = QgsSymbol.defaultSymbol(layer.geometryType())
-            random_color = QColor.fromRgb(
-                random.randint(0, 255),
-                random.randint(0, 255),
-                random.randint(0, 255)
-            )
-            symbol.setColor(random_color)
-            symbol.setWidth(0.6)
-            category = QgsRendererCategory(value, symbol, str(value))
-            categories.append(category)
-
-        if null_values:
-            for null_value in null_values:
-                symbol = QgsSymbol.defaultSymbol(layer.geometryType())
-                random_color = QColor.fromRgb(
-                    random.randint(0, 255),
-                    random.randint(0, 255),
-                    random.randint(0, 255)
-                )
-                symbol.setColor(random_color)
-                symbol.setWidth(0.6)
-                category = QgsRendererCategory(null_value, symbol, str("#NA"))
-                categories.append(category)
-                break
-
-        renderer = QgsCategorizedSymbolRenderer(field, categories)
-        layer.setRenderer(renderer)
 
     def load_qml_style(self, layer, qml_file):
         qml_path = os.path.join(os.path.dirname(__file__), '..', 'layerStyles', qml_file)

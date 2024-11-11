@@ -4346,6 +4346,7 @@ class QGISRed:
         dlg.exec_()
 
     def storeQueryLayers(self):
+        self.random_color_queries = ['material']
         query_layers = []
         queries_group = self.getQueryGroup()
         
@@ -4379,6 +4380,10 @@ class QGISRed:
                 if 'style_string' in query_info and query_info['style_string']:
                     style_success = new_layer.loadNamedStyle(query_info['style_string'])
                     new_layer.setCustomProperty("styleURI", query_info['style_string'])
+
+                is_random_color_layer = any(keyword in query_info['name'].lower() for keyword in self.random_color_queries)
+                if is_random_color_layer:
+                    QGISRedUtils().apply_categorized_renderer(new_layer, 'Material')
 
                 new_layer.setReadOnly(True)
 
