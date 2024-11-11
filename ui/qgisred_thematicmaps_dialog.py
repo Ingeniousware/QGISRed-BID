@@ -152,9 +152,19 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         tooltip_prefix = query['tooltip_prefix']
         file_name = query['file_name']
         
-        self.check_existing_layer(queries_group, layer_name)
+        existing_layer = None
+        layer_position = 0
+        for i, child in enumerate(queries_group.children()):
+            if isinstance(child, QgsLayerTreeLayer) and child.name() == layer_name:
+                existing_layer = child
+                layer_position = i
+                break
+        
+        if existing_layer is not None:
+            QgsProject.instance().removeMapLayer(existing_layer.layerId())
+        
         derived_layer = self.create_derived_layer(main_layer, layer_name, field)
-    
+        
         self.load_qml_style(derived_layer, qml_file)
         derived_layer.setLabelsEnabled(False)
 
@@ -166,14 +176,15 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         self.hide_fields(derived_layer, field)
         
         if queries_group:
-            layer_tree_layer = queries_group.insertLayer(0, derived_layer)
+            # Insert at original position if replacing, otherwise at position 0
+            layer_tree_layer = queries_group.insertLayer(layer_position, derived_layer)
             layer_tree_layer.setCustomProperty("showFeatureCount", True)
 
         main_layer.dataChanged.connect(lambda: self.sync_layers(main_layer, derived_layer))
         main_layer.styleChanged.connect(lambda: self.sync_layers(main_layer, derived_layer))
         derived_layer.dataChanged.connect(lambda: derived_layer.triggerRepaint())
         
-        #derived_layer.setReadOnly(True)
+        derived_layer.setReadOnly(True)
         
         return derived_layer
 
