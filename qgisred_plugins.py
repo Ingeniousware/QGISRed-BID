@@ -4355,19 +4355,12 @@ class QGISRed:
                     layer = child.layer()
                     if layer:
                         style_string = layer.customProperty("styleURI")
-<<<<<<< Updated upstream
-                        query_layers.append({
-                            'name': layer.name(),
-                            'source': layer.source(),
-                            'style_string': style_string
-=======
                         checked = child.isVisible()
                         query_layers.append({
                             'name': layer.name(),
                             'source': layer.source(),
                             'style_string': style_string,
                             'checked': checked 
->>>>>>> Stashed changes
                         })
         
         return query_layers
@@ -4386,24 +4379,17 @@ class QGISRed:
                 if 'style_string' in query_info and query_info['style_string']:
                     style_success = new_layer.loadNamedStyle(query_info['style_string'])
                     new_layer.setCustomProperty("styleURI", query_info['style_string'])
-<<<<<<< Updated upstream
-                    
-=======
 
                 new_layer.setReadOnly(True)
 
->>>>>>> Stashed changes
                 QgsProject.instance().addMapLayer(new_layer, False)
 
                 layer_tree_layer = queries_group.addLayer(new_layer)
                 layer_tree_layer.setCustomProperty("showFeatureCount", True)
-<<<<<<< Updated upstream
-=======
                 
                 # Set the visibility status
                 if 'checked' in query_info:
                     layer_tree_layer.setItemVisibilityChecked(query_info['checked'])
->>>>>>> Stashed changes
 
                 input_layer = self.findSourceLayer(inputs_group, new_layer)
 
