@@ -120,7 +120,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             queries.append({
                 'layer_name': 'Pipe Diameters',
                 'field': 'Diameter',
-                'qml_file': f'pipes_diameters_{units}.qml.bak',
+                'qml_file': f'pipe_diameters_{units}.qml',
                 'file_name': f'diameter_{units}',
                 'tooltip_prefix': 'Diam'
             })
@@ -129,7 +129,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             queries.append({
                 'layer_name': 'Pipe Lengths',
                 'field': 'Length',
-                'qml_file': f'pipes_lengths_{units}.qml.bak',
+                'qml_file': f'pipe_lengths_{units}.qml',
                 'file_name': f'length_{units}',
                 'tooltip_prefix': 'Len'
             })
@@ -138,7 +138,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             queries.append({
                 'layer_name': 'Pipe Materials',
                 'field': 'Material',
-                'qml_file': 'pipes_materials.qml.bak',
+                'qml_file': 'pipe_materials.qml',
                 'file_name': 'material',
                 'tooltip_prefix': 'Mat '
             })
