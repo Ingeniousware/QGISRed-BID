@@ -39,7 +39,10 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             self.gbValves,
             self.gbPumps,
             self.gbTanks,
-            self.gbReservoirs
+            self.gbReservoirs,
+            self.gbService,
+            self.gbIsolation,
+            self.gbMeters
         ]
 
         for group_box in group_boxes:
