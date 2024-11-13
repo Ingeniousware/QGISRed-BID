@@ -632,13 +632,13 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             })
 
         if self.cbPipesInstallationDate.isChecked():
-        queries.append({
-            'layer_name': 'Pipe Installation Date',
-            'field': 'InstallDate',
-            'qml_file': 'pipe_install_date.qml',
-            'file_name': 'install_date',
-            'tooltip_prefix': 'Inst'
-        })
+            queries.append({
+                'layer_name': 'Pipe Installation Date',
+                'field': 'InstallDate',
+                'qml_file': 'pipe_install_date.qml',
+                'file_name': 'install_date',
+                'tooltip_prefix': 'Inst'
+            })
 
         if self.cbPipesBulkCoeff.isChecked():
             queries.append({
