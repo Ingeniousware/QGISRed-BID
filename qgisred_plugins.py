@@ -4346,55 +4346,27 @@ class QGISRed:
         dlg.exec_()
 
     def storeQueryLayers(self):
-        def traverse_tree(node, parent_path=''):
-            node_info = []
-            current_path = f"{parent_path}/{node.name()}" if parent_path else node.name()
-
-            if isinstance(node, QgsLayerTreeGroup):
-                expanded = node.isExpanded()
-                node_info.append({
-                    'type': 'group',
-                    'name': node.name(),
-                    'path': current_path,
-                    'expanded': expanded
-                })
-                for child in node.children():
-                    node_info.extend(traverse_tree(child, current_path))
-            elif isinstance(node, QgsLayerTreeLayer):
-                layer = node.layer()
-                if layer:
-                    # Save current style to the .qml file
-                    style_string = layer.customProperty("styleURI")
-                    if style_string:
-                        layer.saveNamedStyle(style_string)
-                    else:
-                        # If no styleURI is set, define a default path and save
-                        style_dir = os.path.join(QgsProject.instance().homePath(), "styles")
-                        if not os.path.exists(style_dir):
-                            os.makedirs(style_dir)
-                        style_string = os.path.join(style_dir, f"{layer.name()}.qml")
-                        layer.saveNamedStyle(style_string)
-                        layer.setCustomProperty("styleURI", style_string)
-
-                    checked = node.isVisible()
-                    expanded = node.isExpanded()
-                    node_info.append({
-                        'type': 'layer',
-                        'name': layer.name(),
-                        'source': layer.source(),
-                        'style_string': style_string,
-                        'checked': checked,
-                        'labels_enabled': layer.labelsEnabled(),
-                        'path': current_path,
-                        'expanded': expanded
-                    })
-            return node_info
-
+        self.random_color_queries = ['material']
+        query_layers = []
         queries_group = self.getQueryGroup()
+        
         if queries_group:
-            return traverse_tree(queries_group)
-        else:
-            return []
+            for child in queries_group.children():
+                if isinstance(child, QgsLayerTreeLayer):
+                    layer = child.layer()
+                    if layer:
+                        style_string = layer.customProperty("styleURI")
+                        checked = child.isVisible()
+                        query_layers.append({
+                            'name': layer.name(),
+                            'source': layer.source(),
+                            'style_string': style_string,
+                            'checked': checked,
+                            'labels_enabled': layer.labelsEnabled(),
+                            'expanded': child.isExpanded()  # Store the expanded state
+                        })
+        
+        return query_layers
 
     def restoreQueryLayers(self, query_layers):
         if not query_layers:
@@ -4403,52 +4375,41 @@ class QGISRed:
         queries_group = self.getQueryGroup()
         inputs_group = self.getInputGroup()
 
-        path_group_map = {queries_group.name(): queries_group}
+        for query_info in query_layers:
+            new_layer = QgsVectorLayer(query_info['source'], query_info['name'], 'ogr')
 
-        for item in query_layers:
-            path_parts = item['path'].split('/')
-            parent_path = '/'.join(path_parts[:-1])
-            node_name = path_parts[-1]
+            if new_layer.isValid():
+                if 'style_string' in query_info and query_info['style_string']:
+                    style_success = new_layer.loadNamedStyle(query_info['style_string'])
+                    new_layer.setCustomProperty("styleURI", query_info['style_string'])
 
-            if item['type'] == 'group':
-                parent_group = path_group_map.get(parent_path, queries_group)
-                new_group = parent_group.addGroup(node_name)
-                new_group.setExpanded(item.get('expanded', True))
-                path_group_map[item['path']] = new_group
-            elif item['type'] == 'layer':
-                parent_group = path_group_map.get(parent_path, queries_group)
-                new_layer = QgsVectorLayer(item['source'], item['name'], 'ogr')
+                is_random_color_layer = any(keyword in query_info['name'].lower() for keyword in self.random_color_queries)
+                if is_random_color_layer:
+                    QGISRedUtils().apply_categorized_renderer(new_layer, 'Material')
 
-                if new_layer.isValid():
-                    if 'style_string' in item and item['style_string']:
-                        if os.path.exists(item['style_string']):
-                            new_layer.loadNamedStyle(item['style_string'])
-                            new_layer.setCustomProperty("styleURI", item['style_string'])
-                        else:
-                            new_layer.setCustomProperty("styleURI", item['style_string'])
+                if 'labels_enabled' in query_info:
+                    new_layer.setLabelsEnabled(query_info['labels_enabled'])
 
-                    if 'Material' in item['name']:
-                        QGISRedUtils().apply_categorized_renderer(new_layer, 'Material')
+                new_layer.setReadOnly(True)
 
-                    if 'labels_enabled' in item:
-                        new_layer.setLabelsEnabled(item['labels_enabled'])
+                QgsProject.instance().addMapLayer(new_layer, False)
 
-                    new_layer.setReadOnly(True)
+                layer_tree_layer = queries_group.addLayer(new_layer)
+                layer_tree_layer.setCustomProperty("showFeatureCount", True)
 
-                    QgsProject.instance().addMapLayer(new_layer, False)
+                if 'checked' in query_info:
+                    layer_tree_layer.setItemVisibilityChecked(query_info['checked'])
 
-                    layer_tree_layer = parent_group.addLayer(new_layer)
-                    layer_tree_layer.setCustomProperty("showFeatureCount", True)
-                    layer_tree_layer.setItemVisibilityChecked(item.get('checked', True))
-                    layer_tree_layer.setExpanded(item.get('expanded', True))
+                if 'expanded' in query_info:
+                    layer_tree_layer.setExpanded(query_info['expanded'])
 
-                    input_layer = self.findSourceLayer(inputs_group, new_layer)
+                input_layer = self.findSourceLayer(inputs_group, new_layer)
 
-                    if input_layer:
-                        input_layer.dataChanged.connect(
-                            lambda input_layer=input_layer, new_layer=new_layer:
-                            self.syncQueryLayer(input_layer, new_layer)
-                        )
+                if input_layer:
+                    input_layer.dataChanged.connect(
+                        lambda input_layer=input_layer, new_layer=new_layer: 
+                        self.syncQueryLayer(input_layer, new_layer)
+                    )
 
     def findSourceLayer(self, inputs_group, query_layer):
         for child in inputs_group.children():
