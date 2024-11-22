@@ -4358,10 +4358,30 @@ class QGISRed:
         return query_layers
 
     def _storeLayersRecursive(self, parent_group, query_layers, group_path, group_positions):
-        
         for child in parent_group.children():
-            if child.nodeType() == QgsLayerTreeNode.NodeLayer:
+            if isinstance(child, QgsLayerTreeLayer):
                 layer = child.layer()
+                if layer:
+                    style_string = layer.customProperty("styleURI")
+                    checked = child.itemVisibilityChecked()
+                    expanded = child.isExpanded()
+                    subgroup_path = group_path.copy()
+                    subgroup_positions = group_positions.copy()
+                    layer_position = parent_group.children().index(child)
+                    layer_details = {
+                        'name': layer.name(),
+                        'source': layer.source(),
+                        'style_string': style_string,
+                        'checked': checked,
+                        'labels_enabled': layer.labelsEnabled(),
+                        'expanded': expanded,
+                        'group_path': subgroup_path,
+                        'group_positions': subgroup_positions,
+                        'layer_position': layer_position,
+                    }
+                    query_layers.append(layer_details)
+            elif child.nodeType() == QgsLayerTreeNode.NodeLayer: 
+                layer = child.checkedLayers()[0] 
                 if layer:
                     style_string = layer.customProperty("styleURI")
                     checked = child.itemVisibilityChecked()
