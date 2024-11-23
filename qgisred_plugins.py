@@ -4346,15 +4346,13 @@ class QGISRed:
         dlg.exec_()
 
     def storeQueryLayers(self):
-        self.random_color_queries = ['material']
+        self.random_color_queries = ['Material'] 
         query_layers = []
         queries_group = self.getQueryGroup()
         
         if queries_group:
             self._storeLayersRecursive(queries_group, query_layers, group_path=[], group_positions=[])
         
-        for layer in query_layers:
-            pass
         return query_layers
 
     def _storeLayersRecursive(self, parent_group, query_layers, group_path, group_positions):
@@ -4368,6 +4366,13 @@ class QGISRed:
                     subgroup_path = group_path.copy()
                     subgroup_positions = group_positions.copy()
                     layer_position = parent_group.children().index(child)
+                    
+                    field_name = None
+                    for query in self.random_color_queries:
+                        if query.lower() in layer.name().lower():
+                            field_name = query
+                            break
+                    
                     layer_details = {
                         'name': layer.name(),
                         'source': layer.source(),
@@ -4378,10 +4383,11 @@ class QGISRed:
                         'group_path': subgroup_path,
                         'group_positions': subgroup_positions,
                         'layer_position': layer_position,
+                        'field_name': field_name 
                     }
                     query_layers.append(layer_details)
-            elif child.nodeType() == QgsLayerTreeNode.NodeLayer: 
-                layer = child.checkedLayers()[0] 
+            elif child.nodeType() == QgsLayerTreeNode.NodeLayer:
+                layer = child.checkedLayers()[0] if child.checkedLayers() else None
                 if layer:
                     style_string = layer.customProperty("styleURI")
                     checked = child.itemVisibilityChecked()
@@ -4389,6 +4395,13 @@ class QGISRed:
                     subgroup_path = group_path.copy()
                     subgroup_positions = group_positions.copy()
                     layer_position = parent_group.children().index(child)
+                    
+                    field_name = None
+                    for query in self.random_color_queries:
+                        if query.lower() in layer.name().lower():
+                            field_name = query 
+                            break
+                    
                     layer_details = {
                         'name': layer.name(),
                         'source': layer.source(),
@@ -4399,6 +4412,7 @@ class QGISRed:
                         'group_path': subgroup_path,
                         'group_positions': subgroup_positions,
                         'layer_position': layer_position,
+                        'field_name': field_name
                     }
                     query_layers.append(layer_details)
             elif child.nodeType() == QgsLayerTreeNode.NodeGroup:
@@ -4408,12 +4422,6 @@ class QGISRed:
                 group_position = parent_group.children().index(child)
                 new_group_positions.append(group_position)
                 self._storeLayersRecursive(child, query_layers, new_group_path, new_group_positions)
-
-    def getSubgroupPosition(self, parent_group, subgroup_name):
-        for index, child in enumerate(parent_group.children()):
-            if isinstance(child, QgsLayerTreeGroup) and child.name() == subgroup_name:
-                return index
-        return None
 
     def restoreQueryLayers(self, query_layers):
         if not query_layers:
@@ -4430,8 +4438,12 @@ class QGISRed:
             if new_layer.isValid():
                 if 'style_string' in query_info and query_info['style_string']:
                     new_layer.loadNamedStyle(query_info['style_string'])
+
                     new_layer.setCustomProperty("styleURI", query_info['style_string'])
 
+                    if query_info.get('field_name'):
+                        QGISRedUtils().apply_categorized_renderer(new_layer, query_info['field_name'], query_info['style_string'])
+                        
                 if 'labels_enabled' in query_info:
                     new_layer.setLabelsEnabled(query_info['labels_enabled'])
 
@@ -4464,7 +4476,13 @@ class QGISRed:
                         lambda input_layer=input_layer, new_layer=new_layer: 
                         self.syncQueryLayer(input_layer, new_layer)
                     )
-                    
+
+    def getSubgroupPosition(self, parent_group, subgroup_name):
+        for index, child in enumerate(parent_group.children()):
+            if isinstance(child, QgsLayerTreeGroup) and child.name() == subgroup_name:
+                return index
+        return None
+             
     def ensureGroupHierarchy(self, parent_group, group_path, group_positions):
         current_group = parent_group
 

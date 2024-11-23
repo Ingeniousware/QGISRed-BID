@@ -138,7 +138,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         derived_layer.setLabelsEnabled(False)
 
         if field == 'Material':
-            QGISRedUtils().apply_categorized_renderer(derived_layer, field)
+            QGISRedUtils().apply_categorized_renderer(derived_layer, field, qml_file)
 
         QgsProject.instance().addMapLayer(derived_layer, False) 
         
