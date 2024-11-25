@@ -121,32 +121,29 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         tooltip_prefix = query['tooltip_prefix']
         file_name = query['file_name']
         
-        existing_layer = None
-        layer_position = 0
-        for i, child in enumerate(queries_group.children()):
-            if isinstance(child, QgsLayerTreeLayer) and child.name() == layer_name:
-                existing_layer = child
-                layer_position = i
-                break
+        existing_layer, layer_position = self.find_layer_recursively(queries_group, layer_name)
         
         if existing_layer is not None:
-            QgsProject.instance().removeMapLayer(existing_layer.layerId())
+            parent_group = existing_layer.parent()
+            QgsProject.instance().removeMapLayer(existing_layer.layer().id())
+        else:
+            parent_group = queries_group
+            layer_position = 0
         
         derived_layer = self.create_derived_layer(main_layer, layer_name, field)
         
-        self.load_qml_style(derived_layer, qml_file)
+        qml_path = self.load_qml_style(derived_layer, qml_file)
         derived_layer.setLabelsEnabled(False)
 
         if field == 'Material':
-            QGISRedUtils().apply_categorized_renderer(derived_layer, field, qml_file)
+            QGISRedUtils().apply_categorized_renderer(derived_layer, field, qml_path)
 
-        QgsProject.instance().addMapLayer(derived_layer, False) 
+        QgsProject.instance().addMapLayer(derived_layer, False)
         
         self.hide_fields(derived_layer, field)
         
-        if queries_group:
-            # Insert at original position if replacing, otherwise at position 0
-            layer_tree_layer = queries_group.insertLayer(layer_position, derived_layer)
+        if parent_group:
+            layer_tree_layer = parent_group.insertLayer(layer_position, derived_layer)
             layer_tree_layer.setCustomProperty("showFeatureCount", True)
 
         main_layer.dataChanged.connect(lambda: self.sync_layers(main_layer, derived_layer))
@@ -174,7 +171,8 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             if layer_path and os.path.exists(layer_path):
                 QgsVectorFileWriter.deleteShapeFile(layer_path)
             
-            QgsProject.instance().removeMapLayer(existing_layer.layerId())
+            print("Type : ", type(existing_layer))
+            QgsProject.instance().removeMapLayer(existing_layer.id())
             return True
         
         return False
@@ -197,10 +195,11 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
     def load_qml_style(self, layer, qml_file):
         qml_path = os.path.join(os.path.dirname(__file__), '..', 'layerStyles', qml_file)
         if os.path.exists(qml_path):
-            layer.setCustomProperty("styleURI", qml_path)
             layer.loadNamedStyle(qml_path)
+            layer.setCustomProperty("styleURI", qml_path)
             layer.triggerRepaint()
-
+        return qml_path
+    
     def assign_labels(self, layer, field, ):
         layer.setLabelsEnabled(True)
         labeling = layer.labeling()
@@ -237,6 +236,23 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         layer.setAttributeTableConfig(config)
         attribute_table_filter_model.setAttributeTableConfig(config)
         attribute_table_view.setAttributeTableConfig(config)
+
+    def find_layer_recursively(self, parent_group, layer_name):
+        for i, child in enumerate(parent_group.children()):
+            if isinstance(child, QgsLayerTreeLayer):
+                if child.name() == layer_name:
+                    return child, i
+                elif child.layer() and child.layer().name() == layer_name:
+                    return child, i
+            elif child.nodeType() == QgsLayerTreeNode.NodeLayer and child.name() == layer_name:
+                if child.checkedLayers():
+                    return child, i
+            elif isinstance(child, QgsLayerTreeGroup):
+                found_layer, found_position = self.find_layer_recursively(child, layer_name)
+                if found_layer is not None:
+                    return found_layer, found_position
+        
+        return None, None
 
     def get_selected_queries(self):
         units = QGISRedUtils().getUnits()
