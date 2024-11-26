@@ -789,7 +789,6 @@ class QGISRedUtils:
 
         renderer = QgsCategorizedSymbolRenderer(field, categories)
         layer.setRenderer(renderer)
-
         layer.saveNamedStyle(qml_file)
 
     def hide_fields(self, layer, fieldname):
