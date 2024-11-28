@@ -151,8 +151,6 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         
         derived_layer = self.create_derived_layer(main_layer, layer_name, field)
         
-        # Set the unique identifier as a custom property
-        derived_layer.setCustomProperty("qgisred_identifier", layer_identifier)
         derived_layer.setCustomProperty("query_field", field)
         
         qml_path = self.load_qml_style(derived_layer, qml_file)
@@ -161,15 +159,15 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         if field == 'Material':
             QGISRedUtils().apply_categorized_renderer(derived_layer, field, qml_path)
 
+        derived_layer.setCustomProperty("qgisred_identifier", layer_identifier)
+        
         QgsProject.instance().addMapLayer(derived_layer, False)
         QGISRedUtils().hide_fields(derived_layer, field)
 
         if parent_group and not sip.isdeleted(parent_group):
             layer_tree_layer = parent_group.insertLayer(layer_position, derived_layer)
             layer_tree_layer.setCustomProperty("showFeatureCount", True)
-            # Store the identifier in the layer tree as well
-            layer_tree_layer.setCustomProperty("qgisred_identifier", layer_identifier)
-        
+
         main_layer.dataChanged.connect(lambda: self.sync_layers(main_layer, derived_layer))
         main_layer.styleChanged.connect(lambda: self.sync_layers(main_layer, derived_layer))
         derived_layer.dataChanged.connect(lambda: derived_layer.triggerRepaint())
@@ -276,10 +274,8 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
     
     def updateCheckboxStates(self):
         root = QgsProject.instance().layerTreeRoot()
-        queries_group = self.find_group_by_name(root, 'Queries')
-        
-        if not queries_group:
-            return
+        inputs_group = self.find_group_by_name(root, 'Inputs')
+        queries_group = self.get_or_create_queries_group(root, inputs_group)
 
         checkbox_mapping = self.create_identifier_checkbox_mapping()
         
@@ -370,6 +366,13 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             return
 
         for child in group.children():
+            if child.nodeType() == QgsLayerTreeNode.NodeLayer and child.checkedLayers():
+                layer = child.checkedLayers()[0]
+                layer_identifier = layer.customProperty("qgisred_identifier")
+                if layer_identifier in identifier_mapping:
+                    checkbox = identifier_mapping[layer_identifier]
+                    checkbox.setEnabled(False)
+                    checkbox.setToolTip("Query already exists.")
             if isinstance(child, QgsLayerTreeLayer):
                 layer_identifier = child.customProperty("qgisred_identifier")
                 if layer_identifier in identifier_mapping:
