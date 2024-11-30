@@ -43,7 +43,7 @@ from .ui.qgisred_toolConnections_dialog import QGISRedServiceConnectionsToolDial
 from .ui.qgisred_toolConnectivity_dialog import QGISRedConnectivityToolDialog
 from .ui.qgisred_loadproject_dialog import QGISRedImportProjectDialog
 from .ui.qgisred_thematicmaps_dialog import QGISRedThematicMapsDialog
-#from .ui.qgisred_findElements_dialog import QGISRedFindElementsDialog
+from .ui.qgisred_findElements_dialog import QGISRedFindElementsDialog
 from .tools.qgisred_utils import QGISRedUtils
 from .tools.qgisred_dependencies import QGISRedDependencies as GISRed
 from .tools.qgisred_moveNodes import QGISRedMoveNodesTool
@@ -1480,29 +1480,29 @@ class QGISRed:
             parent=self.iface.mainWindow(),
         )
         # # Elements Properties
-        # icon_path = ":/plugins/QGISRed/images/iconElementsProperties.png"
-        # self.openElementsPropertiesDialog = self.add_action(
-        #     icon_path,
-        #     text=self.tr("Elements Properties"),
-        #     callback=self.runElementsProperties,
-        #     menubar=self.queriesMenu,
-        #     toolbar=self.queriesToolbar,
-        #     actionBase=queriesDropButton,
-        #     add_to_toolbar=True,
-        #     parent=self.iface.mainWindow(),
-        # )
+        icon_path = ":/plugins/QGISRed/images/iconElementsProperties.png"
+        self.openElementsPropertiesDialog = self.add_action(
+            icon_path,
+            text=self.tr("Elements Properties"),
+            callback=self.runElementsProperties,
+            menubar=self.queriesMenu,
+            toolbar=self.queriesToolbar,
+            actionBase=queriesDropButton,
+            add_to_toolbar=True,
+            parent=self.iface.mainWindow(),
+        )
         # # Live Queries
-        # icon_path = ":/plugins/QGISRed/images/iconLiveQueries.png"
-        # self.openLiveQueriesDialog = self.add_action(
-        #     icon_path,
-        #     text=self.tr("Live Queries"),
-        #     callback=self.runLiveQueries,
-        #     menubar=self.queriesMenu,
-        #     toolbar=self.queriesToolbar,
-        #     actionBase=queriesDropButton,
-        #     add_to_toolbar=True,
-        #     parent=self.iface.mainWindow(),
-        # )
+        icon_path = ":/plugins/QGISRed/images/iconLiveQueries.png"
+        self.openLiveQueriesDialog = self.add_action(
+            icon_path,
+            text=self.tr("Live Queries"),
+            callback=self.runLiveQueries,
+            menubar=self.queriesMenu,
+            toolbar=self.queriesToolbar,
+            actionBase=queriesDropButton,
+            add_to_toolbar=True,
+            parent=self.iface.mainWindow(),
+        )
         # Thematic Maps
         icon_path = ":/plugins/QGISRed/images/iconThematicMaps.png"
         self.openThematicMapsDialog = self.add_action(
@@ -1516,17 +1516,17 @@ class QGISRed:
             parent=self.iface.mainWindow(),
         )
         # # Statistics & Plots
-        # icon_path = ":/plugins/QGISRed/images/iconStatisticsAndPlots.png"
-        # self.openStatisticsAndPlotsDialog = self.add_action(
-        #     icon_path,
-        #     text=self.tr("Statistics and Plots"),
-        #     callback=self.runStatisticsAndPlots,
-        #     menubar=self.queriesMenu,
-        #     toolbar=self.queriesToolbar,
-        #     actionBase=queriesDropButton,
-        #     add_to_toolbar=True,
-        #     parent=self.iface.mainWindow(),
-        # )
+        icon_path = ":/plugins/QGISRed/images/iconStatisticsAndPlots.png"
+        self.openStatisticsAndPlotsDialog = self.add_action(
+            icon_path,
+            text=self.tr("Statistics and Plots"),
+            callback=self.runStatisticsAndPlots,
+            menubar=self.queriesMenu,
+            toolbar=self.queriesToolbar,
+            actionBase=queriesDropButton,
+            add_to_toolbar=True,
+            parent=self.iface.mainWindow(),
+        )
 
     """Version & DLLs"""
 
@@ -4393,9 +4393,9 @@ class QGISRed:
         if self.isLayerOnEdition():
             return
 
-        #dlg = QGISRedFindElementsDialog()
+        dlg = QGISRedFindElementsDialog()
         # Run the dialog event loop
-        #dlg.exec_()
+        dlg.exec_()
 
     # ==============================================================
     #                        END: QUERIES FIND ELEMENTS
