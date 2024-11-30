@@ -4,15 +4,16 @@
 import os
 
 # Third-party imports
-from PyQt5.QtCore import QObject
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QDialog, QMessageBox, QWidget
+from PyQt5 import sip
 from qgis.PyQt import uic
+from qgis.PyQt.QtCore import QVariant
 
 # QGIS imports
-from qgis.core import QgsAttributeTableConfig, QgsLayerTreeGroup, QgsLayerTreeLayer, QgsLayerTreeNode, QgsProject
-from qgis.core import QgsVectorFileWriter, QgsVectorLayer, QgsVectorLayerCache
-from qgis.gui import QgsAttributeTableFilterModel, QgsAttributeTableModel, QgsAttributeTableView
+from qgis.core import QgsLayerTreeGroup, QgsLayerTreeLayer, QgsLayerTreeNode, QgsProject
+from qgis.core import QgsVectorFileWriter, QgsVectorLayer
+from qgis.core import QgsProject, QgsVectorLayer, QgsPalLayerSettings, QgsVectorLayerSimpleLabeling, QgsTextFormat
 from qgis.utils import iface
 
 # Local imports
@@ -28,6 +29,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         self.setDialogStyle()
         self.btAccept.clicked.connect(self.accept)
         self.btCancel.clicked.connect(self.reject)
+        self.updateCheckboxStates()
 
     def setDialogStyle(self):
         icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconThematicMaps.png')
@@ -119,44 +121,76 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         field = query['field']
         qml_file = query['qml_file']
         tooltip_prefix = query['tooltip_prefix']
-        file_name = query['file_name']
         
-        existing_layer = None
+        # Generate a unique identifier for the layer
+        layer_identifier = f"qgisred_query_{field.lower()}_{tooltip_prefix.lower()}"
+        
+        # Find existing layer by identifier instead of name
+        existing_layer, layer_position = self.find_layer_by_identifier(queries_group, layer_identifier)
+        parent_group = queries_group
         layer_position = 0
-        for i, child in enumerate(queries_group.children()):
-            if isinstance(child, QgsLayerTreeLayer) and child.name() == layer_name:
-                existing_layer = child
-                layer_position = i
-                break
         
         if existing_layer is not None:
-            QgsProject.instance().removeMapLayer(existing_layer.layerId())
+            try:
+                parent_group = existing_layer.parent()
+                
+                layer_id = None
+                if isinstance(existing_layer, QgsLayerTreeLayer) and existing_layer.layer():
+                    layer_id = existing_layer.layer().id()
+                elif existing_layer.nodeType() == QgsLayerTreeNode.NodeLayer and existing_layer.checkedLayers():
+                    layer_id = existing_layer.checkedLayers()[0].id()
+                    
+                if layer_id and QgsProject.instance().mapLayer(layer_id):
+                    QgsProject.instance().removeMapLayer(layer_id)
+                    
+                if parent_group and not sip.isdeleted(parent_group):
+                    parent_group.removeChildNode(existing_layer)
+                    
+            except Exception as e:
+                print(f"Error removing layer: {e}")
         
         derived_layer = self.create_derived_layer(main_layer, layer_name, field)
         
-        self.load_qml_style(derived_layer, qml_file)
+        derived_layer.setCustomProperty("query_field", field)
+        
+        qml_path = self.load_qml_style(derived_layer, qml_file)
         derived_layer.setLabelsEnabled(False)
-
+        
         if field == 'Material':
-            QGISRedUtils().apply_categorized_renderer(derived_layer, field)
+            QGISRedUtils().apply_categorized_renderer(derived_layer, field, qml_path)
 
-        QgsProject.instance().addMapLayer(derived_layer, False) 
+        derived_layer.setCustomProperty("qgisred_identifier", layer_identifier)
         
-        self.hide_fields(derived_layer, field)
-        
-        if queries_group:
-            # Insert at original position if replacing, otherwise at position 0
-            layer_tree_layer = queries_group.insertLayer(layer_position, derived_layer)
+        QgsProject.instance().addMapLayer(derived_layer, False)
+        QGISRedUtils().hide_fields(derived_layer, field)
+
+        if parent_group and not sip.isdeleted(parent_group):
+            layer_tree_layer = parent_group.insertLayer(layer_position, derived_layer)
             layer_tree_layer.setCustomProperty("showFeatureCount", True)
 
         main_layer.dataChanged.connect(lambda: self.sync_layers(main_layer, derived_layer))
         main_layer.styleChanged.connect(lambda: self.sync_layers(main_layer, derived_layer))
         derived_layer.dataChanged.connect(lambda: derived_layer.triggerRepaint())
-        
         derived_layer.setReadOnly(True)
-        
-        return derived_layer
 
+        return derived_layer
+    
+    def find_layer_by_identifier(self, parent_group, identifier):
+        if not parent_group:
+            return None, None
+            
+        for i, child in enumerate(parent_group.children()):
+            if isinstance(child, QgsLayerTreeLayer):
+                layer_identifier = child.customProperty("qgisred_identifier")
+                if layer_identifier == identifier:
+                    return child, i
+            elif isinstance(child, QgsLayerTreeGroup):
+                found_layer, found_position = self.find_layer_by_identifier(child, identifier)
+                if found_layer is not None:
+                    return found_layer, found_position
+        
+        return None, None
+    
     def sync_layers(self, main_layer, derived_layer):
         derived_layer.dataProvider().forceReload()
         new_renderer = main_layer.renderer().clone()
@@ -174,7 +208,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             if layer_path and os.path.exists(layer_path):
                 QgsVectorFileWriter.deleteShapeFile(layer_path)
             
-            QgsProject.instance().removeMapLayer(existing_layer.layerId())
+            QgsProject.instance().removeMapLayer(existing_layer.id())
             return True
         
         return False
@@ -197,10 +231,11 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
     def load_qml_style(self, layer, qml_file):
         qml_path = os.path.join(os.path.dirname(__file__), '..', 'layerStyles', qml_file)
         if os.path.exists(qml_path):
-            layer.setCustomProperty("styleURI", qml_path)
             layer.loadNamedStyle(qml_path)
+            layer.setCustomProperty("styleURI", qml_path)
             layer.triggerRepaint()
-
+        return qml_path
+    
     def assign_labels(self, layer, field, ):
         layer.setLabelsEnabled(True)
         labeling = layer.labeling()
@@ -215,28 +250,137 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             derived_layer.setRenderer(new_renderer)
             derived_layer.triggerRepaint()
 
-    def hide_fields(self, layer, fieldname):
-        config = layer.attributeTableConfig()
-        columns = config.columns()
-        
-        fields_to_keep = ['Id', fieldname]
-        
-        for column in columns:
-            column.hidden = column.name not in fields_to_keep
-        
-        config.setColumns(columns)
-        
-        layer_cache = QgsVectorLayerCache(layer, layer.featureCount())
+    def set_labels_with_null_handling(self, layer, field_name, qml_file_path): 
+        if not layer or not isinstance(layer, QgsVectorLayer):
+            return
 
-        source_model = QgsAttributeTableModel(layer_cache)
-        source_model.loadLayer()
+        # Create the label expression using coalesce to handle NULL values
+        expression = f"""
+                    CASE
+                        WHEN "{field_name}" IS NULL THEN '#NA'
+                        ELSE "{field_name}"
+                    END
+        """
+        # Set up label settings
+        label_settings = QgsPalLayerSettings()
+        label_settings.fieldName = expression
+        label_settings.isExpression = True
+        label_settings.placement= QgsPalLayerSettings.OverPoint
+        # Apply labeling to the layer
+        labeling = QgsVectorLayerSimpleLabeling(label_settings)
+        layer.setLabeling(labeling)
+
+        layer.triggerRepaint()
+    
+    def updateCheckboxStates(self):
+        root = QgsProject.instance().layerTreeRoot()
+        inputs_group = self.find_group_by_name(root, 'Inputs')
+        queries_group = self.get_or_create_queries_group(root, inputs_group)
+
+        checkbox_mapping = self.create_identifier_checkbox_mapping()
         
-        attribute_table_view = QgsAttributeTableView()
-        attribute_table_filter_model = QgsAttributeTableFilterModel(iface.mapCanvas(), source_model)
+        self.check_layers_recursive_by_identifier(queries_group, checkbox_mapping)
+
+    def create_identifier_checkbox_mapping(self):
+        mapping = {}
         
-        layer.setAttributeTableConfig(config)
-        attribute_table_filter_model.setAttributeTableConfig(config)
-        attribute_table_view.setAttributeTableConfig(config)
+        # Tanks mappings
+        mapping.update({
+            'qgisred_query_elevation_elev': self.cbTanksElevation,
+            'qgisred_query_diameter_diam': self.cbTanksDiameter,
+            'qgisred_query_volume_vol': self.cbTanksVolume,
+            'qgisred_query_level_level': self.cbTanksLevel,
+            'qgisred_query_initquality_quality': self.cbTanksInitialQuality,
+            'qgisred_query_bulkcoeff_bulk': self.cbTanksBulkCoeff,
+            'qgisred_query_mixmodel_mix': self.cbTanksMixingModel,
+            'qgisred_query_tag_tag': self.cbTanksTag
+        })
+
+        # Reservoirs mappings
+        mapping.update({
+            'qgisred_query_totalhead_head': self.cbReservoirsTotalHead,
+            'qgisred_query_headpattern_pattern': self.cbReservoirsHeadPattern,
+            'qgisred_query_initquality_quality': self.cbReservoirsInitialQuality,
+            'qgisred_query_tag_tag': self.cbReservoirsTag
+        })
+
+        # Junctions mappings
+        mapping.update({
+            'qgisred_query_elevation_elev': self.cbJunctionsElevation,
+            'qgisred_query_basedemand_demand': self.cbJunctionsBaseDemand,
+            'qgisred_query_patterndemand_pattern': self.cbJunctionsPatternDemand,
+            'qgisred_query_emittercoeff_emitter': self.cbJunctionsEmitterCoeff,
+            'qgisred_query_initquality_quality': self.cbJunctionsInitialQuality,
+            'qgisred_query_tag_tag': self.cbJunctionsTag
+        })
+
+        # Valves mappings
+        mapping.update({
+            'qgisred_query_type_type': self.cbValvesType,
+            'qgisred_query_diameter_diam': self.cbValvesDiameter,
+            'qgisred_query_setting_set': self.cbValvesSetting,
+            'qgisred_query_initstatus_status': self.cbValvesInitialStatus,
+            'qgisred_query_losscoeff_loss': self.cbValvesLossCoeff,
+            'qgisred_query_tag_tag': self.cbValvesTag
+        })
+
+        # Pumps mappings
+        mapping.update({
+            'qgisred_query_type_type': self.cbPumpsType,
+            'qgisred_query_pumpcurve_curve': self.cbPumpsPumpCurve,
+            'qgisred_query_power_power': self.cbPumpsPower,
+            'qgisred_query_initstatus_status': self.cbPumpsInitialStatus,
+            'qgisred_query_speed_speed': self.cbPumpsSpeed,
+            'qgisred_query_effcurve_eff': self.cbPumpsEfficiencyCurve,
+            'qgisred_query_energyprice_price': self.cbPumpsEnergyPrice,
+            'qgisred_query_tag_tag': self.cbPumpsTag
+        })
+
+        # Service Connection, Isolation Valves, and Meters mappings
+        mapping.update({
+            'qgisred_query_temporary_temp': self.cbPipesDiameter_3,  # Service Connection
+            'qgisred_query_temporary_temp': self.cbTanksElevation_3,  # Isolation Valves
+            'qgisred_query_temporary_temp': self.cbReservoirsTotalHead_3  # Meters
+        })
+
+        # Pipes mappings
+        mapping.update({
+            'qgisred_query_diameter_diam': self.cbPipesDiameter,
+            'qgisred_query_length_len': self.cbPipesLength,
+            'qgisred_query_material_mat': self.cbPipesMaterial,
+            'qgisred_query_roughness_rough': self.cbPipesRoughness,
+            'qgisred_query_age_age': self.cbPipesAge,
+            'qgisred_query_losscoeff_loss': self.cbPipesLossCoeff,
+            'qgisred_query_initstatus_status': self.cbPipesInitStatus,
+            'qgisred_query_installdate_inst': self.cbPipesInstallationDate,
+            'qgisred_query_bulkcoeff_bulk': self.cbPipesBulkCoeff,
+            'qgisred_query_wallcoeff_wall': self.cbPipesWallCoeff,
+            'qgisred_query_tag_tag': self.cbPipesTag
+        })
+        
+        return mapping
+
+    def check_layers_recursive_by_identifier(self, group, identifier_mapping):
+        """Check layers using identifiers instead of names."""
+        if not group:
+            return
+
+        for child in group.children():
+            if child.nodeType() == QgsLayerTreeNode.NodeLayer and child.checkedLayers():
+                layer = child.checkedLayers()[0]
+                layer_identifier = layer.customProperty("qgisred_identifier")
+                if layer_identifier in identifier_mapping:
+                    checkbox = identifier_mapping[layer_identifier]
+                    checkbox.setEnabled(False)
+                    checkbox.setToolTip("Query already exists.")
+            if isinstance(child, QgsLayerTreeLayer):
+                layer_identifier = child.customProperty("qgisred_identifier")
+                if layer_identifier in identifier_mapping:
+                    checkbox = identifier_mapping[layer_identifier]
+                    checkbox.setEnabled(False)
+                    checkbox.setToolTip("Query already exists.")
+            elif isinstance(child, QgsLayerTreeGroup):
+                self.check_layers_recursive_by_identifier(child, identifier_mapping)
 
     def get_selected_queries(self):
         units = QGISRedUtils().getUnits()
