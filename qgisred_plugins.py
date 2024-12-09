@@ -1467,11 +1467,11 @@ class QGISRed:
             parent=self.iface.mainWindow(),
         )
         self.queriesDropButton = queriesDropButton
-        # Find Elements
+        # Find Elements by ID
         icon_path = ":/plugins/QGISRed/images/iconFindElements.png"
         self.openFindElementsDialog = self.add_action(
             icon_path,
-            text=self.tr("Find Elements"),
+            text=self.tr("Find Elements by ID"),
             callback=self.runFindElements,
             menubar=self.queriesMenu,
             toolbar=self.queriesToolbar,
@@ -1491,24 +1491,24 @@ class QGISRed:
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
-        # # Live Queries
-        icon_path = ":/plugins/QGISRed/images/iconLiveQueries.png"
-        self.openLiveQueriesDialog = self.add_action(
-            icon_path,
-            text=self.tr("Live Queries"),
-            callback=self.runLiveQueries,
-            menubar=self.queriesMenu,
-            toolbar=self.queriesToolbar,
-            actionBase=queriesDropButton,
-            add_to_toolbar=True,
-            parent=self.iface.mainWindow(),
-        )
         # Thematic Maps
         icon_path = ":/plugins/QGISRed/images/iconThematicMaps.png"
         self.openThematicMapsDialog = self.add_action(
             icon_path,
             text=self.tr("Thematic Maps"),
             callback=self.runThematicMaps,
+            menubar=self.queriesMenu,
+            toolbar=self.queriesToolbar,
+            actionBase=queriesDropButton,
+            add_to_toolbar=True,
+            parent=self.iface.mainWindow(),
+        )
+        # # Live Queries
+        icon_path = ":/plugins/QGISRed/images/iconLiveQueries.png"
+        self.openLiveQueriesDialog = self.add_action(
+            icon_path,
+            text=self.tr("Live Queries"),
+            callback=self.runLiveQueries,
             menubar=self.queriesMenu,
             toolbar=self.queriesToolbar,
             actionBase=queriesDropButton,
