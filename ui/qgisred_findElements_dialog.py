@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-
 import os
-from PyQt5.QtGui import QIcon, QFont
+from PyQt5.QtGui import QIcon, QFont, QColor
 from PyQt5.QtWidgets import QDialog, QMessageBox, QLineEdit
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import pyqtSlot
 from qgis.core import QgsProject, QgsGeometry, QgsPointXY
 from qgis.utils import iface
+from qgis.gui import QgsHighlight
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_findElements_dialog.ui"))
 
@@ -41,6 +41,8 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
         }
         
         self.original_ids = []
+        self.adjacent_highlights = []
+        self.main_highlight = None
         
         font = QFont()
         font.setPointSize(12)
@@ -98,7 +100,7 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
         
         layer = self.getLayerForElementType(self.cbElementType.currentText())
         if layer:
-            self.original_ids = sorted([str(f.attribute("Id")) for f in layer.getFeatures()])
+            self.original_ids = sorted([str(f.attribute("Id")) for f in layer.getFeatures() if f.attribute("Id") is not None])
         
         if self.leElementMask.text():
             self.filterElementIds()
@@ -117,8 +119,22 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
             
         self.cbElementId.addItems(filtered_items)
         
+    def clearHighlights(self):
+        # Clear main highlight
+        if self.main_highlight:
+            self.main_highlight.hide()
+            self.main_highlight = None
+        
+        # Clear adjacent highlights
+        for h in self.adjacent_highlights:
+            h.hide()
+        self.adjacent_highlights.clear()
+        
     @pyqtSlot()
     def findElement(self):
+        # Clear previous highlights
+        self.clearHighlights()
+        
         self.listWidget.clear()
         selected_type = self.cbElementType.currentText()
         selected_id = self.cbElementId.currentText()
@@ -133,13 +149,21 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
             for feature in layer.getFeatures():
                 if str(feature.attribute("Id")) == selected_id:
                     found_feature = feature
+                    # Zoom to feature
                     iface.mapCanvas().zoomToFeatureIds(layer, [feature.id()])
+                    # Select it on the layer (optional if you also highlight)
                     layer.selectByIds([feature.id()])
                     
                     singular = self.singular_forms.get(selected_type, selected_type)
                     self.labelFoundElement.setText(f"{singular} {selected_id}")
                     
-                    # Determine if it's line or node and find adjacent features
+                    # Highlight the main element in a custom color
+                    self.main_highlight = QgsHighlight(iface.mapCanvas(), found_feature.geometry(), layer)
+                    self.main_highlight.setColor(QColor("blue"))  # main element highlight color
+                    self.main_highlight.setWidth(3)
+                    self.main_highlight.show()
+                    
+                    # Determine adjacency type
                     if self.isLineElement(selected_type):
                         self.labelAdjacentNodeLinks.setText("Adjacent Nodes")
                         self.findAdjacentNodesByGeometry(found_feature)
@@ -200,10 +224,16 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
                 node_point = QgsGeometry.fromPointXY(QgsPointXY(node_geom.asPoint()))
                 if self.areOverlappedPoints(first_point, node_point) or self.areOverlappedPoints(last_point, node_point):
                     singular = self.singular_forms.get(node_layer_name, node_layer_name)
-                    found_nodes.append(f"{singular} {f.attribute(node_id_field)}")
+                    found_nodes.append((node_layer, f, f"{singular} {f.attribute(node_id_field)}"))
 
-        for node_info in found_nodes:
+        # Add nodes to listWidget and highlight them
+        for node_layer, feature, node_info in found_nodes:
             self.listWidget.addItem(node_info)
+            highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), node_layer)
+            highlight.setColor(QColor("red"))  # Adjacent features highlight color
+            highlight.setWidth(3)
+            highlight.show()
+            self.adjacent_highlights.append(highlight)
 
     def findAdjacentLinksByGeometry(self, node_feature):
         node_geom = node_feature.geometry()
@@ -242,10 +272,16 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
 
                 if self.areOverlappedPoints(node_g, first_p) or self.areOverlappedPoints(node_g, last_p):
                     singular = self.singular_forms.get(link_layer_name, link_layer_name)
-                    found_links.append(f"{singular} {f.attribute(link_id_field)}")
+                    found_links.append((link_layer, f, f"{singular} {f.attribute(link_id_field)}"))
 
-        for link_info in found_links:
+        # Add links to listWidget and highlight them
+        for link_layer, feature, link_info in found_links:
             self.listWidget.addItem(link_info)
+            highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), link_layer)
+            highlight.setColor(QColor("red"))  # Adjacent features highlight color
+            highlight.setWidth(3)
+            highlight.show()
+            self.adjacent_highlights.append(highlight)
 
     def onListItemClicked(self, item):
         # item.text() is in format "Junction J-1" or "Pipe P-123"
