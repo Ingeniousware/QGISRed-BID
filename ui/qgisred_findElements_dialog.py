@@ -9,7 +9,7 @@ from qgis.PyQt.QtCore import QVariant, Qt
 from PyQt5.QtCore import pyqtSlot
 from qgis.core import (
     QgsLayerTreeGroup, QgsLayerTreeLayer, QgsLayerTreeNode, QgsProject,
-    QgsVectorFileWriter, QgsVectorLayer,
+    QgsVectorFileWriter, QgsVectorLayer, QgsGeometry, 
     QgsPalLayerSettings, QgsVectorLayerSimpleLabeling, QgsTextFormat
 )
 from qgis.utils import iface
@@ -143,6 +143,8 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
         
     @pyqtSlot()
     def findElement(self):
+        self.listWidget.clear()
+
         selected_type = self.cbElementType.currentText()
         selected_id = self.cbElementId.currentText()
         
@@ -152,20 +154,109 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
             
         layer = self.getLayerForElementType(selected_type)
         if layer:
+            found_feature = None
             for feature in layer.getFeatures():
                 if str(feature.attribute("Id")) == selected_id:
+                    found_feature = feature
+
                     iface.mapCanvas().zoomToFeatureIds(layer, [feature.id()])
                     layer.selectByIds([feature.id()])
                     
-                    # Update labels after finding element
                     singular = self.singular_forms.get(selected_type, selected_type)
                     self.labelFoundElement.setText(f"{singular} {selected_id}")
                     
                     if self.isLineElement(selected_type):
                         self.labelAdjacentNodeLinks.setText("Adjacent Nodes")
+                        self.findAdjacentNodesByGeometry(found_feature)
                     else:
                         self.labelAdjacentNodeLinks.setText("Adjacent Links")
+                        self.findAdjacentLinksByGeometry(found_feature)
                     break
+
+    def areOverlappedPoints(self, point1, point2, tolerance=0.1):
+        return point1.distance(point2) < tolerance
+
+    def findAdjacentNodesByGeometry(self, line_feature):
+        geom = line_feature.geometry()
+        if geom.isMultipart():
+            parts = geom.asMultiPolyline()
+            line_points = parts[0] if parts else []
+        else:
+            line_points = geom.asPolyline()
+
+        if not line_points:
+            return
+
+        first_point = QgsGeometry.fromPointXY(line_points[0])
+        last_point = QgsGeometry.fromPointXY(line_points[-1])
+
+        node_layers = ["Reservoirs", "Tanks", "Junctions", "Pumps", "Valves", "Meters", "Service Connections", "Isolation Valves"]
+        project = QgsProject.instance()
+
+        found_nodes = []
+        for node_layer_name in node_layers:
+            layers = project.mapLayersByName(node_layer_name)
+            if not layers:
+                continue
+            node_layer = layers[0]
+            if node_layer.geometryType() != 0:
+                continue
+
+            node_id_field = "Id"
+            for f in node_layer.getFeatures():
+                node_geom = f.geometry()
+                if node_geom.isEmpty():
+                    continue
+                node_point = node_geom.asPoint()
+                if self.areOverlappedPoints(first_point, QgsGeometry.fromPointXY(node_point)) or \
+                   self.areOverlappedPoints(last_point, QgsGeometry.fromPointXY(node_point)):
+                    singular = self.singular_forms.get(node_layer_name, node_layer_name)
+                    found_nodes.append(f"{singular} {f.attribute(node_id_field)}")
+
+        for node_info in found_nodes:
+            self.listWidget.addItem(node_info)
+
+    def findAdjacentLinksByGeometry(self, node_feature):
+        node_geom = node_feature.geometry()
+        if node_geom.isEmpty():
+            return
+        
+        node_point = node_geom.asPoint()
+
+        link_layers = ["Pipes", "Service Connections"]
+        project = QgsProject.instance()
+
+        found_links = []
+        for link_layer_name in link_layers:
+            layers = project.mapLayersByName(link_layer_name)
+            if not layers:
+                continue
+            link_layer = layers[0]
+            if link_layer.geometryType() != 1:
+                continue
+
+            link_id_field = "Id"
+            for f in link_layer.getFeatures():
+                link_geom = f.geometry()
+                if link_geom.isMultipart():
+                    parts = link_geom.asMultiPolyline()
+                    line_points = parts[0] if parts else []
+                else:
+                    line_points = link_geom.asPolyline()
+
+                if not line_points:
+                    continue
+
+                first_p = QgsGeometry.fromPointXY(line_points[0])
+                last_p = QgsGeometry.fromPointXY(line_points[-1])
+
+                if self.areOverlappedPoints(QgsGeometry.fromPointXY(node_point), first_p) or \
+                   self.areOverlappedPoints(QgsGeometry.fromPointXY(node_point), last_p):
+                    singular = self.singular_forms.get(link_layer_name, link_layer_name)
+                    found_links.append(f"{singular} {f.attribute(link_id_field)}")
+
+        for link_info in found_links:
+            self.listWidget.addItem(link_info)
 
     def isLineElement(self, element_type):
         return element_type in ["Pipes", "Service Connections"]
