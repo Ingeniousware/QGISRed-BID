@@ -176,3 +176,7 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
 
         search_icon = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFilter.png'))
         self.leElementMask.addAction(search_icon, QLineEdit.LeadingPosition)
+
+        # Set white background for dropdowns
+        self.cbElementType.setStyleSheet("QComboBox { background-color: white; }")
+        self.cbElementId.setStyleSheet("QComboBox { background-color: white; }")
