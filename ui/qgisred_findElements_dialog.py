@@ -130,10 +130,17 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
             h.hide()
         self.adjacent_highlights.clear()
         
+    def clearAllLayerSelections(self):
+        # Clear all selections from all layers
+        for lyr in QgsProject.instance().mapLayers().values():
+            if lyr is not None:
+                lyr.removeSelection()
+        
     @pyqtSlot()
     def findElement(self):
-        # Clear previous highlights
+        # Clear previous highlights and selections before new search
         self.clearHighlights()
+        self.clearAllLayerSelections()
         
         self.listWidget.clear()
         selected_type = self.cbElementType.currentText()
@@ -308,3 +315,8 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
             self.cbElementId.setCurrentIndex(index)
 
         self.findElement()
+        
+    def closeEvent(self, event):
+        self.clearHighlights()
+        self.clearAllLayerSelections()
+        super(QGISRedFindElementsDialog, self).closeEvent(event)
