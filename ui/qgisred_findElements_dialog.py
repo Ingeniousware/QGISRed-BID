@@ -149,7 +149,7 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
                     break
 
     def isLineElement(self, element_type):
-        return element_type in ["Pipes", "Service Connections"]
+        return element_type in ["Pipes", "Service Connections", "Pumps"]
       
     def setDialogStyle(self):
         icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFindElements.png')
@@ -213,7 +213,7 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
         node_point = QgsPointXY(node_geom.asPoint())
         node_g = QgsGeometry.fromPointXY(node_point)
 
-        link_layers = ["Pipes", "Service Connections"]
+        link_layers = ["Pipes", "Service Connections", "Pumps"]
         project = QgsProject.instance()
 
         found_links = []
