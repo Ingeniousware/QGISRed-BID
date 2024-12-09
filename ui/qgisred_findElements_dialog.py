@@ -3,15 +3,9 @@
 import os
 from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtWidgets import QDialog, QMessageBox, QLineEdit
-from PyQt5 import sip
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import QVariant, Qt
-from PyQt5.QtCore import pyqtSlot
-from qgis.core import (
-    QgsLayerTreeGroup, QgsLayerTreeLayer, QgsLayerTreeNode, QgsProject,
-    QgsVectorFileWriter, QgsVectorLayer, QgsGeometry, 
-    QgsPalLayerSettings, QgsVectorLayerSimpleLabeling, QgsTextFormat
-)
+from qgis.PyQt.QtCore import pyqtSlot
+from qgis.core import QgsProject, QgsGeometry, QgsPointXY
 from qgis.utils import iface
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_findElements_dialog.ui"))
@@ -57,10 +51,6 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
         self.initializeElementTypes()
         self.labelFoundElement.setText("")
         
-        # current_id = self.cbElementId.currentText()
-        # if current_id:
-        #     self.updateFoundElementLabel(current_id)
-
     def getAvailableElementTypes(self):
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
         if not inputs_group:
@@ -69,7 +59,7 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
         available_types = []
         for element_type in self.element_types:
             for child in inputs_group.children():
-                if isinstance(child, QgsLayerTreeLayer) and child.name() == element_type:
+                if child.name() == element_type:
                     available_types.append(element_type)
                     break
         return available_types
@@ -78,7 +68,7 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
         self.cbElementType.currentIndexChanged.connect(self.updateElementIds)
         self.leElementMask.textChanged.connect(self.filterElementIds)
         self.btFind.clicked.connect(self.findElement)
-        #self.cbElementId.currentTextChanged.connect(self.updateFoundElementLabel)
+        self.listWidget.itemClicked.connect(self.onListItemClicked)
         
     def initializeElementTypes(self):
         self.cbElementType.clear()
@@ -96,23 +86,9 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
 
     def getLayerForElementType(self, element_type):
         project = QgsProject.instance()
-        layer_map = {
-            "Reservoirs": "Reservoirs",
-            "Tanks": "Tanks",
-            "Junctions": "Junctions",
-            "Pumps": "Pumps",
-            "Valves": "Valves",
-            "Pipes": "Pipes",
-            "Meters": "Meters",
-            "Service Connections": "Service Connections",
-            "Isolation Valves": "Isolation Valves"
-        }
-        
-        layer_name = layer_map.get(element_type)
-        if layer_name:
-            layers = project.mapLayersByName(layer_name)
-            return layers[0] if layers else None
-        return None
+        layer_name = element_type  # layer name == element_type
+        layers = project.mapLayersByName(layer_name)
+        return layers[0] if layers else None
         
     @pyqtSlot()
     def updateElementIds(self):
@@ -144,7 +120,6 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
     @pyqtSlot()
     def findElement(self):
         self.listWidget.clear()
-
         selected_type = self.cbElementType.currentText()
         selected_id = self.cbElementId.currentText()
         
@@ -158,13 +133,13 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
             for feature in layer.getFeatures():
                 if str(feature.attribute("Id")) == selected_id:
                     found_feature = feature
-
                     iface.mapCanvas().zoomToFeatureIds(layer, [feature.id()])
                     layer.selectByIds([feature.id()])
                     
                     singular = self.singular_forms.get(selected_type, selected_type)
                     self.labelFoundElement.setText(f"{singular} {selected_id}")
                     
+                    # Determine if it's line or node and find adjacent features
                     if self.isLineElement(selected_type):
                         self.labelAdjacentNodeLinks.setText("Adjacent Nodes")
                         self.findAdjacentNodesByGeometry(found_feature)
@@ -172,6 +147,20 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
                         self.labelAdjacentNodeLinks.setText("Adjacent Links")
                         self.findAdjacentLinksByGeometry(found_feature)
                     break
+
+    def isLineElement(self, element_type):
+        return element_type in ["Pipes", "Service Connections"]
+      
+    def setDialogStyle(self):
+        icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFindElements.png')
+        self.setWindowIcon(QIcon(icon_path))
+
+        search_icon = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFilter.png'))
+        self.leElementMask.addAction(search_icon, QLineEdit.LeadingPosition)
+
+        # Set white background for dropdowns
+        self.cbElementType.setStyleSheet("QComboBox { background-color: white; }")
+        self.cbElementId.setStyleSheet("QComboBox { background-color: white; }")
 
     def areOverlappedPoints(self, point1, point2, tolerance=0.1):
         return point1.distance(point2) < tolerance
@@ -199,6 +188,7 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
             if not layers:
                 continue
             node_layer = layers[0]
+
             if node_layer.geometryType() != 0:
                 continue
 
@@ -207,9 +197,8 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
                 node_geom = f.geometry()
                 if node_geom.isEmpty():
                     continue
-                node_point = node_geom.asPoint()
-                if self.areOverlappedPoints(first_point, QgsGeometry.fromPointXY(node_point)) or \
-                   self.areOverlappedPoints(last_point, QgsGeometry.fromPointXY(node_point)):
+                node_point = QgsGeometry.fromPointXY(QgsPointXY(node_geom.asPoint()))
+                if self.areOverlappedPoints(first_point, node_point) or self.areOverlappedPoints(last_point, node_point):
                     singular = self.singular_forms.get(node_layer_name, node_layer_name)
                     found_nodes.append(f"{singular} {f.attribute(node_id_field)}")
 
@@ -221,7 +210,8 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
         if node_geom.isEmpty():
             return
         
-        node_point = node_geom.asPoint()
+        node_point = QgsPointXY(node_geom.asPoint())
+        node_g = QgsGeometry.fromPointXY(node_point)
 
         link_layers = ["Pipes", "Service Connections"]
         project = QgsProject.instance()
@@ -250,24 +240,35 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
                 first_p = QgsGeometry.fromPointXY(line_points[0])
                 last_p = QgsGeometry.fromPointXY(line_points[-1])
 
-                if self.areOverlappedPoints(QgsGeometry.fromPointXY(node_point), first_p) or \
-                   self.areOverlappedPoints(QgsGeometry.fromPointXY(node_point), last_p):
+                if self.areOverlappedPoints(node_g, first_p) or self.areOverlappedPoints(node_g, last_p):
                     singular = self.singular_forms.get(link_layer_name, link_layer_name)
                     found_links.append(f"{singular} {f.attribute(link_id_field)}")
 
         for link_info in found_links:
             self.listWidget.addItem(link_info)
 
-    def isLineElement(self, element_type):
-        return element_type in ["Pipes", "Service Connections"]
-      
-    def setDialogStyle(self):
-        icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFindElements.png')
-        self.setWindowIcon(QIcon(icon_path))
+    def onListItemClicked(self, item):
+        # item.text() is in format "Junction J-1" or "Pipe P-123"
+        text = item.text()
+        parts = text.split(" ", 1)
+        if len(parts) < 2:
+            return
 
-        search_icon = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFilter.png'))
-        self.leElementMask.addAction(search_icon, QLineEdit.LeadingPosition)
+        singular_type = parts[0]  # e.g. "Junction"
+        selected_id = parts[1].strip()
 
-        # Set white background for dropdowns
-        self.cbElementType.setStyleSheet("QComboBox { background-color: white; }")
-        self.cbElementId.setStyleSheet("QComboBox { background-color: white; }")
+        element_type = None
+        for plural, singular in self.singular_forms.items():
+            if singular == singular_type:
+                element_type = plural
+                break
+
+        if not element_type:
+            return
+
+        self.cbElementType.setCurrentText(element_type)
+        index = self.cbElementId.findText(selected_id)
+        if index >= 0:
+            self.cbElementId.setCurrentIndex(index)
+
+        self.findElement()
