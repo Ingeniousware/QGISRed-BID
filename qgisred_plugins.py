@@ -4393,9 +4393,8 @@ class QGISRed:
         if self.isLayerOnEdition():
             return
 
-        dlg = QGISRedFindElementsDialog()
-        # Run the dialog event loop
-        dlg.exec_()
+        self.dlg = QGISRedFindElementsDialog()
+        self.dlg.show()
 
     # ==============================================================
     #                        END: QUERIES FIND ELEMENTS
