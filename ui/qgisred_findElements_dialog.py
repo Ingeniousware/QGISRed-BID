@@ -166,8 +166,8 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
                     
                     # Highlight the main element in a custom color
                     self.main_highlight = QgsHighlight(iface.mapCanvas(), found_feature.geometry(), layer)
-                    self.main_highlight.setColor(QColor("blue"))  # main element highlight color
-                    self.main_highlight.setWidth(3)
+                    self.main_highlight.setColor(QColor("red"))  # main element highlight color
+                    self.main_highlight.setWidth(5)
                     self.main_highlight.show()
                     
                     # Determine adjacency type
@@ -237,7 +237,7 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
         for node_layer, feature, node_info in found_nodes:
             self.listWidget.addItem(node_info)
             highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), node_layer)
-            highlight.setColor(QColor("red"))  # Adjacent features highlight color
+            highlight.setColor(QColor("gold"))  # Adjacent features highlight color
             highlight.setWidth(3)
             highlight.show()
             self.adjacent_highlights.append(highlight)
@@ -285,7 +285,7 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
         for link_layer, feature, link_info in found_links:
             self.listWidget.addItem(link_info)
             highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), link_layer)
-            highlight.setColor(QColor("red"))  # Adjacent features highlight color
+            highlight.setColor(QColor("gold"))  # Adjacent features highlight color
             highlight.setWidth(3)
             highlight.show()
             self.adjacent_highlights.append(highlight)
