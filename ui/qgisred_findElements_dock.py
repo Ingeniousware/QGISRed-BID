@@ -70,7 +70,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.cbElementType.currentIndexChanged.connect(self.updateElementIds)
         self.leElementMask.textChanged.connect(self.filterElementIds)
         self.btFind.clicked.connect(self.findElement)
-        self.listWidget.itemClicked.connect(self.onListItemClicked)
+        self.listWidget.itemClicked.connect(self.onListItemSingleClicked)
+        self.listWidget.itemDoubleClicked.connect(self.onListItemDoubleClicked)
         
     def initializeElementTypes(self):
         self.cbElementType.clear()
@@ -88,7 +89,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
     def getLayerForElementType(self, element_type):
         project = QgsProject.instance()
-        layer_name = element_type  # layer name == element_type
+        layer_name = element_type
         layers = project.mapLayersByName(layer_name)
         return layers[0] if layers else None
         
@@ -120,25 +121,21 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.cbElementId.addItems(filtered_items)
         
     def clearHighlights(self):
-        # Clear main highlight
         if self.main_highlight:
             self.main_highlight.hide()
             self.main_highlight = None
         
-        # Clear adjacent highlights
         for h in self.adjacent_highlights:
             h.hide()
         self.adjacent_highlights.clear()
         
     def clearAllLayerSelections(self):
-        # Clear all selections from all layers
         for lyr in QgsProject.instance().mapLayers().values():
             if lyr is not None:
                 lyr.removeSelection()
         
     @pyqtSlot()
     def findElement(self):
-        # Clear previous highlights and selections before new search
         self.clearHighlights()
         self.clearAllLayerSelections()
         
@@ -156,21 +153,17 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             for feature in layer.getFeatures():
                 if str(feature.attribute("Id")) == selected_id:
                     found_feature = feature
-                    # Zoom to feature
                     iface.mapCanvas().zoomToFeatureIds(layer, [feature.id()])
-                    # Select it on the layer (optional if you also highlight)
                     layer.selectByIds([feature.id()])
                     
                     singular = self.singular_forms.get(selected_type, selected_type)
                     self.labelFoundElement.setText(f"{singular} {selected_id}")
                     
-                    # Highlight the main element in a custom color
                     self.main_highlight = QgsHighlight(iface.mapCanvas(), found_feature.geometry(), layer)
-                    self.main_highlight.setColor(QColor("red"))  # main element highlight color
+                    self.main_highlight.setColor(QColor("red"))
                     self.main_highlight.setWidth(5)
                     self.main_highlight.show()
                     
-                    # Determine adjacency type
                     if self.isLineElement(selected_type):
                         self.labelAdjacentNodeLinks.setText("Adjacent Nodes")
                         self.findAdjacentNodesByGeometry(found_feature)
@@ -189,7 +182,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         search_icon = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFilter.png'))
         self.leElementMask.addAction(search_icon, QLineEdit.LeadingPosition)
 
-        # Set white background for dropdowns
         self.cbElementType.setStyleSheet("QComboBox { background-color: white; }")
         self.cbElementId.setStyleSheet("QComboBox { background-color: white; }")
 
@@ -233,11 +225,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     singular = self.singular_forms.get(node_layer_name, node_layer_name)
                     found_nodes.append((node_layer, f, f"{singular} {f.attribute(node_id_field)}"))
 
-        # Add nodes to listWidget and highlight them
         for node_layer, feature, node_info in found_nodes:
             self.listWidget.addItem(node_info)
             highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), node_layer)
-            highlight.setColor(QColor("gold"))  # Adjacent features highlight color
+            highlight.setColor(QColor("gold"))
             highlight.setWidth(3)
             highlight.show()
             self.adjacent_highlights.append(highlight)
@@ -281,16 +272,41 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     singular = self.singular_forms.get(link_layer_name, link_layer_name)
                     found_links.append((link_layer, f, f"{singular} {f.attribute(link_id_field)}"))
 
-        # Add links to listWidget and highlight them
         for link_layer, feature, link_info in found_links:
             self.listWidget.addItem(link_info)
             highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), link_layer)
-            highlight.setColor(QColor("gold"))  # Adjacent features highlight color
+            highlight.setColor(QColor("gold"))
             highlight.setWidth(3)
             highlight.show()
             self.adjacent_highlights.append(highlight)
 
-    def onListItemClicked(self, item):
+    def onListItemSingleClicked(self, item):
+        self.clearHighlights()
+        text = item.text()
+        parts = text.split(" ", 1)
+        if len(parts) < 2:
+            return
+        singular_type = parts[0]
+        selected_id = parts[1].strip()
+        element_type = None
+        for plural, singular in self.singular_forms.items():
+            if singular == singular_type:
+                element_type = plural
+                break
+        if not element_type:
+            return
+        layer = self.getLayerForElementType(element_type)
+        if layer:
+            for feature in layer.getFeatures():
+                if str(feature.attribute("Id")) == selected_id:
+                    highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), layer)
+                    highlight.setColor(QColor("blue"))
+                    highlight.setWidth(5)
+                    highlight.show()
+                    self.main_highlight = highlight
+                    break
+
+    def onListItemDoubleClicked(self, item):
         # item.text() is in format "Junction J-1" or "Pipe P-123"
         text = item.text()
         parts = text.split(" ", 1)
@@ -315,7 +331,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             self.cbElementId.setCurrentIndex(index)
 
         self.findElement()
-        
+
     def closeEvent(self, event):
         self.clearHighlights()
         self.clearAllLayerSelections()
