@@ -53,9 +53,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.initializeElementTypes()
         self.labelFoundElement.setText("")
         
-        # Set window title for the dock
-        self.setWindowTitle("Find Elements")
-        
     def getAvailableElementTypes(self):
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
         if not inputs_group:

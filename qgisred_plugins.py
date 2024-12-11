@@ -4402,7 +4402,6 @@ class QGISRed:
             dock.raise_()
             dock.activateWindow()
         else:
-            # Create new dock widget
             self.dock = QGISRedFindElementsDock()
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
             self.dock.resize(300, 400) 
