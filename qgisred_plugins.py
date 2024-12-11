@@ -43,7 +43,7 @@ from .ui.qgisred_toolConnections_dialog import QGISRedServiceConnectionsToolDial
 from .ui.qgisred_toolConnectivity_dialog import QGISRedConnectivityToolDialog
 from .ui.qgisred_loadproject_dialog import QGISRedImportProjectDialog
 from .ui.qgisred_thematicmaps_dialog import QGISRedThematicMapsDialog
-from .ui.qgisred_findElements_dialog import QGISRedFindElementsDialog
+from .ui.qgisred_findElements_dock import QGISRedFindElementsDock
 from .tools.qgisred_utils import QGISRedUtils
 from .tools.qgisred_dependencies import QGISRedDependencies as GISRed
 from .tools.qgisred_moveNodes import QGISRedMoveNodesTool
@@ -4393,8 +4393,20 @@ class QGISRed:
         if self.isLayerOnEdition():
             return
 
-        self.dlg = QGISRedFindElementsDialog()
-        self.dlg.show()
+        # Check if the dock widget already exists
+        existing_docks = self.iface.mainWindow().findChildren(QGISRedFindElementsDock)
+        if existing_docks:
+            dock = existing_docks[0]
+            self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)
+            dock.show()
+            dock.raise_()
+            dock.activateWindow()
+        else:
+            # Create new dock widget
+            self.dock = QGISRedFindElementsDock()
+            self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
+            self.dock.resize(300, 400) 
+            self.dock.show()
 
     # ==============================================================
     #                        END: QUERIES FIND ELEMENTS

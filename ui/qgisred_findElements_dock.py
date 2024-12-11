@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 import os
 from PyQt5.QtGui import QIcon, QFont, QColor
-from PyQt5.QtWidgets import QDialog, QMessageBox, QLineEdit
+from PyQt5.QtWidgets import QDockWidget, QMessageBox, QLineEdit
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import pyqtSlot
 from qgis.core import QgsProject, QgsGeometry, QgsPointXY
 from qgis.utils import iface
 from qgis.gui import QgsHighlight
 
-FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_findElements_dialog.ui"))
+FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_findElements_dock.ui"))
 
-class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
+class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
     def __init__(self, parent=None):
-        super(QGISRedFindElementsDialog, self).__init__(parent)
+        super(QGISRedFindElementsDock, self).__init__(parent)
         self.setupUi(self)
-        self.setDialogStyle()
+        self.setDockStyle()
         
         self.element_types = [
             "Reservoirs",
@@ -52,6 +52,9 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
         self.setupConnections()
         self.initializeElementTypes()
         self.labelFoundElement.setText("")
+        
+        # Set window title for the dock
+        self.setWindowTitle("Find Elements")
         
     def getAvailableElementTypes(self):
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
@@ -182,7 +185,7 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
     def isLineElement(self, element_type):
         return element_type in ["Pipes", "Service Connections", "Pumps"]
       
-    def setDialogStyle(self):
+    def setDockStyle(self):
         icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFindElements.png')
         self.setWindowIcon(QIcon(icon_path))
 
@@ -319,4 +322,4 @@ class QGISRedFindElementsDialog(QDialog, FORM_CLASS):
     def closeEvent(self, event):
         self.clearHighlights()
         self.clearAllLayerSelections()
-        super(QGISRedFindElementsDialog, self).closeEvent(event)
+        super(QGISRedFindElementsDock, self).closeEvent(event)
