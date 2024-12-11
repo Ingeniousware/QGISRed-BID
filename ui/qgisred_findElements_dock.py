@@ -4,7 +4,7 @@ from PyQt5.QtGui import QIcon, QFont, QColor
 from PyQt5.QtWidgets import QDockWidget, QMessageBox, QLineEdit
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import pyqtSlot
-from qgis.core import QgsProject, QgsGeometry, QgsPointXY
+from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsRectangle
 from qgis.utils import iface
 from qgis.gui import QgsHighlight
 
@@ -43,7 +43,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.original_ids = []
         self.adjacent_highlights = []
         self.main_highlight = None
-        self.current_selected_highlight = None  # New variable to track single-click highlight
+        self.current_selected_highlight = None  # Track single-click highlight
         
         font = QFont()
         font.setPointSize(12)
@@ -53,7 +53,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.setupConnections()
         self.initializeElementTypes()
         self.labelFoundElement.setText("")
-        
+
+        QgsProject.instance().aboutToBeCleared.connect(self.onProjectClosed)
+
+
     def getAvailableElementTypes(self):
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
         if not inputs_group:
@@ -158,24 +161,34 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             for feature in layer.getFeatures():
                 if str(feature.attribute("Id")) == selected_id:
                     found_feature = feature
-                    iface.mapCanvas().zoomToFeatureIds(layer, [feature.id()])
-                    layer.selectByIds([feature.id()])
-                    
-                    singular = self.singular_forms.get(selected_type, selected_type)
-                    self.labelFoundElement.setText(f"{singular} {selected_id}")
-                    
-                    self.main_highlight = QgsHighlight(iface.mapCanvas(), found_feature.geometry(), layer)
-                    self.main_highlight.setColor(QColor("red"))
-                    self.main_highlight.setWidth(5)
-                    self.main_highlight.show()
-                    
-                    if self.isLineElement(selected_type):
-                        self.labelAdjacentNodeLinks.setText("Adjacent Nodes")
-                        self.findAdjacentNodesByGeometry(found_feature)
-                    else:
-                        self.labelAdjacentNodeLinks.setText("Adjacent Links")
-                        self.findAdjacentLinksByGeometry(found_feature)
                     break
+
+            if not found_feature:
+                QMessageBox.information(self, "Info", "Feature not found")
+                return
+
+            singular = self.singular_forms.get(selected_type, selected_type)
+            self.labelFoundElement.setText(f"{singular} {selected_id}")
+
+            # Highlight main feature
+            self.main_highlight = QgsHighlight(iface.mapCanvas(), found_feature.geometry(), layer)
+            self.main_highlight.setColor(QColor("red"))
+            self.main_highlight.setWidth(5)
+            self.main_highlight.show()
+
+            # Adjust map view with custom zoom and pan logic
+            self.adjustMapView(found_feature)
+
+            # After adjusting the view, select the feature
+            layer.selectByIds([found_feature.id()])
+
+            # Find adjacent elements
+            if self.isLineElement(selected_type):
+                self.labelAdjacentNodeLinks.setText("Adjacent Nodes")
+                self.findAdjacentNodesByGeometry(found_feature)
+            else:
+                self.labelAdjacentNodeLinks.setText("Adjacent Links")
+                self.findAdjacentLinksByGeometry(found_feature)
 
     def isLineElement(self, element_type):
         return element_type in ["Pipes", "Service Connections", "Pumps"]
@@ -343,3 +356,101 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.clearHighlights()
         self.clearAllLayerSelections()
         super(QGISRedFindElementsDock, self).closeEvent(event)
+
+    def adjustMapView(self, feature):
+        # Adjusts the map view (zoom and pan) according to the specified logic:
+        # - No zoom if feature size ratio is between 25% and 0.05%.
+        # - Zoom out if feature too large, zoom in if too small.
+        # - Pan minimally if feature too close to edges.
+
+        canvas = iface.mapCanvas()
+        current_extent = canvas.extent()
+        geom = feature.geometry()
+        feature_extent = geom.boundingBox()
+
+        map_width = current_extent.width()
+        map_height = current_extent.height()
+        feat_width = feature_extent.width()
+        feat_height = feature_extent.height()
+
+        is_point = (feat_width == 0 and feat_height == 0)
+
+        feat_largest_dim = max(feat_width, feat_height)
+        map_largest_dim = max(map_width, map_height)
+        ratio = feat_largest_dim / map_largest_dim if map_largest_dim != 0 else 1
+
+        center_x = feature_extent.center().x()
+        center_y = feature_extent.center().y()
+
+        new_extent = QgsRectangle(current_extent)
+
+        # Zoom logic (skip if point)
+        if not is_point:
+            # If ratio > 0.25 -> feature too big, zoom out
+            if ratio > 0.25:
+                factor = ratio / 0.25
+                new_width = map_width * factor
+                new_height = map_height * factor
+                new_extent = self.recenterExtent(new_width, new_height, center_x, center_y)
+            # If ratio < 0.005 -> feature too small, zoom in
+            elif ratio < 0.05:
+                factor = 0.05 / ratio
+                new_width = map_width / factor
+                new_height = map_height / factor
+                new_extent = self.recenterExtent(new_width, new_height, center_x, center_y)
+            else:
+                # No zoom change
+                new_extent = QgsRectangle(current_extent)
+        else:
+            # If point, no zoom adjustment
+            new_extent = QgsRectangle(current_extent)
+
+        new_extent = self.applyMinimalPan(new_extent, feature_extent)
+
+        canvas.setExtent(new_extent)
+        canvas.refresh()
+
+    def recenterExtent(self, new_width, new_height, center_x, center_y):
+        half_w = new_width / 2.0
+        half_h = new_height / 2.0
+        return QgsRectangle(center_x - half_w, center_y - half_h, center_x + half_w, center_y + half_h)
+
+    def applyMinimalPan(self, current_extent, feature_extent):
+        margin_x = current_extent.width() * 0.1
+        margin_y = current_extent.height() * 0.1
+
+        # Distances from feature to map edges
+        left_dist = feature_extent.xMinimum() - current_extent.xMinimum()
+        right_dist = current_extent.xMaximum() - feature_extent.xMaximum()
+        top_dist = current_extent.yMaximum() - feature_extent.yMaximum()
+        bottom_dist = feature_extent.yMinimum() - current_extent.yMinimum()
+
+        new_extent = QgsRectangle(current_extent)
+
+        # Horizontal panning
+        if left_dist < margin_x:
+            shift = margin_x - left_dist
+            new_extent.setXMinimum(new_extent.xMinimum() - shift)
+            new_extent.setXMaximum(new_extent.xMaximum() - shift)
+
+        if right_dist < margin_x:
+            shift = margin_x - right_dist
+            new_extent.setXMinimum(new_extent.xMinimum() + shift)
+            new_extent.setXMaximum(new_extent.xMaximum() + shift)
+
+        # Vertical panning
+        if top_dist < margin_y:
+            shift = margin_y - top_dist
+            new_extent.setYMinimum(new_extent.yMinimum() + shift)
+            new_extent.setYMaximum(new_extent.yMaximum() + shift)
+
+        if bottom_dist < margin_y:
+            shift = margin_y - bottom_dist
+            new_extent.setYMinimum(new_extent.yMinimum() - shift)
+            new_extent.setYMaximum(new_extent.yMaximum() - shift)
+
+        return new_extent
+
+    def onProjectClosed(self):
+        self.clearHighlights()
+        self.clearAllLayerSelections()
