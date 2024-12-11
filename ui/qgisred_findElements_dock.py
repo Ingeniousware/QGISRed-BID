@@ -43,6 +43,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.original_ids = []
         self.adjacent_highlights = []
         self.main_highlight = None
+        self.current_selected_highlight = None  # New variable to track single-click highlight
         
         font = QFont()
         font.setPointSize(12)
@@ -128,6 +129,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         for h in self.adjacent_highlights:
             h.hide()
         self.adjacent_highlights.clear()
+        
+        if self.current_selected_highlight:
+            self.current_selected_highlight.hide()
+            self.current_selected_highlight = None
         
     def clearAllLayerSelections(self):
         for lyr in QgsProject.instance().mapLayers().values():
@@ -281,7 +286,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             self.adjacent_highlights.append(highlight)
 
     def onListItemSingleClicked(self, item):
-        self.clearHighlights()
+        if self.current_selected_highlight:
+            self.current_selected_highlight.hide()
+            self.current_selected_highlight = None
+
         text = item.text()
         parts = text.split(" ", 1)
         if len(parts) < 2:
@@ -303,11 +311,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     highlight.setColor(QColor("blue"))
                     highlight.setWidth(5)
                     highlight.show()
-                    self.main_highlight = highlight
+                    self.current_selected_highlight = highlight
                     break
 
     def onListItemDoubleClicked(self, item):
-        # item.text() is in format "Junction J-1" or "Pipe P-123"
         text = item.text()
         parts = text.split(" ", 1)
         if len(parts) < 2:

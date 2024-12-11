@@ -1483,7 +1483,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed/images/iconElementsProperties.png"
         self.openElementsPropertiesDialog = self.add_action(
             icon_path,
-            text=self.tr("Elements Properties"),
+            text=self.tr("Element Data"),
             callback=self.runElementsProperties,
             menubar=self.queriesMenu,
             toolbar=self.queriesToolbar,
