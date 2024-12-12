@@ -253,11 +253,11 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         for node_layer, feature, node_info in found_nodes:
             self.listWidget.addItem(node_info)
-            highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), node_layer)
-            highlight.setColor(QColor("gold"))
-            highlight.setWidth(3)
-            highlight.show()
-            self.adjacent_highlights.append(highlight)
+        #     highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), node_layer)
+        #     highlight.setColor(QColor("gold"))
+        #     highlight.setWidth(3)
+        #     highlight.show()
+        #     self.adjacent_highlights.append(highlight)
 
     def findAdjacentLinksByGeometry(self, node_feature):
         node_geom = node_feature.geometry()
@@ -300,11 +300,11 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         for link_layer, feature, link_info in found_links:
             self.listWidget.addItem(link_info)
-            highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), link_layer)
-            highlight.setColor(QColor("gold"))
-            highlight.setWidth(3)
-            highlight.show()
-            self.adjacent_highlights.append(highlight)
+        #     highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), link_layer)
+        #     highlight.setColor(QColor("gold"))
+        #     highlight.setWidth(3)
+        #     highlight.show()
+        #     self.adjacent_highlights.append(highlight)
 
     def onListItemSingleClicked(self, item):
         if self.current_selected_highlight:
@@ -329,7 +329,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             for feature in layer.getFeatures():
                 if str(feature.attribute("Id")) == selected_id:
                     highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), layer)
-                    highlight.setColor(QColor("blue"))
+                    highlight.setColor(QColor("orange"))
                     highlight.setWidth(5)
                     highlight.show()
                     self.current_selected_highlight = highlight
