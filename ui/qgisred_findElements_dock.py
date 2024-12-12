@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 from PyQt5.QtGui import QIcon, QFont, QColor
-from PyQt5.QtWidgets import QDockWidget, QMessageBox, QLineEdit, QAbstractItemView
+from PyQt5.QtWidgets import QDockWidget, QMessageBox, QLineEdit
 from qgis.PyQt import uic
 from PyQt5.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSlot
@@ -108,6 +108,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if self.leElementMask.text():
             self.filterElementIds()
         else:
+            # Always add a blank item at the top
+            self.cbElementId.addItem("")  
             self.cbElementId.addItems(self.original_ids)
                 
     @pyqtSlot()
@@ -120,6 +122,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         else:
             filtered_items = self.original_ids
             
+        # Always add a blank item at the top
+        self.cbElementId.addItem("")
         self.cbElementId.addItems(filtered_items)
         
     def clearHighlights(self):
@@ -149,6 +153,12 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         selected_type = self.cbElementType.currentText()
         selected_id = self.cbElementId.currentText()
         
+        # If blank ID is selected, just clear everything and return
+        if selected_id == "":
+            # This effectively "clears all previously selected items"
+            self.labelFoundElement.setText("")
+            return
+            
         if not selected_id:
             QMessageBox.warning(self, "Warning", "Please select an element ID")
             return
@@ -390,7 +400,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                 new_width = map_width * factor
                 new_height = map_height * factor
                 new_extent = self.recenterExtent(new_width, new_height, center_x, center_y)
-            # If ratio < 0.005 -> feature too small, zoom in
+            # If ratio < 0.05 -> feature too small, zoom in
             elif ratio < 0.05:
                 factor = 0.05 / ratio
                 new_width = map_width / factor
