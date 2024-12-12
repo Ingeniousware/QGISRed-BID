@@ -155,7 +155,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         
         # If blank ID is selected, just clear everything and return
         if selected_id == "":
-            # This effectively "clears all previously selected items"
             self.labelFoundElement.setText("")
             return
             
@@ -184,10 +183,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             self.main_highlight.setWidth(5)
             self.main_highlight.show()
 
-            # Adjust map view with custom zoom and pan logic
+            # Adjust map view
             self.adjustMapView(found_feature)
 
-            # After adjusting the view, select the feature
+            # Select the feature
             layer.selectByIds([found_feature.id()])
 
             # Find adjacent elements
@@ -253,11 +252,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         for node_layer, feature, node_info in found_nodes:
             self.listWidget.addItem(node_info)
-        #     highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), node_layer)
-        #     highlight.setColor(QColor("gold"))
-        #     highlight.setWidth(3)
-        #     highlight.show()
-        #     self.adjacent_highlights.append(highlight)
 
     def findAdjacentLinksByGeometry(self, node_feature):
         node_geom = node_feature.geometry()
@@ -300,11 +294,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         for link_layer, feature, link_info in found_links:
             self.listWidget.addItem(link_info)
-        #     highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), link_layer)
-        #     highlight.setColor(QColor("gold"))
-        #     highlight.setWidth(3)
-        #     highlight.show()
-        #     self.adjacent_highlights.append(highlight)
 
     def onListItemSingleClicked(self, item):
         if self.current_selected_highlight:
@@ -336,6 +325,9 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     break
 
     def onListItemDoubleClicked(self, item):
+        # Clear the mask before refreshing the selection
+        self.leElementMask.clear()
+        
         text = item.text()
         parts = text.split(" ", 1)
         if len(parts) < 2:
@@ -366,11 +358,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         super(QGISRedFindElementsDock, self).closeEvent(event)
 
     def adjustMapView(self, feature):
-        # Adjusts the map view (zoom and pan) according to the specified logic:
-        # - No zoom if feature size ratio is between 25% and 0.05%.
-        # - Zoom out if feature too large, zoom in if too small.
-        # - Pan minimally if feature too close to edges.
-
         canvas = iface.mapCanvas()
         current_extent = canvas.extent()
         geom = feature.geometry()
