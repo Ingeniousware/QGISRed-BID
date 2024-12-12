@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QDockWidget, QMessageBox, QLineEdit
 from qgis.PyQt import uic
 from PyQt5.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSlot
-from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsRectangle
+from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsRectangle, QgsVectorLayer
 from qgis.utils import iface
 from qgis.gui import QgsHighlight
 
@@ -140,8 +140,9 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             self.current_selected_highlight = None
         
     def clearAllLayerSelections(self):
+        # Only remove selection from vector layers
         for lyr in QgsProject.instance().mapLayers().values():
-            if lyr is not None:
+            if isinstance(lyr, QgsVectorLayer):
                 lyr.removeSelection()
         
     @pyqtSlot()
