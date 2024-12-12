@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import os
 from PyQt5.QtGui import QIcon, QFont, QColor
-from PyQt5.QtWidgets import QDockWidget, QMessageBox, QLineEdit
+from PyQt5.QtWidgets import QDockWidget, QMessageBox, QLineEdit, QAbstractItemView
 from qgis.PyQt import uic
+from PyQt5.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSlot
 from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsRectangle
 from qgis.utils import iface
@@ -53,9 +54,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.setupConnections()
         self.initializeElementTypes()
         self.labelFoundElement.setText("")
-
-        QgsProject.instance().aboutToBeCleared.connect(self.onProjectClosed)
-
 
     def getAvailableElementTypes(self):
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
