@@ -13,7 +13,13 @@
   <property name="minimumSize">
    <size>
     <width>220</width>
-    <height>350</height>
+    <height>320</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>524287</width>
+    <height>400</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -44,10 +50,23 @@
      </widget>
     </item>
     <item>
-     <widget class="QComboBox" name="cbElementType"/>
+     <widget class="QComboBox" name="cbElementType">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+     </widget>
     </item>
     <item>
      <widget class="QLineEdit" name="leElementMask">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="placeholderText">
        <string>Element ID Mask</string>
       </property>
@@ -62,6 +81,12 @@
     </item>
     <item>
      <widget class="QComboBox" name="cbElementId">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="placeholderText">
        <string/>
       </property>
@@ -69,6 +94,12 @@
     </item>
     <item>
      <widget class="QPushButton" name="btFind">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="text">
        <string>Find</string>
       </property>
@@ -91,15 +122,21 @@
     <item>
      <widget class="QListWidget" name="listWidget">
       <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
         <horstretch>0</horstretch>
-        <verstretch>1</verstretch>
+        <verstretch>0</verstretch>
        </sizepolicy>
       </property>
       <property name="minimumSize">
        <size>
         <width>0</width>
         <height>100</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>16777215</width>
+        <height>120</height>
        </size>
       </property>
      </widget>
