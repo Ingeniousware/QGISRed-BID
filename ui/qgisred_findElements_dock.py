@@ -5,17 +5,36 @@ from PyQt5.QtWidgets import QDockWidget, QMessageBox, QLineEdit
 from qgis.PyQt import uic
 from PyQt5.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSlot
-from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsRectangle, QgsVectorLayer
+from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsRectangle, QgsVectorLayer, QgsSettings
 from qgis.utils import iface
 from qgis.gui import QgsHighlight
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_findElements_dock.ui"))
 
 class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
+    _instance = None
+    
+    @classmethod
+    def getInstance(cls, parent=None):
+        if cls._instance is None:
+            cls._instance = cls(parent)
+        return cls._instance
+
     def __init__(self, parent=None):
+        if QGISRedFindElementsDock._instance is not None:
+            raise Exception("QGISRedFindElementsDock is a singleton! Use getInstance() instead.")
+            
         super(QGISRedFindElementsDock, self).__init__(parent)
         self.setupUi(self)
-        self.setDockStyle()
+        
+        # Prevent stacking
+        self.setObjectName("QGISRedFindElementsDock")
+        
+        # Dock widget is not floating by default
+        self.setFloating(False)
+        
+        if parent:
+            parent.addDockWidget(Qt.LeftDockWidgetArea, self)
         
         self.element_types = [
             "Reservoirs",
@@ -44,7 +63,9 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.original_ids = []
         self.adjacent_highlights = []
         self.main_highlight = None
-        self.current_selected_highlight = None  # Track single-click highlight
+        self.current_selected_highlight = None 
+        
+        self.setDockStyle()
         
         font = QFont()
         font.setPointSize(12)
@@ -54,6 +75,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.setupConnections()
         self.initializeElementTypes()
         self.labelFoundElement.setText("")
+        
+        settings = QgsSettings()
+        if settings.contains("QGISRed/FindElements/geometry"):
+            self.restoreGeometry(settings.value("QGISRed/FindElements/geometry"))
 
     def getAvailableElementTypes(self):
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
@@ -138,6 +163,16 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if self.current_selected_highlight:
             self.current_selected_highlight.hide()
             self.current_selected_highlight = None
+    
+    def setDockStyle(self):
+        icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFindElements.png')
+        self.setWindowIcon(QIcon(icon_path))
+
+        search_icon = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFilter.png'))
+        self.leElementMask.addAction(search_icon, QLineEdit.LeadingPosition)
+
+        self.cbElementType.setStyleSheet("QComboBox { background-color: white; }")
+        self.cbElementId.setStyleSheet("QComboBox { background-color: white; }")
         
     def clearAllLayerSelections(self):
         # Only remove selection from vector layers
@@ -200,16 +235,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
     def isLineElement(self, element_type):
         return element_type in ["Pipes", "Service Connections", "Pumps"]
-      
-    def setDockStyle(self):
-        icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFindElements.png')
-        self.setWindowIcon(QIcon(icon_path))
-
-        search_icon = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFilter.png'))
-        self.leElementMask.addAction(search_icon, QLineEdit.LeadingPosition)
-
-        self.cbElementType.setStyleSheet("QComboBox { background-color: white; }")
-        self.cbElementId.setStyleSheet("QComboBox { background-color: white; }")
 
     def areOverlappedPoints(self, point1, point2, tolerance=0.1):
         return point1.distance(point2) < tolerance
@@ -354,8 +379,16 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.findElement()
 
     def closeEvent(self, event):
+        # Save geometry
+        settings = QgsSettings()
+        settings.setValue("QGISRed/FindElements/geometry", self.saveGeometry())
+        
         self.clearHighlights()
         self.clearAllLayerSelections()
+        
+        # Clear instance
+        QGISRedFindElementsDock._instance = None
+        
         super(QGISRedFindElementsDock, self).closeEvent(event)
 
     def adjustMapView(self, feature):
