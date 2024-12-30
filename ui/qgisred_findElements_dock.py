@@ -99,6 +99,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.btFind.clicked.connect(self.findElement)
         self.listWidget.itemClicked.connect(self.onListItemSingleClicked)
         self.listWidget.itemDoubleClicked.connect(self.onListItemDoubleClicked)
+        self.btClear.clicked.connect(self.clearAll) 
         
     def initializeElementTypes(self):
         self.cbElementType.clear()
@@ -483,3 +484,12 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
     def onProjectClosed(self):
         self.clearHighlights()
         self.clearAllLayerSelections()
+
+    @pyqtSlot()
+    def clearAll(self):
+        self.clearHighlights()
+        self.clearAllLayerSelections()
+        self.leElementMask.clear()
+        self.cbElementId.setCurrentIndex(0)
+        self.labelFoundElement.setText("")  
+        self.listWidget.clear()  
