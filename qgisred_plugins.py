@@ -44,6 +44,7 @@ from .ui.qgisred_toolConnectivity_dialog import QGISRedConnectivityToolDialog
 from .ui.qgisred_loadproject_dialog import QGISRedImportProjectDialog
 from .ui.qgisred_thematicmaps_dialog import QGISRedThematicMapsDialog
 from .ui.qgisred_findElements_dock import QGISRedFindElementsDock
+from .ui.qgisred_elementsData_dock import QGISRedElementsDataDock
 from .tools.qgisred_utils import QGISRedUtils
 from .tools.qgisred_dependencies import QGISRedDependencies as GISRed
 from .tools.qgisred_moveNodes import QGISRedMoveNodesTool
@@ -52,6 +53,7 @@ from .tools.qgisred_createPipe import QGISRedCreatePipeTool
 from .tools.qgisred_createConnection import QGISRedCreateConnectionTool
 from .tools.qgisred_editLinksGeometry import QGISRedEditLinksGeometryTool
 from .tools.qgisred_selectPoint import QGISRedSelectPointTool
+from .tools.qgisred_identifyFeature import QGISRedIdentifyFeature
 
 # Others imports
 import os
@@ -4414,19 +4416,46 @@ class QGISRed:
     # ==============================================================
     #                        START: QUERIES ELEMENTS PROPERTIES
     # --------------------------------------------------------------
+    # def runElementsProperties(self):
+    #     if not self.checkDependencies():
+    #         return
+    #     # Validations
+    #     self.defineCurrentProject()
+    #     if not self.isValidProject():
+    #         return
+    #     if self.isLayerOnEdition():
+    #         return
+
+    #     #dlg = QGISRedFindElementsDialog()
+    #     # Run the dialog event loop
+    #     #dlg.exec_()
+
+    #     # Check if the dock widget already exists
+    #     existing_docks = self.iface.mainWindow().findChildren(QGISRedElementsDataDock)
+    #     if existing_docks:
+    #         dock = existing_docks[0]
+    #         self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)
+    #         dock.show()
+    #         dock.raise_()
+    #         dock.activateWindow()
+    #     else:
+    #         self.dock = QGISRedElementsDataDock()
+    #         self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
+    #         self.dock.resize(300, 400) 
+    #         self.dock.show()
     def runElementsProperties(self):
         if not self.checkDependencies():
             return
-        # Validations
+        
         self.defineCurrentProject()
         if not self.isValidProject():
             return
         if self.isLayerOnEdition():
             return
 
-        #dlg = QGISRedFindElementsDialog()
-        # Run the dialog event loop
-        #dlg.exec_()
+        self.identifyTool = QGISRedIdentifyFeature(self.iface.mapCanvas())
+        self.iface.mapCanvas().setMapTool(self.identifyTool)
+
     # ==============================================================
     #                        END: QUERIES ELEMENTS PROPERTIES
     # --------------------------------------------------------------
