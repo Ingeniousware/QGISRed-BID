@@ -64,6 +64,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.adjacent_highlights = []
         self.main_highlight = None
         self.current_selected_highlight = None 
+        self.link_layers = ["Pipes", "Service Connections", "Pumps", "Valves"]
         
         self.setDockStyle()
         
@@ -101,6 +102,11 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.listWidget.itemDoubleClicked.connect(self.onListItemDoubleClicked)
         self.btClear.clicked.connect(self.clearAll) 
         
+        # Add connection to layer tree
+        root = QgsProject.instance().layerTreeRoot()
+        root.addedChildren.connect(self.onLayerTreeChanged)
+        root.removedChildren.connect(self.onLayerTreeChanged)
+
     def initializeElementTypes(self):
         self.cbElementType.clear()
         available_types = self.getAvailableElementTypes()
@@ -235,8 +241,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                 self.findAdjacentLinksByGeometry(found_feature)
 
     def isLineElement(self, element_type):
-        return element_type in ["Pipes", "Service Connections", "Pumps"]
-
+        return element_type in self.link_layers
+    
     def areOverlappedPoints(self, point1, point2, tolerance=0.1):
         return point1.distance(point2) < tolerance
 
@@ -288,11 +294,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         node_point = QgsPointXY(node_geom.asPoint())
         node_g = QgsGeometry.fromPointXY(node_point)
 
-        link_layers = ["Pipes", "Service Connections", "Pumps"]
         project = QgsProject.instance()
 
         found_links = []
-        for link_layer_name in link_layers:
+        for link_layer_name in self.link_layers:
             layers = project.mapLayersByName(link_layer_name)
             if not layers:
                 continue
@@ -380,6 +385,14 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.findElement()
 
     def closeEvent(self, event):
+        # Disconnect layer tree signals
+        root = QgsProject.instance().layerTreeRoot()
+        try:
+            root.addedChildren.disconnect(self.onLayerTreeChanged)
+            root.removedChildren.disconnect(self.onLayerTreeChanged)
+        except:
+            pass
+
         # Save geometry
         settings = QgsSettings()
         settings.setValue("QGISRed/FindElements/geometry", self.saveGeometry())
@@ -493,3 +506,18 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.cbElementId.setCurrentIndex(0)
         self.labelFoundElement.setText("")  
         self.listWidget.clear()  
+    
+    def onLayerTreeChanged(self):
+        current_type = self.cbElementType.currentText()
+        current_id = self.cbElementId.currentText()
+        
+        # Refresh element types
+        self.initializeElementTypes()
+        
+        # Try to restore previous selection
+        type_index = self.cbElementType.findText(current_type)
+        if type_index >= 0:
+            self.cbElementType.setCurrentIndex(type_index)
+            id_index = self.cbElementId.findText(current_id)
+            if id_index >= 0:
+                self.cbElementId.setCurrentIndex(id_index)
