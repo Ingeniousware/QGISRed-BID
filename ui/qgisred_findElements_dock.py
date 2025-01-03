@@ -297,7 +297,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         project = QgsProject.instance()
 
-        tolerance = 0.1
+        tolerance = 1e-9
 
         found_links = []
         for link_layer_name in self.link_layers:
