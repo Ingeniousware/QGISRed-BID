@@ -231,7 +231,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             return
             
         layer = self.getLayerForElementType(selected_type)
-        print(" layer.customProperty(qgisred_identifier) ",  layer.customProperty("qgisred_identifier"))
         if layer:
             found_feature = None
             for feature in layer.getFeatures():
@@ -267,8 +266,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                 self.findAdjacentLinksByGeometry(found_feature)
 
     def isLineElement(self, layer):
-        print("layer.customProperty(qgisred_identifier) ", layer.customProperty("qgisred_identifier") )
-        print("bool: ", layer.customProperty("qgisred_identifier") in self.link_layers)
         return layer.customProperty("qgisred_identifier") in self.link_layers
     
     def areOverlappedPoints(self, point1, point2, tolerance=0.1):
@@ -290,7 +287,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         found_nodes = []
         node_map_layers = [layer for layer in self.getCheckedInputGroupLayers() if layer.customProperty("qgisred_identifier") in self.node_layers]
-        print("node map layers: ",node_map_layers )
+
         for node_layer in node_map_layers:
             if node_layer.geometryType() != 0:
                 continue
@@ -323,15 +320,14 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         tolerance = 1e-9
 
         found_links = []
-        for link_layer_name in self.link_layers:
-            layers = project.mapLayersByName(link_layer_name)
-            if not layers:
-                continue
-            link_layer = layers[0]
+        link_map_layers = [layer for layer in self.getCheckedInputGroupLayers() if layer.customProperty("qgisred_identifier") in self.link_layers]
+        
+        for link_layer in link_map_layers:
             if link_layer.geometryType() != 1:
                 continue
 
             link_id_field = "Id"
+            link_layer_name = link_layer.name()
             for f in link_layer.getFeatures():
                 link_geom = f.geometry()
                 if link_geom.isMultipart():
