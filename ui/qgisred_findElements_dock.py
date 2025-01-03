@@ -9,6 +9,8 @@ from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsRectangle, QgsVect
 from qgis.utils import iface
 from qgis.gui import QgsHighlight
 
+from ..tools.qgisred_utils import QGISRedUtils
+
 FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_findElements_dock.ui"))
 
 class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
@@ -207,6 +209,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             return
             
         layer = self.getLayerForElementType(selected_type)
+        print(" layer.customProperty(qgisred_identifier) ",  layer.customProperty("qgisred_identifier"))
         if layer:
             found_feature = None
             for feature in layer.getFeatures():

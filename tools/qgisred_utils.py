@@ -108,6 +108,7 @@ class QGISRedUtils:
                 else:
                     self.setStyle(vlayer, name.lower())
             QgsProject.instance().addMapLayer(vlayer, group is None)
+            self.setLayerIdentifier(vlayer, name) 
             if group is not None:
                 if toEnd:
                     group.addChildNode(QgsLayerTreeLayer(vlayer))
@@ -724,6 +725,8 @@ class QGISRedUtils:
             process(None)
             postprocess()
 
+    """BID"""
+
     def getUnits(self):
         units, ok = QgsProject.instance().readEntry("QGISRed", "project_units", "LPS")
 
@@ -813,3 +816,6 @@ class QGISRedUtils:
         layer.setAttributeTableConfig(config)
         attribute_table_filter_model.setAttributeTableConfig(config)
         attribute_table_view.setAttributeTableConfig(config)
+
+    def setLayerIdentifier(self, layer, layerType):
+        layer.setCustomProperty("qgisred_identifier", f"qgisred_main_{layerType.lower()}")
