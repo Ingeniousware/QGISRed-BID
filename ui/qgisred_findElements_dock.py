@@ -64,8 +64,9 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.adjacent_highlights = []
         self.main_highlight = None
         self.current_selected_highlight = None 
+
         self.link_layers = ["Pipes", "Service Connections", "Pumps", "Valves"]
-        
+        self.above_pipes_layers = ["Meters"]
         self.setDockStyle()
         
         font = QFont()
@@ -296,6 +297,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         project = QgsProject.instance()
 
+        tolerance = 0.1
+
         found_links = []
         for link_layer_name in self.link_layers:
             layers = project.mapLayersByName(link_layer_name)
@@ -317,10 +320,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                 if not line_points:
                     continue
 
-                first_p = QgsGeometry.fromPointXY(line_points[0])
-                last_p = QgsGeometry.fromPointXY(line_points[-1])
-
-                if self.areOverlappedPoints(node_g, first_p) or self.areOverlappedPoints(node_g, last_p):
+                # Check if the node intersects with any part of the line
+                if node_g.distance(link_geom) < tolerance or \
+                self.areOverlappedPoints(node_g, QgsGeometry.fromPointXY(line_points[0])) or \
+                self.areOverlappedPoints(node_g, QgsGeometry.fromPointXY(line_points[-1])):
                     singular = self.singular_forms.get(link_layer_name, link_layer_name)
                     found_links.append((link_layer, f, f"{singular} {f.attribute(link_id_field)}"))
 
