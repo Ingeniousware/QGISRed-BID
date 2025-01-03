@@ -436,6 +436,54 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         
         super(QGISRedFindElementsDock, self).closeEvent(event)
 
+    # def adjustMapView(self, feature):
+    #     canvas = iface.mapCanvas()
+    #     current_extent = canvas.extent()
+    #     geom = feature.geometry()
+    #     feature_extent = geom.boundingBox()
+
+    #     map_width = current_extent.width()
+    #     map_height = current_extent.height()
+    #     feat_width = feature_extent.width()
+    #     feat_height = feature_extent.height()
+
+    #     is_point = (feat_width == 0 and feat_height == 0)
+
+    #     feat_largest_dim = max(feat_width, feat_height)
+    #     map_largest_dim = max(map_width, map_height)
+    #     ratio = feat_largest_dim / map_largest_dim if map_largest_dim != 0 else 1
+
+    #     center_x = feature_extent.center().x()
+    #     center_y = feature_extent.center().y()
+
+    #     new_extent = QgsRectangle(current_extent)
+
+    #     # Zoom logic (skip if point)
+    #     if not is_point:
+    #         # If ratio > 0.25 -> feature too big, zoom out
+    #         if ratio > 0.25:
+    #             factor = ratio / 0.25
+    #             new_width = map_width * factor
+    #             new_height = map_height * factor
+    #             new_extent = self.recenterExtent(new_width, new_height, center_x, center_y)
+    #         # If ratio < 0.05 -> feature too small, zoom in
+    #         elif ratio < 0.05:
+    #             factor = 0.05 / ratio
+    #             new_width = map_width / factor
+    #             new_height = map_height / factor
+    #             new_extent = self.recenterExtent(new_width, new_height, center_x, center_y)
+    #         else:
+    #             # No zoom change
+    #             new_extent = QgsRectangle(current_extent)
+    #     else:
+    #         # If point, no zoom adjustment
+    #         new_extent = QgsRectangle(current_extent)
+
+    #     new_extent = self.applyMinimalPan(new_extent, feature_extent)
+
+    #     canvas.setExtent(new_extent)
+    #     canvas.refresh()
+
     def adjustMapView(self, feature):
         canvas = iface.mapCanvas()
         current_extent = canvas.extent()
@@ -448,18 +496,19 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         feat_height = feature_extent.height()
 
         is_point = (feat_width == 0 and feat_height == 0)
-
-        feat_largest_dim = max(feat_width, feat_height)
-        map_largest_dim = max(map_width, map_height)
-        ratio = feat_largest_dim / map_largest_dim if map_largest_dim != 0 else 1
-
+        
         center_x = feature_extent.center().x()
         center_y = feature_extent.center().y()
 
-        new_extent = QgsRectangle(current_extent)
+        if is_point:
+            desired_width = map_width * 0.08
+            desired_height = map_height * 0.08
+            new_extent = self.recenterExtent(desired_width, desired_height, center_x, center_y)
+        else:
+            feat_largest_dim = max(feat_width, feat_height)
+            map_largest_dim = max(map_width, map_height)
+            ratio = feat_largest_dim / map_largest_dim if map_largest_dim != 0 else 1
 
-        # Zoom logic (skip if point)
-        if not is_point:
             # If ratio > 0.25 -> feature too big, zoom out
             if ratio > 0.25:
                 factor = ratio / 0.25
@@ -473,11 +522,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                 new_height = map_height / factor
                 new_extent = self.recenterExtent(new_width, new_height, center_x, center_y)
             else:
-                # No zoom change
+                # No zoom change needed
                 new_extent = QgsRectangle(current_extent)
-        else:
-            # If point, no zoom adjustment
-            new_extent = QgsRectangle(current_extent)
 
         new_extent = self.applyMinimalPan(new_extent, feature_extent)
 
