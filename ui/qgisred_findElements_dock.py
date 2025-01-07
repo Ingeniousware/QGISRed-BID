@@ -599,8 +599,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         current_id = self.cbElementId.currentText()
         
         # Refresh element types
+        self.initializeCustomLayerProperties()
         self.initializeElementTypes()
-        
         # Try to restore previous selection
         type_index = self.cbElementType.findText(current_type)
         if type_index >= 0:
@@ -634,18 +634,41 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         
         return input_layers
 
+    # def initializeCustomLayerProperties(self):
+    #     inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
+    #     if not inputs_group:
+    #         return
+            
+    #     for layer in inputs_group.findLayers():
+    #         layer_name = layer.name()
+    #         for element_type, identifier in self.layers_identifiers.items():
+    #             if layer_name == element_type:
+    #                 layer_obj = layer.layer()
+    #                 if not layer_obj.customProperty("qgisred_identifier"):
+    #                     layer_obj.setCustomProperty("qgisred_identifier", identifier)
     def initializeCustomLayerProperties(self):
+        print("Initializing custom layer properties...")
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
         if not inputs_group:
+            print("No 'Inputs' group found in the project.")
             return
             
+        print("Found 'Inputs' group. Iterating through its layers...")
         for layer in inputs_group.findLayers():
             layer_name = layer.name()
+            print(f"Checking layer: {layer_name}")
             for element_type, identifier in self.layers_identifiers.items():
+                print(f"Matching with element_type: {element_type}, identifier: {identifier}")
                 if layer_name == element_type:
+                    print(f"Layer name matches element_type: {element_type}")
                     layer_obj = layer.layer()
-                    if not layer_obj.customProperty("qgisred_identifier"):
+                    custom_property = layer_obj.customProperty("qgisred_identifier", None)
+                    print(f"Current custom property 'qgisred_identifier': {custom_property}")
+                    if not custom_property:
+                        print(f"Setting custom property 'qgisred_identifier' to: {identifier}")
                         layer_obj.setCustomProperty("qgisred_identifier", identifier)
+                    else:
+                        print(f"Custom property already set to: {custom_property}")
 
 class HighlightManager:
     def __init__(self, highlight, duration_ms=5000):
