@@ -3,7 +3,7 @@ import os
 from PyQt5.QtGui import QIcon, QFont, QColor
 from PyQt5.QtWidgets import QDockWidget, QMessageBox, QLineEdit
 from qgis.PyQt import uic
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from qgis.PyQt.QtCore import pyqtSlot
 from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsRectangle, QgsVectorLayer, QgsSettings
 from qgis.utils import iface
@@ -47,7 +47,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             "Pipes",
             "Meters",
             "Service Connections",
-            "Isolation Valves"
+            "Isolation Valves",
+            "Sources"
         ]
         
         self.singular_forms = {
@@ -59,7 +60,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             "Pipes": "Pipe",
             "Meters": "Meter",
             "Service Connections": "Service Connection",
-            "Isolation Valves": "Isolation Valve"
+            "Isolation Valves": "Isolation Valve",
+            "Sources": "Source"
         }
 
         self.layers_identifiers = {
@@ -71,7 +73,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             "Pipes": "qgisred_main_pipes",
             "Meters": "qgisred_main_meters",
             "Service Connections": "qgisred_main_service_connections",
-            "Isolation Valves": "qgisred_main_isolation_valves"
+            "Isolation Valves": "qgisred_main_isolation_valves",
+            "Sources": "qgisred_main_sources"
         }
 
         
@@ -92,6 +95,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.labelFoundElement.setFont(font)
         
         self.setupConnections()
+        self.initializeCustomLayerProperties()
         self.initializeElementTypes()
         self.labelFoundElement.setText("")
         
@@ -123,7 +127,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.listWidget.itemClicked.connect(self.onListItemSingleClicked)
         self.listWidget.itemDoubleClicked.connect(self.onListItemDoubleClicked)
         self.btClear.clicked.connect(self.clearAll)
-        
+        QgsProject.instance().cleared.connect(self.clearAll)
+
         root = QgsProject.instance().layerTreeRoot()
         inputs_group = root.findGroup("Inputs")
         if inputs_group:
@@ -256,10 +261,12 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             self.labelFoundElement.setText(f"{singular} {selected_id}")
 
             # Highlight main feature
-            self.main_highlight = QgsHighlight(iface.mapCanvas(), found_feature.geometry(), layer)
-            self.main_highlight.setColor(QColor("red"))
-            self.main_highlight.setWidth(5)
-            self.main_highlight.show()
+            highlight = QgsHighlight(iface.mapCanvas(), found_feature.geometry(), layer)
+            highlight.setColor(QColor("red"))
+            highlight.setWidth(5)
+            highlight.show()
+            self.main_highlight = highlight
+            HighlightManager(highlight)
 
             # Adjust map view
             self.adjustMapView(found_feature)
@@ -386,6 +393,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     highlight.setWidth(5)
                     highlight.show()
                     self.current_selected_highlight = highlight
+                    HighlightManager(highlight)
                     break
 
     def onListItemDoubleClicked(self, item):
@@ -625,3 +633,30 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             input_layers = inputs_group.checkedLayers()
         
         return input_layers
+
+    def initializeCustomLayerProperties(self):
+        inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
+        if not inputs_group:
+            return
+            
+        for layer in inputs_group.findLayers():
+            layer_name = layer.name()
+            for element_type, identifier in self.layers_identifiers.items():
+                if layer_name == element_type:
+                    layer_obj = layer.layer()
+                    if not layer_obj.customProperty("qgisred_identifier"):
+                        layer_obj.setCustomProperty("qgisred_identifier", identifier)
+
+class HighlightManager:
+    def __init__(self, highlight, duration_ms=5000):
+        self.highlight = highlight
+        self.timer = QTimer()
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self.clear_highlight)
+        self.timer.start(duration_ms)
+    
+    def clear_highlight(self):
+        if self.highlight:
+            self.highlight.hide()
+            self.highlight = None
+        self.timer.stop()
