@@ -122,15 +122,15 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.btFind.clicked.connect(self.findElement)
         self.listWidget.itemClicked.connect(self.onListItemSingleClicked)
         self.listWidget.itemDoubleClicked.connect(self.onListItemDoubleClicked)
-        self.btClear.clicked.connect(self.clearAll) 
+        self.btClear.clicked.connect(self.clearAll)
         
-        # Add connection to layer tree
         root = QgsProject.instance().layerTreeRoot()
         inputs_group = root.findGroup("Inputs")
-
         if inputs_group:
             inputs_group.addedChildren.connect(self.onLayerTreeChanged)
             inputs_group.removedChildren.connect(self.onLayerTreeChanged)
+            for layer in inputs_group.findLayers():
+                self.connectLayerSignals(layer.layer())
 
     def initializeElementTypes(self):
         self.cbElementType.clear()
@@ -195,7 +195,17 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if self.current_selected_highlight:
             self.current_selected_highlight.hide()
             self.current_selected_highlight = None
-    
+            
+        canvas = iface.mapCanvas()
+        scene = canvas.scene()
+        for item in scene.items():
+            if isinstance(item, QgsHighlight):
+                item.hide()
+                scene.removeItem(item)
+                del item
+                
+        canvas.refresh()
+
     def setDockStyle(self):
         icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFindElements.png')
         self.setWindowIcon(QIcon(icon_path))
@@ -407,31 +417,23 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.findElement()
 
     def closeEvent(self, event):
-        # Disconnect layer tree signals
         root = QgsProject.instance().layerTreeRoot()
-        try:
-            root.addedChildren.disconnect(self.onLayerTreeChanged)
-            root.removedChildren.disconnect(self.onLayerTreeChanged)
-            
-            for layer in QgsProject.instance().mapLayers().values():
-                try:
-                    layer.nameChanged.disconnect(self.onLayerTreeChanged)
-                    layer.dataChanged.disconnect(self.onLayerTreeChanged)
-                except:
-                    pass
-                    
-            QgsProject.instance().layerAdded.disconnect(self.connectLayerSignals)
-        except:
-            pass
-
-        # Save geometry
+        inputs_group = root.findGroup("Inputs")
+        if inputs_group:
+            try:
+                inputs_group.addedChildren.disconnect(self.onLayerTreeChanged)
+                inputs_group.removedChildren.disconnect(self.onLayerTreeChanged)
+                for layer in inputs_group.findLayers():
+                    self.disconnectLayerSignals(layer.layer())
+            except:
+                pass
+                
         settings = QgsSettings()
         settings.setValue("QGISRed/FindElements/geometry", self.saveGeometry())
         
         self.clearHighlights()
         self.clearAllLayerSelections()
         
-        # Clear instance
         QGISRedFindElementsDock._instance = None
         
         super(QGISRedFindElementsDock, self).closeEvent(event)
@@ -599,9 +601,21 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             if id_index >= 0:
                 self.cbElementId.setCurrentIndex(id_index)
 
-    def connectLayerSignals(self, layer):
-        layer.nameChanged.connect(self.onLayerTreeChanged)
-        layer.dataChanged.connect(self.onLayerTreeChanged)
+    def connectLayerSignals(self, layer_node):
+        try:
+            layer_node.nameChanged.connect(self.onLayerTreeChanged)
+            if layer_node.layer():
+                layer_node.layer().dataChanged.connect(self.onLayerTreeChanged)
+        except:
+            pass
+
+    def disconnectLayerNodeSignals(self, layer_node):
+        try:
+            layer_node.nameChanged.disconnect(self.onLayerTreeChanged)
+            if layer_node.layer():
+                layer_node.layer().dataChanged.disconnect(self.onLayerTreeChanged)
+        except:
+            pass
 
     def getCheckedInputGroupLayers(self):
         input_layers = []
