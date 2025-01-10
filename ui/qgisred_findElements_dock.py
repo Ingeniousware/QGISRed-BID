@@ -29,10 +29,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         super(QGISRedFindElementsDock, self).__init__(parent)
         self.setupUi(self)
 
-        # Prevent stacking
         self.setObjectName("QGISRedFindElementsDock")
         
-        # Dock widget is not floating by default
         self.setFloating(False)
         
         if parent:
@@ -78,7 +76,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             "Multiple Demands" : "qgisred_main_multipledemands"
         }
 
-        
         self.original_ids = []
         self.adjacent_highlights = []
         self.main_highlight = None
@@ -107,7 +104,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         settings = QgsSettings()
         if settings.contains("QGISRed/FindElements/geometry"):
             self.restoreGeometry(settings.value("QGISRed/FindElements/geometry"))
-    
+
     def getAvailableElementTypes(self):
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
         if not inputs_group:
@@ -151,7 +148,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if not selected_id:
             self.labelFoundElement.setText("")
             return
-            
         element_type = self.cbElementType.currentText()
         singular = self.singular_forms.get(element_type) or element_type
         self.labelFoundElement.setText(f"{singular} {selected_id}")
@@ -219,7 +215,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.cbElementId.setStyleSheet("QComboBox { background-color: white; }")
         
     def clearAllLayerSelections(self):
-        # Only remove selection from vector layers
         for lyr in QgsProject.instance().mapLayers().values():
             if isinstance(lyr, QgsVectorLayer):
                 lyr.removeSelection()
@@ -233,7 +228,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         selected_type = self.cbElementType.currentText()
         selected_id = self.cbElementId.currentText()
         
-        # If blank ID is selected, just clear everything and return
         if selected_id == "":
             self.labelFoundElement.setText("")
             return
@@ -257,19 +251,15 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             singular = self.singular_forms.get(selected_type) or selected_type
             self.labelFoundElement.setText(f"{singular} {selected_id}")
 
-            # Highlight main feature
             highlight = SymbolHighlight(layer, found_feature.geometry(), QColor("red"), 2.5)
             highlight.show()
             self.main_highlight = highlight
             SymbolHighlightManager(highlight)
 
-            # Adjust map view
             self.adjustMapView(found_feature)
 
-            # Select the feature
             layer.selectByIds([found_feature.id()])
 
-            # Find adjacent elements
             if self.isLineElement(layer):
                 self.findAdjacentNodesByGeometry(found_feature)
             elif self.isSpecialElement(layer):
@@ -308,9 +298,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         ]
 
         for node_layer in node_map_layers:
-            if node_layer.geometryType() != 0:  # Not a point layer
+            if node_layer.geometryType() != 0:
                 continue
-
             for f in node_layer.getFeatures():
                 node_geom = f.geometry()
                 if node_geom.isEmpty():
@@ -344,9 +333,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         ]
 
         for link_layer in link_map_layers:
-            if link_layer.geometryType() != 1:  # Not a line layer
+            if link_layer.geometryType() != 1:
                 continue
-
             for f in link_layer.getFeatures():
                 link_geom = f.geometry()
                 if link_geom.isMultipart():
@@ -358,7 +346,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                 if not line_points:
                     continue
 
-                # Check if the node intersects with any part of the line
                 if (
                     node_g.distance(link_geom) < tolerance
                     or self.areOverlappedPoints(node_g, QgsGeometry.fromPointXY(line_points[0]))
@@ -402,11 +389,9 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     SymbolHighlightManager(highlight)
                     break
 
-
     def getLayerIdField(self, layer):
         if not layer:
             return "Id"
-
         identifier = layer.customProperty("qgisred_identifier", "")
         if identifier in ["qgisred_main_sources", "qgisred_main_multipledemands"]:
             return "BaseValue"
@@ -420,7 +405,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         return str(value)
                          
     def onListItemDoubleClicked(self, item):
-        # Clear the mask before refreshing the selection
         self.leElementMask.clear()
         
         text = item.text()
@@ -428,7 +412,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if len(parts) < 2:
             return
 
-        singular_type = parts[0]  # e.g. "Junction"
+        singular_type = parts[0]
         selected_id = parts[1].strip()
 
         element_type = None
@@ -458,10 +442,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     self.disconnectLayerSignals(layer.layer())
             except:
                 pass
-                
         settings = QgsSettings()
         settings.setValue("QGISRed/FindElements/geometry", self.saveGeometry())
-        
         self.clearHighlights()
         self.clearAllLayerSelections()
         
@@ -491,25 +473,20 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         new_extent = QgsRectangle(current_extent)
 
-        # Zoom logic (skip if point)
         if not is_point:
-            # If ratio > 0.25 -> feature too big, zoom out
             if ratio > 0.25:
                 factor = ratio / 0.25
                 new_width = map_width * factor
                 new_height = map_height * factor
                 new_extent = self.recenterExtent(new_width, new_height, center_x, center_y)
-            # If ratio < 0.05 -> feature too small, zoom in
             elif ratio < 0.05:
                 factor = 0.05 / ratio
                 new_width = map_width / factor
                 new_height = map_height / factor
                 new_extent = self.recenterExtent(new_width, new_height, center_x, center_y)
             else:
-                # No zoom change
                 new_extent = QgsRectangle(current_extent)
         else:
-            # If point, no zoom adjustment
             new_extent = QgsRectangle(current_extent)
 
         new_extent = self.applyMinimalPan(new_extent, feature_extent)
@@ -526,7 +503,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         margin_x = current_extent.width() * 0.1
         margin_y = current_extent.height() * 0.1
 
-        # Distances from feature to map edges
         left_dist = feature_extent.xMinimum() - current_extent.xMinimum()
         right_dist = current_extent.xMaximum() - feature_extent.xMaximum()
         top_dist = current_extent.yMaximum() - feature_extent.yMaximum()
@@ -534,7 +510,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         new_extent = QgsRectangle(current_extent)
 
-        # Horizontal panning
         if left_dist < margin_x:
             shift = margin_x - left_dist
             new_extent.setXMinimum(new_extent.xMinimum() - shift)
@@ -545,7 +520,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             new_extent.setXMinimum(new_extent.xMinimum() + shift)
             new_extent.setXMaximum(new_extent.xMaximum() + shift)
 
-        # Vertical panning
         if top_dist < margin_y:
             shift = margin_y - top_dist
             new_extent.setYMinimum(new_extent.yMinimum() + shift)
@@ -568,18 +542,14 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.clearAllLayerSelections()
         self.leElementMask.clear()
         self.cbElementId.setCurrentIndex(0)
-        self.labelFoundElement.setText("")  
-        self.listWidget.clear()  
-    
+        self.labelFoundElement.setText("")
+        self.listWidget.clear()
+
     def onLayerTreeChanged(self):
         current_type = self.cbElementType.currentText()
         current_id = self.cbElementId.currentText()
-        
-        # Refresh element types
         self.initializeCustomLayerProperties()
         self.initializeElementTypes()
-
-        # Try to restore previous selection
         type_index = self.cbElementType.findText(current_type)
         if type_index >= 0:
             self.cbElementType.setCurrentIndex(type_index)
@@ -616,7 +586,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
         if not inputs_group:
             return
-            
         for layer in inputs_group.findLayers():
             layer_name = layer.name()
             for element_type, identifier in self.layers_identifiers.items():
@@ -655,12 +624,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         for node_layer in node_map_layers:
             if node_layer.geometryType() != 0:
                 continue
-
             for f in node_layer.getFeatures():
                 node_geom = f.geometry()
                 if node_geom.isEmpty():
                     continue
-
                 node_point = QgsGeometry.fromPointXY(QgsPointXY(node_geom.asPoint()))
                 if (
                     self.areOverlappedPoints(first_point, node_point)
@@ -680,21 +647,17 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         for link_layer in link_map_layers:
             if link_layer.geometryType() != 1:
                 continue
-
             for f in link_layer.getFeatures():
                 link_geom = f.geometry()
                 if link_geom.isEmpty():
                     continue
-
                 if link_geom.isMultipart():
                     parts = link_geom.asMultiPolyline()
                     link_points = parts[0] if parts else []
                 else:
                     link_points = link_geom.asPolyline()
-
                 if not link_points:
                     continue
-
                 feature_geom = QgsGeometry.fromPolylineXY(line_points)
                 if (
                     feature_geom.distance(link_geom) < tolerance
@@ -747,23 +710,25 @@ class SymbolHighlight:
             return
 
         clone_renderer = self.source_layer.renderer().clone()
-
-        # Create a new render context to satisfy the newer symbols(...) signature:
         context = QgsRenderContext()
 
         for symbol in clone_renderer.symbols(context):
             if self.color:
                 symbol.setColor(self.color)
             if geom_type == 1:
-                sl = symbol.symbolLayer(0)
-                if sl:
-                    sl.setWidth(sl.width() * self.width_factor)
+                for sl_idx in range(symbol.symbolLayerCount()):
+                    sl = symbol.symbolLayer(sl_idx)
+                    if sl:
+                        sl.setWidth(sl.width() * self.width_factor)
             elif geom_type == 0:
                 symbol.setSize(symbol.size() * self.width_factor)
             elif geom_type == 2:
-                sl = symbol.symbolLayer(0)
-                if sl:
-                    sl.setStrokeWidth(sl.strokeWidth() * self.width_factor)
+                for sl_idx in range(symbol.symbolLayerCount()):
+                    sl = symbol.symbolLayer(sl_idx)
+                    if sl.layerType() == 'SimpleFill':
+                        sl.setFillColor(self.color)
+                        sl.setStrokeColor(self.color)
+                        sl.setStrokeWidth(sl.strokeWidth() * self.width_factor)
 
         self.temp_layer.setRenderer(clone_renderer)
         self.temp_layer.startEditing()
