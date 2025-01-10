@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QDockWidget, QMessageBox, QLineEdit
 from qgis.PyQt import uic
 from PyQt5.QtCore import Qt, QTimer
 from qgis.PyQt.QtCore import pyqtSlot
-from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsRectangle, QgsVectorLayer, QgsSettings
+from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsRectangle, QgsVectorLayer, QgsSettings, QgsVectorLayer, QgsFeature, QgsRenderContext
 from qgis.utils import iface
 from qgis.gui import QgsHighlight
 
@@ -200,24 +200,13 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if self.main_highlight:
             self.main_highlight.hide()
             self.main_highlight = None
-        
         for h in self.adjacent_highlights:
             h.hide()
         self.adjacent_highlights.clear()
-        
         if self.current_selected_highlight:
             self.current_selected_highlight.hide()
             self.current_selected_highlight = None
-            
-        canvas = iface.mapCanvas()
-        scene = canvas.scene()
-        for item in scene.items():
-            if isinstance(item, QgsHighlight):
-                item.hide()
-                scene.removeItem(item)
-                del item
-                
-        canvas.refresh()
+        iface.mapCanvas().refresh()
 
     def setDockStyle(self):
         icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFindElements.png')
@@ -269,12 +258,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             self.labelFoundElement.setText(f"{singular} {selected_id}")
 
             # Highlight main feature
-            highlight = QgsHighlight(iface.mapCanvas(), found_feature.geometry(), layer)
-            highlight.setColor(QColor("red"))
-            highlight.setWidth(5)
+            highlight = SymbolHighlight(layer, found_feature.geometry(), QColor("red"), 2.5)
             highlight.show()
             self.main_highlight = highlight
-            HighlightManager(highlight)
+            SymbolHighlightManager(highlight)
 
             # Adjust map view
             self.adjustMapView(found_feature)
@@ -296,7 +283,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
     def isSpecialElement(self, layer):
         return layer.customProperty("qgisred_identifier") in self.special_layers
     
-    def areOverlappedPoints(self, point1, point2, tolerance=0.1):
+    def areOverlappedPoints(self, point1, point2, tolerance=1e-9):
         return point1.distance(point2) < tolerance
 
     def findAdjacentNodesByGeometry(self, line_feature):
@@ -409,12 +396,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if layer:
             for feature in layer.getFeatures():
                 if self.getFeatureIdValue(feature, layer) == selected_id:
-                    highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), layer)
-                    highlight.setColor(QColor("orange"))
-                    highlight.setWidth(5)
+                    highlight = SymbolHighlight(layer, feature.geometry(), QColor("orange"), 2.5)
                     highlight.show()
                     self.current_selected_highlight = highlight
-                    HighlightManager(highlight)
+                    SymbolHighlightManager(highlight)
                     break
 
 
@@ -593,7 +578,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         # Refresh element types
         self.initializeCustomLayerProperties()
         self.initializeElementTypes()
-        
+
         # Try to restore previous selection
         type_index = self.cbElementType.findText(current_type)
         if type_index >= 0:
@@ -732,7 +717,68 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         for link_layer, feature_item, link_info in found_links:
             self.listWidget.addItem(link_info)
 
-class HighlightManager:
+class SymbolHighlight:
+    def __init__(self, source_layer, geometry, color=None, width_factor=1.0):
+        self.source_layer = source_layer
+        self.geometry = QgsGeometry(geometry)
+        self.temp_layer = None
+        self.color = color
+        self.width_factor = width_factor
+
+    def show(self):
+        if not self.source_layer or self.geometry.isEmpty():
+            return
+
+        geom_type = self.source_layer.geometryType()
+        crs = self.source_layer.crs().authid()
+
+        if geom_type == 0:
+            layer_def = f"Point?crs={crs}"
+        elif geom_type == 1:
+            layer_def = f"LineString?crs={crs}"
+        elif geom_type == 2:
+            layer_def = f"Polygon?crs={crs}"
+        else:
+            layer_def = f"Point?crs={crs}"
+
+        highlight_name = self.source_layer.name() + " Highlight"
+        self.temp_layer = QgsVectorLayer(layer_def, highlight_name, "memory")
+        if not self.temp_layer.isValid():
+            return
+
+        clone_renderer = self.source_layer.renderer().clone()
+
+        # Create a new render context to satisfy the newer symbols(...) signature:
+        context = QgsRenderContext()
+
+        for symbol in clone_renderer.symbols(context):
+            if self.color:
+                symbol.setColor(self.color)
+            if geom_type == 1:
+                sl = symbol.symbolLayer(0)
+                if sl:
+                    sl.setWidth(sl.width() * self.width_factor)
+            elif geom_type == 0:
+                symbol.setSize(symbol.size() * self.width_factor)
+            elif geom_type == 2:
+                sl = symbol.symbolLayer(0)
+                if sl:
+                    sl.setStrokeWidth(sl.strokeWidth() * self.width_factor)
+
+        self.temp_layer.setRenderer(clone_renderer)
+        self.temp_layer.startEditing()
+        f = QgsFeature()
+        f.setGeometry(self.geometry)
+        self.temp_layer.addFeature(f)
+        self.temp_layer.commitChanges()
+        QgsProject.instance().addMapLayer(self.temp_layer)
+
+    def hide(self):
+        if self.temp_layer:
+            QgsProject.instance().removeMapLayer(self.temp_layer.id())
+            self.temp_layer = None
+
+class SymbolHighlightManager:
     def __init__(self, highlight, duration_ms=5000):
         self.highlight = highlight
         self.timer = QTimer()
