@@ -13,7 +13,7 @@
   <property name="minimumSize">
    <size>
     <width>220</width>
-    <height>325</height>
+    <height>328</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -117,16 +117,23 @@
      </layout>
     </item>
     <item>
+     <widget class="Line" name="line">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
+    </item>
+    <item>
      <widget class="QLabel" name="labelFoundElement">
       <property name="text">
-       <string/>
+       <string>-</string>
       </property>
      </widget>
     </item>
     <item>
      <widget class="QLabel" name="labelAdjacentNodeLinks">
       <property name="text">
-       <string/>
+       <string>Adjacencies</string>
       </property>
      </widget>
     </item>

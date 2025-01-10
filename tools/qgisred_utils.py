@@ -819,3 +819,4 @@ class QGISRedUtils:
 
     def setLayerIdentifier(self, layer, layerType):
         layer.setCustomProperty("qgisred_identifier", f"qgisred_main_{layerType.lower()}")
+        print(f"qgisred_main_{layerType.lower()}")

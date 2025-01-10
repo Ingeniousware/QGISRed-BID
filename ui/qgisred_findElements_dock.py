@@ -72,9 +72,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             "Valves": "qgisred_main_valves",
             "Pipes": "qgisred_main_pipes",
             "Meters": "qgisred_main_meters",
-            "Service Connections": "qgisred_main_service_connections",
-            "Isolation Valves": "qgisred_main_isolation_valves",
-            "Sources": "qgisred_main_sources"
+            "Service Connections": "qgisred_main_serviceconnections",
+            "Isolation Valves": "qgisred_main_isolationvalves",
+            "Sources": "qgisred_main_sources",
+            "Multiple Demands" : "qgisred_main_multipledemands"
         }
 
         
@@ -83,8 +84,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.main_highlight = None
         self.current_selected_highlight = None 
 
-        self.link_layers = ["qgisred_main_pipes", "qgisred_main_service_connections", "qgisred_main_pumps", "qgisred_main_valves"]
-        self.node_layers = ["qgisred_main_reservoirs", "qgisred_main_tanks", "qgisred_main_pumps", "qgisred_main_junctions", "qgisred_main_meters"]
+        self.link_layers = ["qgisred_main_pipes", "qgisred_main_serviceconnections", "qgisred_main_pumps", "qgisred_main_valves"]
+        self.node_layers = ["qgisred_main_reservoirs", "qgisred_main_tanks", "qgisred_main_pumps", "qgisred_main_junctions", "qgisred_main_meters", "qgisred_main_isolationvalves"]
         
         self.above_pipes_layers = ["Meters"]
         self.setDockStyle()
@@ -276,10 +277,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
             # Find adjacent elements
             if self.isLineElement(layer):
-                self.labelAdjacentNodeLinks.setText("Adjacent Nodes")
                 self.findAdjacentNodesByGeometry(found_feature)
             else:
-                self.labelAdjacentNodeLinks.setText("Adjacent Links")
                 self.findAdjacentLinksByGeometry(found_feature)
 
     def isLineElement(self, layer):
