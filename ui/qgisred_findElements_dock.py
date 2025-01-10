@@ -84,9 +84,12 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.main_highlight = None
         self.current_selected_highlight = None 
 
-        self.link_layers = ["qgisred_main_pipes", "qgisred_main_serviceconnections", "qgisred_main_pumps", "qgisred_main_valves"]
+        self.link_layers = ["qgisred_main_pipes", "qgisred_main_pumps", "qgisred_main_valves"]
+
         self.node_layers = ["qgisred_main_reservoirs", "qgisred_main_tanks", "qgisred_main_pumps", "qgisred_main_junctions", 
                             "qgisred_main_meters", "qgisred_main_isolationvalves", "qgisred_main_sources", "qgisred_main_multipledemands"]
+        
+        self.special_layers = ["qgisred_main_serviceconnections"]
         
         self.above_pipes_layers = ["Meters"]
         self.setDockStyle()
@@ -282,11 +285,16 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             # Find adjacent elements
             if self.isLineElement(layer):
                 self.findAdjacentNodesByGeometry(found_feature)
+            elif self.isSpecialElement(layer):
+                self.findNodesAndLinksAdjacencies(found_feature)
             else:
                 self.findAdjacentLinksByGeometry(found_feature)
 
     def isLineElement(self, layer):
         return layer.customProperty("qgisred_identifier") in self.link_layers
+    
+    def isSpecialElement(self, layer):
+        return layer.customProperty("qgisred_identifier") in self.special_layers
     
     def areOverlappedPoints(self, point1, point2, tolerance=0.1):
         return point1.distance(point2) < tolerance
@@ -585,6 +593,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         # Refresh element types
         self.initializeCustomLayerProperties()
         self.initializeElementTypes()
+        
         # Try to restore previous selection
         type_index = self.cbElementType.findText(current_type)
         if type_index >= 0:
@@ -618,41 +627,110 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         
         return input_layers
 
-    # def initializeCustomLayerProperties(self):
-    #     inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
-    #     if not inputs_group:
-    #         return
-            
-    #     for layer in inputs_group.findLayers():
-    #         layer_name = layer.name()
-    #         for element_type, identifier in self.layers_identifiers.items():
-    #             if layer_name == element_type:
-    #                 layer_obj = layer.layer()
-    #                 if not layer_obj.customProperty("qgisred_identifier"):
-    #                     layer_obj.setCustomProperty("qgisred_identifier", identifier)
     def initializeCustomLayerProperties(self):
-        print("Initializing custom layer properties...")
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
         if not inputs_group:
-            print("No 'Inputs' group found in the project.")
             return
             
-        print("Found 'Inputs' group. Iterating through its layers...")
         for layer in inputs_group.findLayers():
             layer_name = layer.name()
-            print(f"Checking layer: {layer_name}")
             for element_type, identifier in self.layers_identifiers.items():
-                print(f"Matching with element_type: {element_type}, identifier: {identifier}")
                 if layer_name == element_type:
-                    print(f"Layer name matches element_type: {element_type}")
                     layer_obj = layer.layer()
                     custom_property = layer_obj.customProperty("qgisred_identifier", None)
-                    print(f"Current custom property 'qgisred_identifier': {custom_property}")
                     if not custom_property:
-                        print(f"Setting custom property 'qgisred_identifier' to: {identifier}")
                         layer_obj.setCustomProperty("qgisred_identifier", identifier)
-                    else:
-                        print(f"Custom property already set to: {custom_property}")
+
+    def findNodesAndLinksAdjacencies(self, feature):
+        geom = feature.geometry()
+        if geom.isEmpty():
+            return
+
+        line_points = []
+        if geom.isMultipart():
+            parts = geom.asMultiPolyline()
+            for part in parts:
+                if part:
+                    line_points.extend(part)
+        else:
+            line_points = geom.asPolyline()
+
+        if not line_points:
+            return
+
+        first_point = QgsGeometry.fromPointXY(line_points[0])
+        last_point = QgsGeometry.fromPointXY(line_points[-1])
+
+        found_nodes = []
+        node_map_layers = [
+            layer
+            for layer in self.getCheckedInputGroupLayers()
+            if layer.customProperty("qgisred_identifier") in self.node_layers
+        ]
+        for node_layer in node_map_layers:
+            if node_layer.geometryType() != 0:
+                continue
+
+            for f in node_layer.getFeatures():
+                node_geom = f.geometry()
+                if node_geom.isEmpty():
+                    continue
+
+                node_point = QgsGeometry.fromPointXY(QgsPointXY(node_geom.asPoint()))
+                if (
+                    self.areOverlappedPoints(first_point, node_point)
+                    or self.areOverlappedPoints(last_point, node_point)
+                ):
+                    node_id = self.getFeatureIdValue(f, node_layer)
+                    singular = self.singular_forms.get(node_layer.name()) or node_layer.name()
+                    found_nodes.append((node_layer, f, f"{singular} {node_id}"))
+
+        tolerance = 1e-9
+        found_links = []
+        link_map_layers = [
+            layer
+            for layer in self.getCheckedInputGroupLayers()
+            if layer.customProperty("qgisred_identifier") in self.link_layers
+        ]
+        for link_layer in link_map_layers:
+            if link_layer.geometryType() != 1:
+                continue
+
+            for f in link_layer.getFeatures():
+                link_geom = f.geometry()
+                if link_geom.isEmpty():
+                    continue
+
+                if link_geom.isMultipart():
+                    parts = link_geom.asMultiPolyline()
+                    link_points = parts[0] if parts else []
+                else:
+                    link_points = link_geom.asPolyline()
+
+                if not link_points:
+                    continue
+
+                feature_geom = QgsGeometry.fromPolylineXY(line_points)
+                if (
+                    feature_geom.distance(link_geom) < tolerance
+                    or self.areOverlappedPoints(QgsGeometry.fromPointXY(line_points[0]),
+                                                QgsGeometry.fromPointXY(link_points[0]))
+                    or self.areOverlappedPoints(QgsGeometry.fromPointXY(line_points[-1]),
+                                                QgsGeometry.fromPointXY(link_points[-1]))
+                    or self.areOverlappedPoints(QgsGeometry.fromPointXY(line_points[0]),
+                                                QgsGeometry.fromPointXY(link_points[-1]))
+                    or self.areOverlappedPoints(QgsGeometry.fromPointXY(line_points[-1]),
+                                                QgsGeometry.fromPointXY(link_points[0]))
+                ):
+                    link_id = self.getFeatureIdValue(f, link_layer)
+                    singular = self.singular_forms.get(link_layer.name()) or link_layer.name()
+                    found_links.append((link_layer, f, f"{singular} {link_id}"))
+
+        for node_layer, feature_item, node_info in found_nodes:
+            self.listWidget.addItem(node_info)
+
+        for link_layer, feature_item, link_info in found_links:
+            self.listWidget.addItem(link_info)
 
 class HighlightManager:
     def __init__(self, highlight, duration_ms=5000):
