@@ -46,7 +46,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             "Meters",
             "Service Connections",
             "Isolation Valves",
-            "Sources"
+            "Sources",
+            "Multiple Demands"
         ]
         
         self.singular_forms = {
@@ -59,7 +60,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             "Meters": "Meter",
             "Service Connections": "Service Connection",
             "Isolation Valves": "Isolation Valve",
-            "Sources": "Source"
+            "Sources": "Source",
+            "Multiple Demands": "Multiple Demand"
         }
 
         self.layers_identifiers = {
@@ -73,7 +75,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             "Service Connections": "qgisred_main_serviceconnections",
             "Isolation Valves": "qgisred_main_isolationvalves",
             "Sources": "qgisred_main_sources",
-            "Multiple Demands" : "qgisred_main_multipledemands"
+            "Multiple Demands" : "qgisred_main_demands"
         }
 
         self.original_ids = []
@@ -84,7 +86,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.link_layers = ["qgisred_main_pipes", "qgisred_main_pumps", "qgisred_main_valves"]
 
         self.node_layers = ["qgisred_main_reservoirs", "qgisred_main_tanks", "qgisred_main_pumps", "qgisred_main_junctions", 
-                            "qgisred_main_meters", "qgisred_main_isolationvalves", "qgisred_main_sources", "qgisred_main_multipledemands"]
+                            "qgisred_main_meters", "qgisred_main_isolationvalves", "qgisred_main_sources", "qgisred_main_demands"]
         
         self.special_layers = ["qgisred_main_serviceconnections"]
         
@@ -196,13 +198,25 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if self.main_highlight:
             self.main_highlight.hide()
             self.main_highlight = None
+        
         for h in self.adjacent_highlights:
             h.hide()
         self.adjacent_highlights.clear()
+        
         if self.current_selected_highlight:
             self.current_selected_highlight.hide()
             self.current_selected_highlight = None
-        iface.mapCanvas().refresh()
+            
+        canvas = iface.mapCanvas()
+        scene = canvas.scene()
+        for item in scene.items():
+            if isinstance(item, QgsHighlight):
+                item.hide()
+                scene.removeItem(item)
+                del item
+                
+        canvas.refresh()
+
 
     def setDockStyle(self):
         icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFindElements.png')
@@ -251,11 +265,12 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             singular = self.singular_forms.get(selected_type) or selected_type
             self.labelFoundElement.setText(f"{singular} {selected_id}")
 
-            highlight = SymbolHighlight(layer, found_feature.geometry(), QColor("red"), 2.5)
+            highlight = QgsHighlight(iface.mapCanvas(), found_feature.geometry(), layer)
+            highlight.setColor(QColor("red"))
+            highlight.setWidth(5)
             highlight.show()
             self.main_highlight = highlight
-            SymbolHighlightManager(highlight)
-
+            
             self.adjustMapView(found_feature)
 
             layer.selectByIds([found_feature.id()])
@@ -383,17 +398,18 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if layer:
             for feature in layer.getFeatures():
                 if self.getFeatureIdValue(feature, layer) == selected_id:
-                    highlight = SymbolHighlight(layer, feature.geometry(), QColor("orange"), 2.5)
+                    highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), layer)
+                    highlight.setColor(QColor("orange"))
+                    highlight.setWidth(5)
                     highlight.show()
                     self.current_selected_highlight = highlight
-                    SymbolHighlightManager(highlight)
                     break
 
     def getLayerIdField(self, layer):
         if not layer:
             return "Id"
         identifier = layer.customProperty("qgisred_identifier", "")
-        if identifier in ["qgisred_main_sources", "qgisred_main_multipledemands"]:
+        if identifier in ["qgisred_main_sources", "qgisred_main_demands"]:
             return "BaseValue"
         return "Id"
     
@@ -742,17 +758,3 @@ class SymbolHighlight:
         if self.temp_layer:
             QgsProject.instance().removeMapLayer(self.temp_layer.id())
             self.temp_layer = None
-
-class SymbolHighlightManager:
-    def __init__(self, highlight, duration_ms=5000):
-        self.highlight = highlight
-        self.timer = QTimer()
-        self.timer.setSingleShot(True)
-        self.timer.timeout.connect(self.clear_highlight)
-        self.timer.start(duration_ms)
-    
-    def clear_highlight(self):
-        if self.highlight:
-            self.highlight.hide()
-            self.highlight = None
-        self.timer.stop()
