@@ -576,6 +576,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
     def connectLayerSignals(self, layer_node):
         try:
             layer_node.nameChanged.connect(self.onLayerTreeChanged)
+            layer_node.visibilityChanged.connect(self.onLayerTreeChanged)
             if layer_node.layer():
                 layer_node.layer().dataChanged.connect(self.onLayerTreeChanged)
         except:
@@ -584,6 +585,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
     def disconnectLayerNodeSignals(self, layer_node):
         try:
             layer_node.nameChanged.disconnect(self.onLayerTreeChanged)
+            layer_node.visibilityChanged.disconnect(self.onLayerTreeChanged)
             if layer_node.layer():
                 layer_node.layer().dataChanged.disconnect(self.onLayerTreeChanged)
         except:
