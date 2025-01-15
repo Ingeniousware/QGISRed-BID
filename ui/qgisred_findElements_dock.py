@@ -415,10 +415,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
     
     def getFeatureIdValue(self, feature, layer):
         field_name = self.getLayerIdField(layer)
-        value = feature.attribute(field_name)
+        value = feature.attribute(field_name) 
         if value is None:
             return ""
-        return str(value)
+        return str(value) if field_name is not 'BaseValue' else str(int(value))
                          
     def onListItemDoubleClicked(self, item):
         self.leElementMask.clear()
