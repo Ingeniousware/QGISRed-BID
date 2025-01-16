@@ -157,7 +157,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         available_types = self.getAvailableElementTypes()
         self.cbElementType.addItems(available_types)
     
-    def updateFoundElementLabel(self, selected_id):
+    def updateFoundElementLabel(self, selected_id, layer=None):
         if not selected_id:
             self.labelFoundElement.setText("")
             return
@@ -284,6 +284,26 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                         
         return None, None
 
+    def findSourceOrDemandForNodeId(self, node_id):
+        node_layer, node_feat = self.findNodeLayer(node_id)
+        if not node_layer or not node_feat:
+            return None, None 
+
+        node_geom = node_feat.geometry()
+        if node_geom.isEmpty():
+            return None, None 
+
+        for layer in self.getCheckedInputGroupLayers():
+            identifier = layer.customProperty("qgisred_identifier", "")
+            if identifier in self.sources_and_demands: 
+                for feat in layer.getFeatures():
+                    feat_geom = feat.geometry()
+                    if feat_geom.isEmpty():
+                        continue
+                    if self.areOverlappedPoints(node_geom, feat_geom):
+                        return feat, layer
+        return None, None
+
     def getFeatureIdValue(self, feature, layer, special_naming=False):
         if not layer:
             return "Id"
@@ -336,10 +356,14 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         layer = self.getLayerForElementType(selected_type)
         if layer:
             found_feature = None
-            for feature in layer.getFeatures():
-                if self.getFeatureIdValue(feature, layer) == selected_id:
-                    found_feature = feature
-                    break
+
+            if layer.customProperty("qgisred_identifier") in self.sources_and_demands:
+                found_feature, _ = self.findSourceOrDemandForNodeId(selected_id)
+            else:
+                for feature in layer.getFeatures():
+                    if self.getFeatureIdValue(feature, layer) == selected_id:
+                        found_feature = feature
+                        break
                     
             if not found_feature:
                 QMessageBox.information(self, "Info", "Feature not found")
