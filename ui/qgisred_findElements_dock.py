@@ -254,17 +254,47 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             if isinstance(lyr, QgsVectorLayer):
                 lyr.removeSelection()
 
+    def findOverlappedNode(self, point_feature, current_layer):
+        feature_geom = point_feature.geometry()
+        if feature_geom.isEmpty():
+            return None, None
+            
+        feature_point = feature_geom.asPoint()
+        feature_point_geom = QgsGeometry.fromPointXY(feature_point)
+        
+        for node_layer in self.getCheckedInputGroupLayers():
+            # Skip the current layer to avoid finding itself
+            if node_layer == current_layer:
+                continue
+                
+            node_identifier = node_layer.customProperty("qgisred_identifier", "")
+            if node_identifier in self.node_layers:
+                for node_feature in node_layer.getFeatures():
+                    node_geom = node_feature.geometry()
+                    if node_geom.isEmpty():
+                        continue
+                        
+                    node_point = node_geom.asPoint()
+                    node_point_geom = QgsGeometry.fromPointXY(node_point)
+                    
+                    if self.areOverlappedPoints(feature_point_geom, node_point_geom):
+                        return node_feature, node_layer
+                        
+        return None, None
+
     def getFeatureIdValue(self, feature, layer):
         if not layer:
             return "Id"
             
-        identifier = layer.customProperty("qgisred_identifier", "")
+        identifier = layer.customProperty("qgisred_identifier")
         
         if identifier in ["qgisred_main_sources", "qgisred_main_demands"]:
-            base_value = feature.attribute("BaseValue")
-            if base_value is None:
-                return ""
-            return str(int(base_value))
+            node_feature, _ = self.findOverlappedNode(feature, layer)
+            if node_feature:
+                node_id = node_feature.attribute("Id")
+                if node_id is not None:
+                    return str(node_id)
+            return ""
         
         value = feature.attribute("Id")
         if value is None:
@@ -289,24 +319,24 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             QMessageBox.warning(self, "Warning", "Please select an element ID")
             return
         
-        if element_identifier in ["qgisred_main_sources", "qgisred_main_demands"]:
-            node_layer, node_feature = self.findNodeLayer(selected_id)
+        # if element_identifier in ["qgisred_main_sources", "qgisred_main_demands"]:
+        #     node_layer, node_feature = self.findNodeLayer(selected_id)
 
-            if not node_layer or not node_feature:
-                QMessageBox.information(self, "Info", "Node not found")
-                return
+        #     if not node_layer or not node_feature:
+        #         QMessageBox.information(self, "Info", "Node not found")
+        #         return
                 
-            self.updateFoundElementLabel(selected_id)
+        #     self.updateFoundElementLabel(selected_id)
             
-            highlight = QgsHighlight(iface.mapCanvas(), node_feature.geometry(), node_layer)
-            highlight.setColor(QColor("red"))
-            highlight.setWidth(5)
-            highlight.show()
-            self.main_highlight = highlight
+        #     highlight = QgsHighlight(iface.mapCanvas(), node_feature.geometry(), node_layer)
+        #     highlight.setColor(QColor("red"))
+        #     highlight.setWidth(5)
+        #     highlight.show()
+        #     self.main_highlight = highlight
             
-            self.adjustMapView(node_feature)
-            self.findAdjacentLinksByGeometry(node_feature)
-            return 
+        #     self.adjustMapView(node_feature)
+        #     self.findAdjacentLinksByGeometry(node_feature)
+        #     return 
         
         layer = self.getLayerForElementType(selected_type)
         if layer:
@@ -385,33 +415,11 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     or self.areOverlappedPoints(last_point, node_point)
                 ):
                     node_id = self.getFeatureIdValue(f, node_layer)
-                    has_source = False
-                    has_demand = False
-                    
-                    for special_layer in self.getCheckedInputGroupLayers():
-                        special_identifier = special_layer.customProperty("qgisred_identifier", "")
-                        if special_identifier == "qgisred_main_sources":
-                            for special_f in special_layer.getFeatures():
-                                if str(special_f.attribute("BaseValue")) == str(node_id):
-                                    has_source = True
-                                    break
-                        elif special_identifier == "qgisred_main_demands":
-                            for special_f in special_layer.getFeatures():
-                                if str(special_f.attribute("BaseValue")) == str(node_id):
-                                    has_demand = True
-                                    break
                     
                     layer_name = next((name for name, id in self.layers_identifiers.items() if id == identifier), identifier)
                     singular = self.singular_forms.get(layer_name) or layer_name
                     
                     node_info = f"{singular} {node_id}"
-                    
-                    if has_source:
-                        found_nodes.append((node_layer, f, f"{node_info} (Source)"))
-                    if has_demand:
-                        found_nodes.append((node_layer, f, f"{node_info} (Multiple Demand)"))
-                    if not has_source and not has_demand:
-                        found_nodes.append((node_layer, f, node_info))
 
         for node_layer, feature, node_info in found_nodes:
             self.listWidget.addItem(node_info)
@@ -748,34 +756,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                 ):
                     node_id = self.getFeatureIdValue(f, node_layer)
                     
-                    has_source = False
-                    has_demand = False
-                    
-                    for special_layer in self.getCheckedInputGroupLayers():
-                        special_identifier = special_layer.customProperty("qgisred_identifier", "")
-                        if special_identifier == "qgisred_main_sources":
-                            for special_f in special_layer.getFeatures():
-                                if str(special_f.attribute("BaseValue")) == str(node_id):
-                                    has_source = True
-                                    break
-                        elif special_identifier == "qgisred_main_demands":
-                            for special_f in special_layer.getFeatures():
-                                if str(special_f.attribute("BaseValue")) == str(node_id):
-                                    has_demand = True
-                                    break
-                    
                     layer_name = next((name for name, id in self.layers_identifiers.items() if id == identifier), identifier)
                     singular = self.singular_forms.get(layer_name) or layer_name
                     
                     node_info = f"{singular} {node_id}"
-                    
-                    # Add suffixes if needed
-                    if has_source:
-                        found_nodes.append((node_layer, f, f"{node_info} (Source)"))
-                    if has_demand:
-                        found_nodes.append((node_layer, f, f"{node_info} (Multiple Demand)"))
-                    if not has_source and not has_demand:
-                        found_nodes.append((node_layer, f, node_info))
 
         tolerance = 1e-9
         found_links = []
@@ -829,7 +813,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             self.listWidget.addItem(link_info)
 
     def disconnectLayerSignals(self, layer):
-        """Disconnect layer signals to prevent memory leaks"""
         try:
             if hasattr(layer, 'nameChanged'):
                 try:
