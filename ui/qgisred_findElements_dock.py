@@ -149,8 +149,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if inputs_group:
             inputs_group.addedChildren.connect(self.onLayerTreeChanged)
             inputs_group.removedChildren.connect(self.onLayerTreeChanged)
-            for layer in inputs_group.findLayers():
-                self.connectLayerSignals(layer.layer())
+            for layer_node in inputs_group.findLayers():
+                self.connectLayerSignals(layer_node)
 
     def initializeElementTypes(self):
         self.cbElementType.clear()
