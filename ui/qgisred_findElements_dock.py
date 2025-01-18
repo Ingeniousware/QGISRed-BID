@@ -35,47 +35,47 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         
         if parent:
             parent.addDockWidget(Qt.LeftDockWidgetArea, self)
-        
+
         self.element_types = [
-            "Reservoirs",
-            "Tanks",
-            "Junctions",
-            "Pumps",
-            "Valves",
-            "Pipes",
-            "Meters",
-            "Service Connections",
-            "Isolation Valves",
-            "Sources",
-            "Multiple Demands"
+            'Pipes', 
+            'Junctions',
+            'Multiple Demands',
+            'Reservoirs',
+            'Tanks',
+            'Pumps'
+            'Valves',
+            'Sources',
+            'Service Connections',
+            'Isolation Valves',
+            'Meters'
         ]
-        
+ 
         self.singular_forms = {
+            "Pipes": "Pipe",
+            "Junctions": "Junction",
+            "Multiple Demands": "Multiple Demand",
             "Reservoirs": "Reservoir",
             "Tanks": "Tank",
-            "Junctions": "Junction",
             "Pumps": "Pump",
             "Valves": "Valve",
-            "Pipes": "Pipe",
-            "Meters": "Meter",
+            "Sources": "Source",
             "Service Connections": "Service Connection",
             "Isolation Valves": "Isolation Valve",
-            "Sources": "Source",
-            "Multiple Demands": "Multiple Demand"
+            "Meters": "Meter"
         }
 
         self.layers_identifiers = {
+            "Pipes": "qgisred_main_pipes",
+            "Junctions": "qgisred_main_junctions",
+            "Multiple Demands": "qgisred_main_demands",
             "Reservoirs": "qgisred_main_reservoirs",
             "Tanks": "qgisred_main_tanks",
-            "Junctions": "qgisred_main_junctions",
             "Pumps": "qgisred_main_pumps",
             "Valves": "qgisred_main_valves",
-            "Pipes": "qgisred_main_pipes",
-            "Meters": "qgisred_main_meters",
+            "Sources": "qgisred_main_sources",
             "Service Connections": "qgisred_main_serviceconnections",
             "Isolation Valves": "qgisred_main_isolationvalves",
-            "Sources": "qgisred_main_sources",
-            "Multiple Demands": "qgisred_main_demands"
+            "Meters": "qgisred_main_meters"
         }
 
         self.original_ids = []
