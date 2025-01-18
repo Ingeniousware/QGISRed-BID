@@ -138,7 +138,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
     def setupConnections(self):
         self.cbElementType.currentIndexChanged.connect(self.updateElementIds)
         self.leElementMask.textChanged.connect(self.filterElementIds)
-        self.btFind.clicked.connect(self.findElement)
+        self.btFind.clicked.connect(self.onFindButtonClicked)
         self.listWidget.itemClicked.connect(self.onListItemSingleClicked)
         self.listWidget.itemDoubleClicked.connect(self.onListItemDoubleClicked)
         self.btClear.clicked.connect(self.clearAll)
@@ -334,6 +334,13 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if len(parts) > 1:
             return parts[-1]
         return text
+
+    def onFindButtonClicked(self):
+        # If there's a selected item in listWidget, re-use the double-click logic
+        if self.listWidget.currentItem():
+            self.onListItemDoubleClicked(self.listWidget.currentItem())
+        else:
+            self.findElement()
 
     @pyqtSlot()
     def findElement(self):
