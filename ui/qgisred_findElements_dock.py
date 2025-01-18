@@ -342,7 +342,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         
         self.listWidget.clear()
         selected_type = self.cbElementType.currentText()
-        selected_id = self.extractNodeId(self.cbElementId.currentText())
+        selected_id = self.extractNodeId(self.cbElementId.currentText()) 
         element_identifier = self.layers_identifiers.get(selected_type)
         
         if selected_id == "":
@@ -712,9 +712,9 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
     def connectLayerSignals(self, layer_node):
         try:
             layer_node.nameChanged.connect(self.onLayerTreeChanged)
-            layer_node.visibilityChanged.connect(self.onLayerTreeChanged)
             if layer_node.layer():
                 layer_node.layer().dataChanged.connect(self.onLayerTreeChanged)
+                layer_node.visibilityChanged.connect(self.onLayerTreeChanged)
         except:
             pass
 
@@ -861,6 +861,11 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             if hasattr(layer, 'dataChanged'):
                 try:
                     layer.dataChanged.disconnect(self.onLayerTreeChanged)
+                except:
+                    pass
+            if hasattr(layer, 'visibilityChanged'):
+                try:
+                    layer.visibilityChanged.disconnect(self.onLayerTreeChanged)
                 except:
                     pass
         except:
