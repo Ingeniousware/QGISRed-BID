@@ -396,65 +396,98 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         return point1.distance(point2) < tolerance
 
     def findAdjacentNodesByGeometry(self, line_feature):
+        print("DEBUG: findAdjacentNodesByGeometry() called with line_feature:", line_feature)
+
         geom = line_feature.geometry()
+        print("DEBUG: Retrieved geometry from line_feature. Geometry isMultipart():", geom.isMultipart())
 
         if geom.isMultipart():
             parts = geom.asMultiPolyline()
+            print("DEBUG: Geometry is multipart. parts length:", len(parts) if parts else 0)
             line_points = parts[0] if parts else []
         else:
             line_points = geom.asPolyline()
+            print("DEBUG: Geometry is single part. line_points length:", len(line_points))
 
         if not line_points:
+            print("DEBUG: No line points found. Returning early.")
             return
 
         first_point = QgsGeometry.fromPointXY(line_points[0])
         last_point = QgsGeometry.fromPointXY(line_points[-1])
- 
+        print("DEBUG: Created first_point:", first_point.asPoint(), "and last_point:", last_point.asPoint())
+
         found_nodes = []
 
+        # Filter layers to only include node_layers
         node_map_layers = [
             layer
             for layer in self.getCheckedInputGroupLayers()
             if layer.customProperty("qgisred_identifier") in self.node_layers
         ]
+        print("DEBUG: node_map_layers found:", [layer.name() for layer in node_map_layers])
 
+        # Iterate through each node layer
         for node_layer in node_map_layers:
             if node_layer.geometryType() != 0:
+                print(f"DEBUG: Skipping layer '{node_layer.name()}' because geometryType() != 0 (not a point layer).")
                 continue
 
             identifier = node_layer.customProperty("qgisred_identifier", "")
+            print(f"DEBUG: Processing node_layer '{node_layer.name()}' with identifier '{identifier}'")
 
             for f in node_layer.getFeatures():
                 node_geom = f.geometry()
                 if node_geom.isEmpty():
+                    print(f"DEBUG: Feature {f.id()} in layer '{node_layer.name()}' has empty geometry. Skipping.")
                     continue
 
                 node_point = QgsGeometry.fromPointXY(QgsPointXY(node_geom.asPoint()))
-
-                if (
-                    self.areOverlappedPoints(first_point, node_point)
-                    or self.areOverlappedPoints(last_point, node_point)
-                ):
+                if (self.areOverlappedPoints(first_point, node_point) or
+                        self.areOverlappedPoints(last_point, node_point)):
                     node_id = self.getFeatureIdValue(f, node_layer)
+                    print(f"DEBUG: Overlapping node found. Feature {f.id()} has node_id:", node_id)
 
-                    layer_name = next((name for name, id in self.layers_identifiers.items() if id == identifier), identifier)
-                    singular = self.singular_forms.get(layer_name) or layer_name
-                    
+                    # Resolve layer name for display
+                    # layer_name = next(
+                    #     (name for name, id in self.layers_identifiers.items() if id == identifier),
+                    #     identifier
+                    # )
+                    layer_name = node_layer.name()
+                    singular = self.singular_forms.get(layer_name) or node_layer.name() #layer_name
+
+                    print("LAyer name: ", layer_name)
+                    print("singular: ", singular)
+
+                    # Check if the identifier belongs to sources/demands
                     if identifier in self.sources_and_demands:
+                        print(f"DEBUG: Identifier '{identifier}' is in sources_and_demands.")
                         source_feature, source_layer = self.findOverlappedNode(f, node_layer)
                         if source_feature:
-                            singular = self.singular_forms.get(source_feature, source_layer.name())
+                            print(f"DEBUG: Overlapped node found in source_layer '{source_layer.name()}'.")
+                            # Attempt to find a singular name for the source_feature's layer
+                            # or fallback to the source_layer name
+                            singular_source = self.singular_forms.get(source_feature, source_layer.name())
                             suffix = "(Source)" if identifier == "qgisred_main_sources" else "(Multiple Demand)"
                             source_id = source_feature.attribute("Id")
-                            node_info = f"{singular} {source_id} {suffix}"
+                            node_info = f"{singular_source} {source_id} {suffix}"
+                            print("DEBUG: Constructed node_info with suffix:", node_info)
+                        else:
+                            # If no specific source_feature found, fallback to singular + node_id
+                            node_info = f"{singular} {node_id}"
+                            print("DEBUG: source_feature not found; fallback node_info:", node_info)
                     else:
                         node_info = f"{singular} {node_id}"
+                        print("DEBUG: Regular node_info constructed:", node_info)
 
                     found_nodes.append((node_layer, f, node_info))
 
+        # Finally, add all found nodes to the list widget
         for node_layer, feature, node_info in found_nodes:
-            print(f"Adding node info to list widget: {node_info}")
+            print(f"DEBUG: Adding node info to list widget: {node_info}")
             self.listWidget.addItem(node_info)
+        print("DEBUG: Completed findAdjacentNodesByGeometry.")
+
 
     def findAdjacentLinksByGeometry(self, node_feature):
         node_geom = node_feature.geometry()
@@ -498,7 +531,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                 ):
                     link_id = self.getFeatureIdValue(f, link_layer)
                     
-                    layer_name = next((name for name, id in self.layers_identifiers.items() if id == identifier), identifier)
+                    #layer_name = next((name for name, id in self.layers_identifiers.items() if id == identifier), identifier)
+                    layer_name = link_layer.name()
                     singular = self.singular_forms.get(layer_name) or layer_name
                     found_links.append((link_layer, f, f"{singular} {link_id}"))
 
@@ -550,37 +584,60 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     return
 
     def onListItemDoubleClicked(self, item):
+        print("DEBUG: onListItemDoubleClicked triggered with item:", item)
+
         self.leElementMask.clear()
-        
+        print("DEBUG: Cleared leElementMask")
+
         text = item.text()
+        print("DEBUG: Original text from item:", text)
 
         # Handle special suffixes
         if "(Source)" in text:
             text = text.replace(" (Source)", "")
+            print("DEBUG: Found '(Source)' in text. Updated text:", text)
         elif "(Multiple Demand)" in text:
-            text = text.replace(" (Multiple Demand)", "")   
+            text = text.replace(" (Multiple Demand)", "")
+            print("DEBUG: Found '(Multiple Demand)' in text. Updated text:", text)
 
         parts = text.split(" ", 1)
+        print("DEBUG: parts after split:", parts)
+
         if len(parts) < 2:
+            print("DEBUG: parts has fewer than 2 elements, returning early")
             return
 
         singular_type = parts[0]
         selected_id = parts[1].strip()
 
+        print("DEBUG: singular_type:", singular_type)
+        print("DEBUG: selected_id:", selected_id)
+
         element_type = None
         for plural, singular in self.singular_forms.items():
+            print(f"DEBUG: Checking if singular '{singular}' matches '{singular_type}'")
             if singular == singular_type:
                 element_type = plural
+                print("DEBUG: Found match. element_type set to:", element_type)
                 break
 
         if not element_type:
-           element_type = singular_type
+            element_type = singular_type
+            print("DEBUG: No match found in singular_forms, element_type set to singular_type:", element_type)
 
+        print("DEBUG: Setting cbElementType current text to:", element_type)
         self.cbElementType.setCurrentText(element_type)
+
         index = self.cbElementId.findText(selected_id)
+        print("DEBUG: findText returned index:", index)
+
         if index >= 0:
             self.cbElementId.setCurrentIndex(index)
+            print(f"DEBUG: Set cbElementId current index to {index} for selected_id: {selected_id}")
+        else:
+            print("DEBUG: Index not found, cbElementId unchanged.")
 
+        print("DEBUG: Calling findElement()")
         self.findElement()
 
     def closeEvent(self, event):
