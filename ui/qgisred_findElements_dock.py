@@ -403,97 +403,76 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         return point1.distance(point2) < tolerance
 
     def findAdjacentNodesByGeometry(self, line_feature):
+        """
+        Finds and lists point features (nodes) that lie on or near the entire length
+        of the line_feature geometry. Updated to also include 'special_layers' 
+        (e.g. Service Connections) if they are point features. 
+        """
         print("DEBUG: findAdjacentNodesByGeometry() called with line_feature:", line_feature)
 
+        # 1. Get the geometry from the line feature
         geom = line_feature.geometry()
-        print("DEBUG: Retrieved geometry from line_feature. Geometry isMultipart():", geom.isMultipart())
+        if geom.isEmpty():
+            print("DEBUG: No geometry found in line_feature. Returning.")
+            return
 
+        # 2. Convert to a polyline geometry for distance checks
         if geom.isMultipart():
             parts = geom.asMultiPolyline()
-            print("DEBUG: Geometry is multipart. parts length:", len(parts) if parts else 0)
             line_points = parts[0] if parts else []
         else:
             line_points = geom.asPolyline()
-            print("DEBUG: Geometry is single part. line_points length:", len(line_points))
 
         if not line_points:
-            print("DEBUG: No line points found. Returning early.")
+            print("DEBUG: Line feature has no points. Returning.")
             return
 
-        first_point = QgsGeometry.fromPointXY(line_points[0])
-        last_point = QgsGeometry.fromPointXY(line_points[-1])
-        print("DEBUG: Created first_point:", first_point.asPoint(), "and last_point:", last_point.asPoint())
+        line_geom = QgsGeometry.fromPolylineXY(line_points)
+
+        # 3. Set a tolerance for "snap" adjacency
+        tolerance = 1e-6
 
         found_nodes = []
 
-        # Filter layers to only include node_layers
+        # 4. Collect point layers from both node_layers and special_layers
         node_map_layers = [
             layer
             for layer in self.getCheckedInputGroupLayers()
-            if layer.customProperty("qgisred_identifier") in self.node_layers
+            if (
+                layer.customProperty("qgisred_identifier") in self.node_layers 
+                or layer.customProperty("qgisred_identifier") in self.special_layers
+            )
         ]
-        print("DEBUG: node_map_layers found:", [layer.name() for layer in node_map_layers])
 
-        # Iterate through each node layer
+        # 5. Check each point feature in those layers for adjacency
         for node_layer in node_map_layers:
             if node_layer.geometryType() != 0:
-                print(f"DEBUG: Skipping layer '{node_layer.name()}' because geometryType() != 0 (not a point layer).")
+                # geometryType = 0 => Point
                 continue
 
             identifier = node_layer.customProperty("qgisred_identifier", "")
-            print(f"DEBUG: Processing node_layer '{node_layer.name()}' with identifier '{identifier}'")
-
             for f in node_layer.getFeatures():
                 node_geom = f.geometry()
                 if node_geom.isEmpty():
-                    print(f"DEBUG: Feature {f.id()} in layer '{node_layer.name()}' has empty geometry. Skipping.")
                     continue
 
-                node_point = QgsGeometry.fromPointXY(QgsPointXY(node_geom.asPoint()))
-                if (self.areOverlappedPoints(first_point, node_point) or
-                        self.areOverlappedPoints(last_point, node_point)):
+                # distance() < tolerance means the point is on or very near the line
+                dist = line_geom.distance(node_geom)
+                if dist < tolerance:
                     node_id = self.getFeatureIdValue(f, node_layer)
-                    print(f"DEBUG: Overlapping node found. Feature {f.id()} has node_id:", node_id)
 
-                    # Resolve layer name for display
-                    # layer_name = next(
-                    #     (name for name, id in self.layers_identifiers.items() if id == identifier),
-                    #     identifier
-                    # )
+                    # Build a display label for the listWidget
                     layer_name = node_layer.name()
-                    singular = self.singular_forms.get(layer_name) or node_layer.name() #layer_name
-
-                    print("LAyer name: ", layer_name)
-                    print("singular: ", singular)
-
-                    # Check if the identifier belongs to sources/demands
-                    if identifier in self.sources_and_demands:
-                        print(f"DEBUG: Identifier '{identifier}' is in sources_and_demands.")
-                        source_feature, source_layer = self.findOverlappedNode(f, node_layer)
-                        if source_feature:
-                            print(f"DEBUG: Overlapped node found in source_layer '{source_layer.name()}'.")
-                            # Attempt to find a singular name for the source_feature's layer
-                            # or fallback to the source_layer name
-                            singular_source = self.singular_forms.get(source_feature, source_layer.name())
-                            suffix = "(Source)" if identifier == "qgisred_main_sources" else "(Multiple Demand)"
-                            source_id = source_feature.attribute("Id")
-                            node_info = f"{singular_source} {source_id} {suffix}"
-                            print("DEBUG: Constructed node_info with suffix:", node_info)
-                        else:
-                            # If no specific source_feature found, fallback to singular + node_id
-                            node_info = f"{singular} {node_id}"
-                            print("DEBUG: source_feature not found; fallback node_info:", node_info)
-                    else:
-                        node_info = f"{singular} {node_id}"
-                        print("DEBUG: Regular node_info constructed:", node_info)
+                    singular = self.singular_forms.get(layer_name) or layer_name
+                    node_info = f"{singular} {node_id}"
 
                     found_nodes.append((node_layer, f, node_info))
 
-        # Finally, add all found nodes to the list widget
+        # 6. Add found nodes to the listWidget
         for node_layer, feature, node_info in found_nodes:
-            print(f"DEBUG: Adding node info to list widget: {node_info}")
             self.listWidget.addItem(node_info)
-        print("DEBUG: Completed findAdjacentNodesByGeometry.")
+
+        print("DEBUG: Completed findAdjacentNodesByGeometry. Found:", len(found_nodes), "nodes.")
 
 
     def findAdjacentLinksByGeometry(self, node_feature):
