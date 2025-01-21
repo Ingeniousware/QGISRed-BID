@@ -4546,8 +4546,8 @@ class QGISRed:
                 if 'labels_enabled' in query_info:
                     new_layer.setLabelsEnabled(query_info['labels_enabled'])
 
-                new_layer.setCustomProperty("query_field", query_info['field_name'])
                 new_layer.setCustomProperty("qgisred_identifier", query_info['identifier'])
+                new_layer.setCustomProperty("query_field", query_info['field_name'])
                 new_layer.setReadOnly(True)
                 QgsProject.instance().addMapLayer(new_layer, False)
 

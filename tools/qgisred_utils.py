@@ -2,7 +2,7 @@
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QFileInfo
 from PyQt5.QtWidgets import QMessageBox, QFileDialog
-from qgis.core import QgsVectorLayer, QgsProject, QgsLayerTreeLayer, QgsTask, QgsApplication
+from qgis.core import QgsVectorLayer, QgsProject, QgsLayerTreeLayer, QgsTask, QgsApplication, QgsLayerMetadata
 from qgis.core import QgsSvgMarkerSymbolLayer, QgsSymbol, QgsSingleSymbolRenderer, Qgis
 from qgis.core import QgsLineSymbol, QgsSimpleLineSymbolLayer, QgsProperty
 from qgis.core import QgsMarkerSymbol, QgsMarkerLineSymbolLayer, QgsSimpleMarkerSymbolLayer
@@ -818,5 +818,10 @@ class QGISRedUtils:
         attribute_table_view.setAttributeTableConfig(config)
 
     def setLayerIdentifier(self, layer, layerType):
-        layer.setCustomProperty("qgisred_identifier", f"qgisred_main_{layerType.lower()}")
+        identifier = f"qgisred_main_{layerType.lower()}"
+        layer.setId(identifier)
+        layer.setCustomProperty("qgisred_identifier", identifier)
+        layer_metadata = QgsLayerMetadata()
+        layer_metadata.setIdentifier(identifier)
+        layer.setMetadata(layer_metadata)
         print(f"qgisred_main_{layerType.lower()}")

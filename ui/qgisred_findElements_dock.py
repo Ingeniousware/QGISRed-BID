@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QDockWidget, QMessageBox, QLineEdit
 from qgis.PyQt import uic
 from PyQt5.QtCore import Qt, QTimer
 from qgis.PyQt.QtCore import pyqtSlot
-from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsRectangle, QgsVectorLayer, QgsSettings, QgsVectorLayer, QgsFeature, QgsRenderContext
+from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsRectangle, QgsVectorLayer, QgsSettings, QgsVectorLayer, QgsFeature, QgsRenderContext, QgsLayerMetadata
 from qgis.utils import iface
 from qgis.gui import QgsHighlight
 
@@ -791,6 +791,11 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     custom_property = layer_obj.customProperty("qgisred_identifier", None)
                     if not custom_property:
                         layer_obj.setCustomProperty("qgisred_identifier", identifier)
+                        print("HERE")
+                    layer_obj.setId(identifier)
+                    layer_metadata = QgsLayerMetadata()
+                    layer_metadata.setIdentifier(identifier)
+                    layer.layer().setMetadata(layer_metadata)
 
     def findNodesAndLinksAdjacencies(self, feature):
         geom = feature.geometry()
