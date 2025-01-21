@@ -85,7 +85,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         self.link_layers = ["qgisred_main_pipes", "qgisred_main_pumps", "qgisred_main_valves"]
 
-        self.node_layers = ["qgisred_main_reservoirs", "qgisred_main_tanks", "qgisred_main_pumps", "qgisred_main_junctions", 
+        self.node_layers = ["qgisred_main_reservoirs", "qgisred_main_tanks", "qgisred_main_junctions", 
                             "qgisred_main_meters", "qgisred_main_isolationvalves", "qgisred_main_sources", "qgisred_main_demands"]
         
         self.special_layers = ["qgisred_main_serviceconnections"]

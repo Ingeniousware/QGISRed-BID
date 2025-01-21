@@ -451,7 +451,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed/images/iconLayerManagement.png"
         self.add_action(
             icon_path,
-            text=self.tr("Layer management"),
+            text=self.tr("Layer manager"),
             callback=self.runEditProject,
             menubar=self.projectMenu,
             toolbar=self.projectToolbar,
