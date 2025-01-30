@@ -165,42 +165,35 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if not selected_id:
             self.labelFoundElement.setText("")
             return
-            
-        element_type = self.cbElementType.currentText()
-        element_identifier = self.layers_identifiers.get(element_type)
-        
-        # Handle sources/demands first
-        if element_identifier in self.sources_and_demands:
-            node_layer, node_feature = self.findNodeLayer(selected_id)
-            if node_layer and node_feature:
-                suffix = "(Source)" if element_identifier == "qgisred_main_sources" else "(Mult.Dem)"
-                singular = self.singular_forms.get(node_layer.name(), node_layer.name())
-                self.labelFoundElement.setText(f"{singular} {selected_id} {suffix}")
-                return
-        else:
-            # Handle nodes (junctions, reservoirs, tanks) with suffixes
+
+        node_layer, node_feature = self.findNodeLayer(selected_id)
+        if node_layer and node_feature:
             suffixes = []
-            node_layer = self.getLayerForElementType(element_type)
-            if node_layer:
-                for feature in node_layer.getFeatures():
-                    if self.getFeatureIdValue(feature, node_layer) == selected_id:
-                        # Check for overlapping sources
-                        source_feature, _ = self.findSourceOrDemandForNodeId(selected_id)
-                        if source_feature:
-                            suffixes.append("(Source)")
-                        # Check for demands only if junction
-                        if element_identifier == "qgisred_main_junctions":
-                            demand_layer = self.getLayerByIdentifier("qgisred_main_demands")
-                            if demand_layer:
-                                for demand_feat in demand_layer.getFeatures():
-                                    if self.areOverlappedPoints(feature.geometry(), demand_feat.geometry()):
-                                        suffixes.append("(Mult.Dem)")
-                                        break
+
+            source_layer = self.getLayerByIdentifier("qgisred_main_sources")
+            if source_layer:
+                for src_feat in source_layer.getFeatures():
+                    if not src_feat.geometry().isEmpty() and self.areOverlappedPoints(node_feature.geometry(), src_feat.geometry()):
+                        suffixes.append("(Source)")
                         break
-            
+
+            node_identifier = node_layer.customProperty("qgisred_identifier", "")
+            if node_identifier == "qgisred_main_junctions":
+                demand_layer = self.getLayerByIdentifier("qgisred_main_demands")
+                if demand_layer:
+                    for dmnd_feat in demand_layer.getFeatures():
+                        if not dmnd_feat.geometry().isEmpty() and self.areOverlappedPoints(node_feature.geometry(), dmnd_feat.geometry()):
+                            suffixes.append("(Mult.Dem)")
+                            break
+
+            singular_node_type = self.singular_forms.get(node_layer.name(), node_layer.name())
             suffix_str = " ".join(suffixes)
-            singular = self.singular_forms.get(element_type, element_type)
-            self.labelFoundElement.setText(f"{singular} {selected_id} {suffix_str}".strip())
+            self.labelFoundElement.setText(f"{singular_node_type} {selected_id} {suffix_str}".strip())
+
+        else:
+            element_type = self.cbElementType.currentText()
+            singular_element_type = self.singular_forms.get(element_type, element_type)
+            self.labelFoundElement.setText(f"{singular_element_type} {selected_id}")
 
     def getLayerForElementType(self, element_type):
         project = QgsProject.instance()
