@@ -448,20 +448,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         return point1.distance(point2) < tolerance
 
     def findAdjacentNodesByGeometry(self, line_feature):
-        """
-        Finds and lists point features (nodes) that lie on or near the entire length
-        of the line_feature geometry. Updated to also include 'special_layers' 
-        (e.g. Service Connections) if they are point features. 
-        """
-        print("DEBUG: findAdjacentNodesByGeometry() called with line_feature:", line_feature)
-
-        # 1. Get the geometry from the line feature
         geom = line_feature.geometry()
         if geom.isEmpty():
-            print("DEBUG: No geometry found in line_feature. Returning.")
             return
 
-        # 2. Convert to a polyline geometry for distance checks
         if geom.isMultipart():
             parts = geom.asMultiPolyline()
             line_points = parts[0] if parts else []
@@ -469,17 +459,12 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             line_points = geom.asPolyline()
 
         if not line_points:
-            print("DEBUG: Line feature has no points. Returning.")
             return
 
         line_geom = QgsGeometry.fromPolylineXY(line_points)
-
-        # 3. Set a tolerance for "snap" adjacency
         tolerance = 1e-6
-
         found_nodes = []
 
-        # 4. Collect point layers from both node_layers and special_layers
         node_map_layers = [
             layer
             for layer in self.getCheckedInputGroupLayers()
@@ -489,36 +474,50 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             )
         ]
 
-        # 5. Check each point feature in those layers for adjacency
         for node_layer in node_map_layers:
             if node_layer.geometryType() != 0:
-                # geometryType = 0 => Point
                 continue
 
             identifier = node_layer.customProperty("qgisred_identifier", "")
+            if identifier in self.sources_and_demands:
+                continue
+
             for f in node_layer.getFeatures():
                 node_geom = f.geometry()
                 if node_geom.isEmpty():
                     continue
 
-                # distance() < tolerance means the point is on or very near the line
                 dist = line_geom.distance(node_geom)
                 if dist < tolerance:
                     node_id = self.getFeatureIdValue(f, node_layer)
-
-                    # Build a display label for the listWidget
                     layer_name = node_layer.name()
                     singular = self.singular_forms.get(layer_name) or layer_name
-                    node_info = f"{singular} {node_id}"
+
+                    node_suffixes = []
+                    if identifier in ["qgisred_main_junctions", "qgisred_main_reservoirs", "qgisred_main_tanks"]:
+                        source_layer = self.getLayerByIdentifier("qgisred_main_sources")
+                        if source_layer:
+                            for src_feat in source_layer.getFeatures():
+                                if self.areOverlappedPoints(node_geom, src_feat.geometry()):
+                                    node_suffixes.append("(Source)")
+                                    break
+                        if identifier == "qgisred_main_junctions":
+                            demand_layer = self.getLayerByIdentifier("qgisred_main_demands")
+                            if demand_layer:
+                                for dmnd_feat in demand_layer.getFeatures():
+                                    if self.areOverlappedPoints(node_geom, dmnd_feat.geometry()):
+                                        node_suffixes.append("(Mult.Dem)")
+                                        break
+
+                    suffix_str = ""
+                    if node_suffixes:
+                        suffix_str = " " + " ".join(node_suffixes)
+                    node_info = f"{singular} {node_id}{suffix_str}"
 
                     found_nodes.append((node_layer, f, node_info))
 
-        # 6. Add found nodes to the listWidget
         for node_layer, feature, node_info in found_nodes:
             self.listWidget.addItem(node_info)
-
-        print("DEBUG: Completed findAdjacentNodesByGeometry. Found:", len(found_nodes), "nodes.")
-
 
     def findAdjacentLinksByGeometry(self, node_feature):
         node_geom = node_feature.geometry()
@@ -570,6 +569,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         for link_layer, feature, link_info in found_links:
             self.listWidget.addItem(link_info)
 
+
     def onListItemSingleClicked(self, item):
         if self.current_selected_highlight:
             self.current_selected_highlight.hide()
@@ -615,61 +615,34 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     return
 
     def onListItemDoubleClicked(self, item):
-        print("DEBUG: onListItemDoubleClicked triggered with item:", item)
-
         self.leElementMask.clear()
-        print("DEBUG: Cleared leElementMask")
-
         text = item.text()
-        print("DEBUG: Original text from item:", text)
-
-        # Handle special suffixes
-        if "(Source)" in text:
-            text = text.replace(" (Source)", "")
-            print("DEBUG: Found '(Source)' in text. Updated text:", text)
-        elif "(Mult.Dem)" in text:
-            text = text.replace(" (Mult.Dem)", "")
-            print("DEBUG: Found '(Multiple Demand)' in text. Updated text:", text)
-
         parts = text.split(" ", 1)
-        print("DEBUG: parts after split:", parts)
 
         if len(parts) < 2:
-            print("DEBUG: parts has fewer than 2 elements, returning early")
             return
 
         singular_type = parts[0]
         selected_id = parts[1].strip()
 
-        print("DEBUG: singular_type:", singular_type)
-        print("DEBUG: selected_id:", selected_id)
-
         element_type = None
         for plural, singular in self.singular_forms.items():
-            print(f"DEBUG: Checking if singular '{singular}' matches '{singular_type}'")
             if singular == singular_type:
                 element_type = plural
-                print("DEBUG: Found match. element_type set to:", element_type)
                 break
 
         if not element_type:
             element_type = singular_type
-            print("DEBUG: No match found in singular_forms, element_type set to singular_type:", element_type)
-
-        print("DEBUG: Setting cbElementType current text to:", element_type)
+            
         self.cbElementType.setCurrentText(element_type)
 
         index = self.cbElementId.findText(selected_id)
-        print("DEBUG: findText returned index:", index)
 
         if index >= 0:
             self.cbElementId.setCurrentIndex(index)
-            print(f"DEBUG: Set cbElementId current index to {index} for selected_id: {selected_id}")
-        else:
-            print("DEBUG: Index not found, cbElementId unchanged.")
 
-        print("DEBUG: Calling findElement()")
         self.findElement()
+
 
     def closeEvent(self, event):
         root = QgsProject.instance().layerTreeRoot()
