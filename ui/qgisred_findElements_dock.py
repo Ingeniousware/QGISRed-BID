@@ -113,10 +113,14 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         for layer in self.getCheckedInputGroupLayers():
             identifier = layer.customProperty("qgisred_identifier", "")
             if identifier in self.node_layers:
+                # Skip if it's a Source or Multiple Demand
+                if identifier in self.sources_and_demands:
+                    continue
                 for feature in layer.getFeatures():
                     if self.getFeatureIdValue(feature, layer) == node_id:
                         return layer, feature
         return None, None
+
 
     def getAvailableElementTypes(self):
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
@@ -304,7 +308,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         return None, None
 
     def findSourceOrDemandForNodeId(self, node_id):
-        # Find the node layer and feature for the given ID
         node_layer, node_feat = self.findNodeLayer(node_id)
         if not node_layer or not node_feat:
             return None, None 
@@ -328,33 +331,45 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
     def getFeatureIdValue(self, feature, layer, special_naming=False):
         if not layer:
             return "Id"
-            
+                
         identifier = layer.customProperty("qgisred_identifier")
-        
+            
         if identifier in self.sources_and_demands:
             node_feature, node_layer = self.findOverlappedNode(feature, layer)
             if node_feature:
                 node_id = self.extractNodeId(node_feature.attribute("Id"))
-                if special_naming: 
+                if special_naming:
                     singular = self.singular_forms.get(node_layer.name(), node_layer.name())
-                    suffix = "(Source)" if identifier == "qgisred_main_sources" else "(Mult.Dem)"
-                    return f"{singular} {node_id} {suffix}"
+                    suffix_list = []
+                    if identifier == "qgisred_main_sources":
+                        suffix_list.append("(Source)")
+                    else:
+                        suffix_list.append("(Mult.Dem)")
+                    other_layer_id = "qgisred_main_demands" if identifier == "qgisred_main_sources" else "qgisred_main_sources"
+                    other_layer_obj = self.getLayerByIdentifier(other_layer_id)
+                    if other_layer_obj:
+                        for other_feat in other_layer_obj.getFeatures():
+                            if self.areOverlappedPoints(node_feature.geometry(), other_feat.geometry()):
+                                if other_layer_id == "qgisred_main_sources":
+                                    suffix_list.append("(Source)")
+                                else:
+                                    suffix_list.append("(Mult.Dem)")
+                                break
+                    suffix_str = " ".join(suffix_list)
+                    return f"{singular} {node_id} {suffix_str}"
                 return str(node_id)
             return ""
         else:
             value = feature.attribute("Id")
             id_str = str(value) if value is not None else ""
-            
             if special_naming and identifier in ["qgisred_main_junctions", "qgisred_main_reservoirs", "qgisred_main_tanks"]:
                 suffixes = []
-                # Check sources
                 source_layer = self.getLayerByIdentifier("qgisred_main_sources")
                 if source_layer:
                     for src_feat in source_layer.getFeatures():
                         if self.areOverlappedPoints(feature.geometry(), src_feat.geometry()):
                             suffixes.append("(Source)")
                             break
-                # Check demands for junctions
                 if identifier == "qgisred_main_junctions":
                     demand_layer = self.getLayerByIdentifier("qgisred_main_demands")
                     if demand_layer:
@@ -365,6 +380,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                 if suffixes:
                     id_str += " " + " ".join(suffixes)
             return id_str
+
 
     def getLayerByIdentifier(self, identifier):
         for layer in self.getCheckedInputGroupLayers():
@@ -381,7 +397,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         return text
 
     def onFindButtonClicked(self):
-        # If there's a selected item in listWidget, re-use the double-click logic
         if self.listWidget.currentItem():
             self.onListItemDoubleClicked(self.listWidget.currentItem())
         else:
