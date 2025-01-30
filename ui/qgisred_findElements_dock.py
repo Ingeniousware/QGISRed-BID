@@ -165,18 +165,38 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         element_type = self.cbElementType.currentText()
         element_identifier = self.layers_identifiers.get(element_type)
         
+        # Handle sources/demands first
         if element_identifier in self.sources_and_demands:
             node_layer, node_feature = self.findNodeLayer(selected_id)
             if node_layer and node_feature:
-                source_feature, source_layer = self.findOverlappedNode(node_feature, node_layer)
-                if source_feature:
-                    singular = self.singular_forms.get(source_feature, source_layer.name())
-                    suffix = "(Source)" if element_identifier == "qgisred_main_sources" else "(Multiple Demand)"
-                    self.labelFoundElement.setText(f"{singular} {selected_id} {suffix}")
-                    return
-
-        singular = self.singular_forms.get(element_type) or element_type
-        self.labelFoundElement.setText(f"{singular} {selected_id}")
+                suffix = "(Source)" if element_identifier == "qgisred_main_sources" else "(Mult.Dem)"
+                singular = self.singular_forms.get(node_layer.name(), node_layer.name())
+                self.labelFoundElement.setText(f"{singular} {selected_id} {suffix}")
+                return
+        else:
+            # Handle nodes (junctions, reservoirs, tanks) with suffixes
+            suffixes = []
+            node_layer = self.getLayerForElementType(element_type)
+            if node_layer:
+                for feature in node_layer.getFeatures():
+                    if self.getFeatureIdValue(feature, node_layer) == selected_id:
+                        # Check for overlapping sources
+                        source_feature, _ = self.findSourceOrDemandForNodeId(selected_id)
+                        if source_feature:
+                            suffixes.append("(Source)")
+                        # Check for demands only if junction
+                        if element_identifier == "qgisred_main_junctions":
+                            demand_layer = self.getLayerByIdentifier("qgisred_main_demands")
+                            if demand_layer:
+                                for demand_feat in demand_layer.getFeatures():
+                                    if self.areOverlappedPoints(feature.geometry(), demand_feat.geometry()):
+                                        suffixes.append("(Mult.Dem)")
+                                        break
+                        break
+            
+            suffix_str = " ".join(suffixes)
+            singular = self.singular_forms.get(element_type, element_type)
+            self.labelFoundElement.setText(f"{singular} {selected_id} {suffix_str}".strip())
 
     def getLayerForElementType(self, element_type):
         project = QgsProject.instance()
@@ -260,31 +280,31 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         feature_geom = point_feature.geometry()
         if feature_geom.isEmpty():
             return None, None
-            
+
         feature_point = feature_geom.asPoint()
         feature_point_geom = QgsGeometry.fromPointXY(feature_point)
-        
+
         for node_layer in self.getCheckedInputGroupLayers():
-            # Skip the current layer to avoid finding itself
             if node_layer == current_layer:
                 continue
-                
+
             node_identifier = node_layer.customProperty("qgisred_identifier", "")
-            if node_identifier in self.node_layers:
+            if node_identifier in self.node_layers and node_identifier not in self.sources_and_demands:
                 for node_feature in node_layer.getFeatures():
                     node_geom = node_feature.geometry()
                     if node_geom.isEmpty():
                         continue
-                        
+
                     node_point = node_geom.asPoint()
                     node_point_geom = QgsGeometry.fromPointXY(node_point)
-                    
+
                     if self.areOverlappedPoints(feature_point_geom, node_point_geom):
                         return node_feature, node_layer
-                        
+
         return None, None
 
     def findSourceOrDemandForNodeId(self, node_id):
+        # Find the node layer and feature for the given ID
         node_layer, node_feat = self.findNodeLayer(node_id)
         if not node_layer or not node_feat:
             return None, None 
@@ -293,6 +313,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if node_geom.isEmpty():
             return None, None 
 
+        # Check sources and demands layers directly
         for layer in self.getCheckedInputGroupLayers():
             identifier = layer.customProperty("qgisred_identifier", "")
             if identifier in self.sources_and_demands: 
@@ -313,22 +334,46 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if identifier in self.sources_and_demands:
             node_feature, node_layer = self.findOverlappedNode(feature, layer)
             if node_feature:
-                node_id = node_feature.attribute("Id")
-                if node_id is not None:
-                    if special_naming: 
-                        singular = self.singular_forms.get(node_feature, node_layer.name())
-                        suffix = "(Source)" if identifier == "qgisred_main_sources" else "(Multiple Demand)"
-                        return f"{singular} {node_id} {suffix}"
-                    return str(node_id)
+                node_id = self.extractNodeId(node_feature.attribute("Id"))
+                if special_naming: 
+                    singular = self.singular_forms.get(node_layer.name(), node_layer.name())
+                    suffix = "(Source)" if identifier == "qgisred_main_sources" else "(Mult.Dem)"
+                    return f"{singular} {node_id} {suffix}"
+                return str(node_id)
             return ""
-        
-        value = feature.attribute("Id")
-        if value is None:
-            return ""
-        return str(value)
+        else:
+            value = feature.attribute("Id")
+            id_str = str(value) if value is not None else ""
+            
+            if special_naming and identifier in ["qgisred_main_junctions", "qgisred_main_reservoirs", "qgisred_main_tanks"]:
+                suffixes = []
+                # Check sources
+                source_layer = self.getLayerByIdentifier("qgisred_main_sources")
+                if source_layer:
+                    for src_feat in source_layer.getFeatures():
+                        if self.areOverlappedPoints(feature.geometry(), src_feat.geometry()):
+                            suffixes.append("(Source)")
+                            break
+                # Check demands for junctions
+                if identifier == "qgisred_main_junctions":
+                    demand_layer = self.getLayerByIdentifier("qgisred_main_demands")
+                    if demand_layer:
+                        for dmnd_feat in demand_layer.getFeatures():
+                            if self.areOverlappedPoints(feature.geometry(), dmnd_feat.geometry()):
+                                suffixes.append("(Mult.Dem)")
+                                break
+                if suffixes:
+                    id_str += " " + " ".join(suffixes)
+            return id_str
+
+    def getLayerByIdentifier(self, identifier):
+        for layer in self.getCheckedInputGroupLayers():
+            if layer.customProperty("qgisred_identifier") == identifier:
+                return layer
+        return None
     
     def extractNodeId(self, text):
-        text = text.replace(" (Source)", "").replace(" (Multiple Demand)", "")
+        text = text.replace(" (Source)", "").replace(" (Mult.Dem)", "")
         
         parts = text.strip().split()
         if len(parts) > 1:
@@ -535,8 +580,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         # Handle special suffixes
         if "(Source)" in text:
             text = text.replace(" (Source)", "")
-        elif "(Multiple Demand)" in text:
-            text = text.replace(" (Multiple Demand)", "")
+        elif "(Mult.Dem)" in text:
+            text = text.replace(" (Mult.Dem)", "")
             
         parts = text.split(" ", 1)
         if len(parts) < 2:
@@ -582,8 +627,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if "(Source)" in text:
             text = text.replace(" (Source)", "")
             print("DEBUG: Found '(Source)' in text. Updated text:", text)
-        elif "(Multiple Demand)" in text:
-            text = text.replace(" (Multiple Demand)", "")
+        elif "(Mult.Dem)" in text:
+            text = text.replace(" (Mult.Dem)", "")
             print("DEBUG: Found '(Multiple Demand)' in text. Updated text:", text)
 
         parts = text.split(" ", 1)
