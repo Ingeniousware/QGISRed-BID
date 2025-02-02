@@ -577,34 +577,35 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         for link_layer, feature, link_info in found_links:
             self.listWidget.addItem(link_info)
 
+    def extractTypeAndId(self, text):
+        text = text.replace(" (Source)", "").replace(" (Mult.Dem)", "").strip()
+
+        sorted_singulars = sorted(self.singular_forms.values(), key=len, reverse=True)
+        for singular in sorted_singulars:
+            if text.startswith(singular + " "):
+                selected_id = text[len(singular):].strip()
+                return singular, selected_id
+
+        parts = text.split(" ", 1)
+        if len(parts) < 2:
+            return None, None
+        return parts[0], parts[1].strip()
 
     def onListItemSingleClicked(self, item):
         if self.current_selected_highlight:
             self.current_selected_highlight.hide()
             self.current_selected_highlight = None
 
-        text = item.text()
-        
-        # Handle special suffixes
-        if "(Source)" in text:
-            text = text.replace(" (Source)", "")
-        
-        if "(Mult.Dem)" in text:
-            text = text.replace(" (Mult.Dem)", "")
-            
-        parts = text.split(" ", 1)
-        if len(parts) < 2:
+        singular_type, selected_id = self.extractTypeAndId(item.text())
+        if not singular_type or not selected_id:
             return
-
-        singular_type = parts[0]
-        selected_id = parts[1].strip()
 
         element_identifier = None
         for plural, singular in self.singular_forms.items():
             if singular == singular_type:
                 element_identifier = self.layers_identifiers.get(plural)
                 break
-                
+
         if not element_identifier:
             element_identifier = self.layers_identifiers.get(singular_type)
 
@@ -612,7 +613,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             layer for layer in self.getCheckedInputGroupLayers()
             if layer.customProperty("qgisred_identifier") == element_identifier
         ]
-        
+
         for layer in matching_layers:
             for feature in layer.getFeatures():
                 if self.getFeatureIdValue(feature, layer) == selected_id:
@@ -625,14 +626,9 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
     def onListItemDoubleClicked(self, item):
         self.leElementMask.clear()
-        text = item.text()
-        parts = text.split(" ", 1)
-
-        if len(parts) < 2:
+        singular_type, selected_id = self.extractTypeAndId(item.text())
+        if not singular_type or not selected_id:
             return
-
-        singular_type = parts[0]
-        selected_id = parts[1].strip()
 
         element_type = None
         for plural, singular in self.singular_forms.items():
@@ -642,7 +638,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         if not element_type:
             element_type = singular_type
-            
+
         self.cbElementType.setCurrentText(element_type)
 
         index = self.cbElementId.findText(selected_id)
@@ -651,7 +647,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             self.cbElementId.setCurrentIndex(index)
 
         self.findElement()
-
 
     def closeEvent(self, event):
         root = QgsProject.instance().layerTreeRoot()
