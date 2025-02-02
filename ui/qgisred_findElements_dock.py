@@ -588,7 +588,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         # Handle special suffixes
         if "(Source)" in text:
             text = text.replace(" (Source)", "")
-        elif "(Mult.Dem)" in text:
+        
+        if "(Mult.Dem)" in text:
             text = text.replace(" (Mult.Dem)", "")
             
         parts = text.split(" ", 1)
