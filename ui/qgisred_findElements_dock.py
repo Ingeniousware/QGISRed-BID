@@ -166,14 +166,25 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             self.labelFoundElement.setText("")
             return
 
-        node_layer, node_feature = self.findNodeLayer(selected_id)
+        if layer:
+            # Restrict search to the provided layer.
+            node_feature = None
+            for feat in layer.getFeatures():
+                if self.getFeatureIdValue(feat, layer) == selected_id:
+                    node_feature = feat
+                    break
+            node_layer = layer if node_feature else None
+        else:
+            node_layer, node_feature = self.findNodeLayer(selected_id)
+
         if node_layer and node_feature:
             suffixes = []
 
             source_layer = self.getLayerByIdentifier("qgisred_main_sources")
             if source_layer:
                 for src_feat in source_layer.getFeatures():
-                    if not src_feat.geometry().isEmpty() and self.areOverlappedPoints(node_feature.geometry(), src_feat.geometry()):
+                    if (not src_feat.geometry().isEmpty() and
+                            self.areOverlappedPoints(node_feature.geometry(), src_feat.geometry())):
                         suffixes.append("(Source)")
                         break
 
@@ -182,15 +193,16 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                 demand_layer = self.getLayerByIdentifier("qgisred_main_demands")
                 if demand_layer:
                     for dmnd_feat in demand_layer.getFeatures():
-                        if not dmnd_feat.geometry().isEmpty() and self.areOverlappedPoints(node_feature.geometry(), dmnd_feat.geometry()):
+                        if (not dmnd_feat.geometry().isEmpty() and
+                                self.areOverlappedPoints(node_feature.geometry(), dmnd_feat.geometry())):
                             suffixes.append("(Mult.Dem)")
                             break
 
             singular_node_type = self.singular_forms.get(node_layer.name(), node_layer.name())
             suffix_str = " ".join(suffixes)
             self.labelFoundElement.setText(f"{singular_node_type} {selected_id} {suffix_str}".strip())
-
         else:
+            # Fallback if no matching node feature is found.
             element_type = self.cbElementType.currentText()
             singular_element_type = self.singular_forms.get(element_type, element_type)
             self.labelFoundElement.setText(f"{singular_element_type} {selected_id}")
@@ -416,20 +428,23 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         layer = self.getLayerForElementType(selected_type)
         if layer:
             found_feature = None
+            found_feature_layer = None
 
             if layer.customProperty("qgisred_identifier") in self.sources_and_demands:
-                found_feature, _ = self.findSourceOrDemandForNodeId(selected_id)
+                found_feature, found_feature_layer = self.findSourceOrDemandForNodeId(selected_id)
             else:
                 for feature in layer.getFeatures():
                     if self.getFeatureIdValue(feature, layer) == selected_id:
                         found_feature = feature
+                        found_feature_layer = layer
                         break
-                    
+
             if not found_feature:
                 QMessageBox.information(self, "Info", "Feature not found")
                 return
                 
-            self.updateFoundElementLabel(selected_id)
+            # Now update the label using the specific layer where the feature was found.
+            self.updateFoundElementLabel(selected_id, found_feature_layer)
             
             highlight = QgsHighlight(iface.mapCanvas(), found_feature.geometry(), layer)
             highlight.setColor(QColor("red"))
@@ -445,6 +460,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                 self.findNodesAndLinksAdjacencies(found_feature)
             else:
                 self.findAdjacentLinksByGeometry(found_feature)
+
 
     def isLineElement(self, layer):
         return layer.customProperty("qgisred_identifier") in self.link_layers
