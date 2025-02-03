@@ -641,7 +641,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         self.cbElementType.setCurrentText(element_type)
 
-        index = self.cbElementId.findText(selected_id)
+        text = item.text()
+        parts = text.split(" ", 1)
+        full_selected_id = parts[1].strip()
+        index = self.cbElementId.findText(full_selected_id)
 
         if index >= 0:
             self.cbElementId.setCurrentIndex(index)
