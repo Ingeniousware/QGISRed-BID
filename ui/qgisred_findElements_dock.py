@@ -578,25 +578,38 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             self.listWidget.addItem(link_info)
 
     def extractTypeAndId(self, text):
-        text = text.replace(" (Source)", "").replace(" (Mult.Dem)", "").strip()
+        original_text = text.strip()
+        
+        text_clean = original_text.replace(" (Source)", "").replace(" (Mult.Dem)", "").strip()
 
         sorted_singulars = sorted(self.singular_forms.values(), key=len, reverse=True)
         for singular in sorted_singulars:
-            if text.startswith(singular + " "):
-                selected_id = text[len(singular):].strip()
-                return singular, selected_id
+            if text_clean.startswith(singular + " "):
+                selected_id = text_clean[len(singular):].strip()
+                if original_text.startswith(singular + " "):
+                    full_id = original_text[len(singular):].strip()
+                else:
+                    full_id = selected_id
+                return singular, selected_id, full_id
 
-        parts = text.split(" ", 1)
+        parts = text_clean.split(" ", 1)
         if len(parts) < 2:
-            return None, None
-        return parts[0], parts[1].strip()
+            return None, None, None
+        singular = parts[0]
+        selected_id = parts[1].strip()
+        if original_text.startswith(singular + " "):
+            full_id = original_text[len(singular):].strip()
+        else:
+            full_id = selected_id
+        return singular, selected_id, full_id
+
 
     def onListItemSingleClicked(self, item):
         if self.current_selected_highlight:
             self.current_selected_highlight.hide()
             self.current_selected_highlight = None
 
-        singular_type, selected_id = self.extractTypeAndId(item.text())
+        singular_type, selected_id, _ = self.extractTypeAndId(item.text())
         if not singular_type or not selected_id:
             return
 
@@ -626,7 +639,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
     def onListItemDoubleClicked(self, item):
         self.leElementMask.clear()
-        singular_type, selected_id = self.extractTypeAndId(item.text())
+        singular_type, selected_id, full_id = self.extractTypeAndId(item.text())
         if not singular_type or not selected_id:
             return
 
@@ -641,10 +654,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         self.cbElementType.setCurrentText(element_type)
 
-        text = item.text()
-        parts = text.split(" ", 1)
-        full_selected_id = parts[1].strip()
-        index = self.cbElementId.findText(full_selected_id)
+        index = self.cbElementId.findText(full_id)
 
         if index >= 0:
             self.cbElementId.setCurrentIndex(index)
