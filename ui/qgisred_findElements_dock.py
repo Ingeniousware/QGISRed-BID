@@ -471,6 +471,22 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
     def areOverlappedPoints(self, point1, point2, tolerance=1e-9):
         return point1.distance(point2) < tolerance
 
+    def addServiceConnectionAdjacencies(self, current_geom, tolerance):
+        service_layers = [
+            layer for layer in self.getCheckedInputGroupLayers()
+            if layer.customProperty("qgisred_identifier") == "qgisred_main_serviceconnections"
+        ]
+        for layer in service_layers:
+            for feat in layer.getFeatures():
+                service_geom = feat.geometry()
+                if service_geom.isEmpty():
+                    continue
+                if current_geom.intersects(service_geom) or current_geom.distance(service_geom) < tolerance:
+                    service_id = self.getFeatureIdValue(feat, layer)
+                    singular = self.singular_forms.get(layer.name(), layer.name())
+                    item_text = f"{singular} {service_id}"
+                    self.listWidget.addItem(item_text)
+
     def findAdjacentNodesByGeometry(self, line_feature):
         geom = line_feature.geometry()
         if geom.isEmpty():
@@ -543,6 +559,9 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         for node_layer, feature, node_info in found_nodes:
             self.listWidget.addItem(node_info)
 
+        # Check for adjacent service connections
+        self.addServiceConnectionAdjacencies(line_geom, tolerance)
+
     def findAdjacentLinksByGeometry(self, node_feature):
         node_geom = node_feature.geometry()
         if node_geom.isEmpty():
@@ -562,11 +581,11 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         for link_layer in link_map_layers:
             if link_layer.geometryType() != 1:
                 continue
-                
+
             identifier = link_layer.customProperty("qgisred_identifier", "")
             if not identifier:
                 continue
-                
+
             for f in link_layer.getFeatures():
                 link_geom = f.geometry()
                 if link_geom.isMultipart():
@@ -584,14 +603,15 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     or self.areOverlappedPoints(node_g, QgsGeometry.fromPointXY(line_points[-1]))
                 ):
                     link_id = self.getFeatureIdValue(f, link_layer)
-                    
-                    #layer_name = next((name for name, id in self.layers_identifiers.items() if id == identifier), identifier)
                     layer_name = link_layer.name()
                     singular = self.singular_forms.get(layer_name) or layer_name
                     found_links.append((link_layer, f, f"{singular} {link_id}"))
 
         for link_layer, feature, link_info in found_links:
             self.listWidget.addItem(link_info)
+
+        # Check for adjacent service connections
+        self.addServiceConnectionAdjacencies(node_g, tolerance)
 
     def extractTypeAndId(self, text):
         original_text = text.strip()
