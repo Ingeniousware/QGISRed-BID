@@ -650,6 +650,12 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             full_id = selected_id
         return singular, selected_id, full_id
 
+    def getIdentifierFromLayerName(self, layer_name):
+        layers = QgsProject.instance().mapLayersByName(layer_name)
+        if layers:
+            layer = layers[0]
+            return layer.customProperty("qgisred_identifier", None)
+        return None
 
     def onListItemSingleClicked(self, item):
         if self.current_selected_highlight:
@@ -667,8 +673,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                 break
 
         if not element_identifier:
-            element_identifier = self.layers_identifiers.get(singular_type)
-
+            element_identifier = self.getIdentifierFromLayerName(singular_type)
+            
         matching_layers = [
             layer for layer in self.getCheckedInputGroupLayers()
             if layer.customProperty("qgisred_identifier") == element_identifier
