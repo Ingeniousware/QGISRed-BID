@@ -207,6 +207,17 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             singular_element_type = self.singular_forms.get(element_type, element_type)
             self.labelFoundElement.setText(f"{singular_element_type} {selected_id}")
 
+    def setDefaultValue(self):
+        self.clearAll()
+
+        pipes_layer = self.getLayerByIdentifier("qgisred_main_pipes")
+        if not pipes_layer:
+            return
+
+        pipes_layer_name = pipes_layer.name()
+        self.cbElementType.setCurrentText(pipes_layer_name)
+        self.updateElementIds()
+
     def getLayerForElementType(self, element_type):
         project = QgsProject.instance()
         layer_name = element_type
