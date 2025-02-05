@@ -85,14 +85,19 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         self.link_layers = ["qgisred_main_pipes", "qgisred_main_pumps", "qgisred_main_valves"]
 
-        self.node_layers = ["qgisred_main_reservoirs", "qgisred_main_tanks", "qgisred_main_junctions", 
-                            "qgisred_main_meters", "qgisred_main_isolationvalves", "qgisred_main_sources", "qgisred_main_demands"]
+        self.node_layers = ["qgisred_main_reservoirs", "qgisred_main_tanks", "qgisred_main_junctions"
+                            , "qgisred_main_sources", "qgisred_main_demands"]
         
         self.special_layers = ["qgisred_main_serviceconnections"]
         
         self.sources_and_demands = ["qgisred_main_sources", "qgisred_main_demands"]
 
-        self.above_pipes_layers = ["Meters"]
+        self.digital_twins = [
+            "qgisred_main_meters",
+            "qgisred_main_isolationvalves",
+            "qgisred_main_serviceconnections"
+        ]
+
         self.setDockStyle()
         
         font = QFont()
@@ -180,15 +185,20 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if node_layer and node_feature:
             suffixes = []
 
-            source_layer = self.getLayerByIdentifier("qgisred_main_sources")
-            if source_layer:
-                for src_feat in source_layer.getFeatures():
-                    if (not src_feat.geometry().isEmpty() and
-                            self.areOverlappedPoints(node_feature.geometry(), src_feat.geometry())):
-                        suffixes.append("(Source)")
-                        break
-
+            # Get the node's identifier from the layer custom property.
             node_identifier = node_layer.customProperty("qgisred_identifier", "")
+
+            # Only check for a source if the node is a junction, reservoir or tank.
+            if node_identifier in ["qgisred_main_junctions", "qgisred_main_reservoirs", "qgisred_main_tanks"]:
+                source_layer = self.getLayerByIdentifier("qgisred_main_sources")
+                if source_layer:
+                    for src_feat in source_layer.getFeatures():
+                        if (not src_feat.geometry().isEmpty() and
+                                self.areOverlappedPoints(node_feature.geometry(), src_feat.geometry())):
+                            suffixes.append("(Source)")
+                            break
+
+            # For junctions, check for a multiple demand (if any).
             if node_identifier == "qgisred_main_junctions":
                 demand_layer = self.getLayerByIdentifier("qgisred_main_demands")
                 if demand_layer:
@@ -465,10 +475,21 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             
             self.adjustMapView(found_feature)
             
+            identifier = layer.customProperty("qgisred_identifier")
+            # if identifier in self.only_node_layers:
+            #     # Only highlight the node; do not show adjacent elements.
+            #     return
+    
             if self.isLineElement(layer):
                 self.findAdjacentNodesByGeometry(found_feature)
-            elif self.isSpecialElement(layer):
-                self.findNodesAndLinksAdjacencies(found_feature)
+            # elif self.isSpecialElement(layer):
+            #     self.findNodesAndLinksAdjacencies(found_feature)
+            elif identifier == "qgisred_main_meters":
+                self.findMeterAdjacency(found_feature, layer)
+            elif identifier == "qgisred_main_isolationvalves":
+                self.findIsolationValveAdjacency(found_feature, layer)
+            elif identifier == "qgisred_main_serviceconnections":
+                self.findServiceConnectionAdjacency(found_feature, layer) 
             else:
                 self.findAdjacentLinksByGeometry(found_feature)
 
@@ -674,7 +695,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         if not element_identifier:
             element_identifier = self.getIdentifierFromLayerName(singular_type)
-            
+
         matching_layers = [
             layer for layer in self.getCheckedInputGroupLayers()
             if layer.customProperty("qgisred_identifier") == element_identifier
@@ -988,6 +1009,141 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         for link_layer, feature_item, link_info in found_links:
             self.listWidget.addItem(link_info)
 
+    def findServiceConnectionAdjacency(self, feature, current_layer):
+        geom = feature.geometry()
+        print(f"Feature Geometry: {geom}")
+        if geom.isEmpty():
+            print("Geometry is empty.")
+            return
+
+        if geom.isMultipart():
+            parts = geom.asMultiPolyline()
+            print(f"Multipart geometry: {parts}")
+            if not parts or not parts[0]:
+                print("No valid parts found.")
+                return
+            line_points = parts[0]
+        else:
+            line_points = geom.asPolyline()
+        print(f"Line points: {line_points}")
+        if not line_points:
+            print("No line points found.")
+            return
+
+        endpoints = [QgsPointXY(line_points[0]), QgsPointXY(line_points[-1])]
+        print(f"Endpoints: {endpoints}")
+        tolerance = 1e-6
+
+        # Check endpoints for a junction node and add it to the list widget if found
+        for pt in endpoints:
+            print(f"Checking endpoint: {pt}")
+            dummy_feature = QgsFeature()
+            dummy_feature.setGeometry(QgsGeometry.fromPointXY(pt))
+            node_feature, node_layer = self.findOverlappedNode(dummy_feature, current_layer)
+            print(f"Found node: {node_feature}, Layer: {node_layer}")
+            if node_feature and node_layer.customProperty("qgisred_identifier") == "qgisred_main_junctions":
+                # Add the found junction as an item and exit immediately.
+                junction_id = self.getFeatureIdValue(node_feature, node_layer)
+                singular = self.singular_forms.get(node_layer.name(), node_layer.name())
+                self.listWidget.addItem(f"{singular} {junction_id}")
+                print("Found junction node, added to list and exiting.")
+                return
+
+        # If no junction was found on endpoints, look for adjacent pipes
+        for pt in endpoints:
+            pt_geom = QgsGeometry.fromPointXY(pt)
+            for layer in self.getCheckedInputGroupLayers():
+                print(f"Checking layer: {layer.name()}")
+                if layer.customProperty("qgisred_identifier") == "qgisred_main_pipes":
+                    for f in layer.getFeatures():
+                        pipe_geom = f.geometry()
+                        if pipe_geom.isEmpty():
+                            continue
+                        print(f"Pipe Geometry: {pipe_geom}")
+                        if pt_geom.distance(pipe_geom) < tolerance:
+                            pipe_id = self.getFeatureIdValue(f, layer)
+                            singular = self.singular_forms.get(layer.name(), layer.name())
+                            print(f"Adjacent Pipe Found: {singular} {pipe_id}")
+                            self.listWidget.addItem(f"{singular} {pipe_id}")
+                            return
+
+    def findIsolationValveAdjacency(self, feature, current_layer):
+        geom = feature.geometry()
+        print(f"Feature Geometry: {geom}")
+        if geom.isEmpty():
+            print("Geometry is empty.")
+            return
+
+        tolerance = 1e-6
+
+        # Check for an overlapping node
+        node_feature, node_layer = self.findOverlappedNode(feature, current_layer)
+        print(f"Found node: {node_feature}, Layer: {node_layer}")
+        if node_feature and node_layer.customProperty("qgisred_identifier") == "qgisred_main_junctions":
+            # Add the found node as an item and return.
+            node_id = self.getFeatureIdValue(node_feature, node_layer)
+            singular = self.singular_forms.get(node_layer.name(), node_layer.name())
+            self.listWidget.addItem(f"{singular} {node_id}")
+            print("Found junction node for Isolation Valve, added to list and exiting.")
+            return
+
+        # Otherwise, look for adjacent pipes.
+        for layer in self.getCheckedInputGroupLayers():
+            print(f"Checking layer: {layer.name()}")
+            if layer.customProperty("qgisred_identifier") == "qgisred_main_pipes":
+                for f in layer.getFeatures():
+                    pipe_geom = f.geometry()
+                    if pipe_geom.isEmpty():
+                        continue
+                    print(f"Pipe Geometry: {pipe_geom}")
+                    if geom.distance(pipe_geom) < tolerance:
+                        pipe_id = self.getFeatureIdValue(f, layer)
+                        singular = self.singular_forms.get(layer.name(), layer.name())
+                        print(f"Adjacent Pipe Found: {singular} {pipe_id}")
+                        self.listWidget.addItem(f"{singular} {pipe_id}")
+                        return 
+
+    def findMeterAdjacency(self, feature, current_layer):
+        geom = feature.geometry()
+        print(f"Feature Geometry: {geom}")
+        if geom.isEmpty():
+            print("Geometry is empty.")
+            return
+
+        tolerance = 1e-6
+
+        # Check for an overlapping node that is either a junction, tank, or reservoir.
+        node_feature, node_layer = self.findOverlappedNode(feature, current_layer)
+        print(f"Found node: {node_feature}, Layer: {node_layer}")
+        if node_feature and node_layer.customProperty("qgisred_identifier") in [
+            "qgisred_main_junctions", "qgisred_main_tanks", "qgisred_main_reservoirs"
+        ]:
+            # Add the found node as an item and return.
+            node_id = self.getFeatureIdValue(node_feature, node_layer)
+            singular = self.singular_forms.get(node_layer.name(), node_layer.name())
+            self.listWidget.addItem(f"{singular} {node_id}")
+            print("Found restricted node (junction/tank/reservoir), added to list and exiting.")
+            return
+
+        # Otherwise, check adjacent pipes, pumps, or valves.
+        for layer in self.getCheckedInputGroupLayers():
+            print(f"Checking layer: {layer.name()}")
+            if layer.customProperty("qgisred_identifier") in [
+                "qgisred_main_pipes", "qgisred_main_pumps", "qgisred_main_valves"
+            ]:
+                for f in layer.getFeatures():
+                    link_geom = f.geometry()
+                    if link_geom.isEmpty():
+                        continue
+                    print(f"Link Geometry: {link_geom}")
+                    if geom.distance(link_geom) < tolerance:
+                        adj_id = self.getFeatureIdValue(f, layer)
+                        singular = self.singular_forms.get(layer.name(), layer.name())
+                        print(f"Adjacent Element Found: {singular} {adj_id}")
+                        self.listWidget.addItem(f"{singular} {adj_id}")
+                        return
+
+                    
     def disconnectLayerSignals(self, layer):
         try:
             if hasattr(layer, 'nameChanged'):
