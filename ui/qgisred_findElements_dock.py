@@ -682,6 +682,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     highlight.setWidth(5)
                     highlight.show()
                     self.current_selected_highlight = highlight
+                    self.adjustMapView(feature)
                     return
 
     def onListItemDoubleClicked(self, item):
