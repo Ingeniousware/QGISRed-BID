@@ -4405,10 +4405,6 @@ class QGISRed:
         else:
             self.dock = QGISRedFindElementsDock()
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
-            self.dock.setMinimumSize(300, 328)
-            self.dock.setMaximumSize(100000, 328)
-            self.dock.adjustSize()
-
             self.dock.show()
 
     # ==============================================================
