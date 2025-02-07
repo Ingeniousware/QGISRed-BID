@@ -1135,17 +1135,14 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         node_feature, node_layer = self.findOverlappedNode(feature, current_layer)
         if node_feature:
-            node_item_text = self.getFeatureIdValue(node_feature, node_layer, special_naming=True)
-            # Use the singular form of the node layer name
-            if node_layer.customProperty("qgisred_identifier") == "qgisred_main_junctions":
-                singular_name = self.singular_forms.get(node_layer.name(), node_layer.name())
-                node_item_text = singular_name + ' ' + node_item_text
+            node_id = self.getFeatureIdValue(node_feature, node_layer, special_naming=True)
+            singular_name = self.singular_forms.get(node_layer.name(), node_layer.name())
+            node_item_text = singular_name + ' ' + node_id
             self.listWidget.addItem(node_item_text)
             return
 
         for layer in self.getCheckedInputGroupLayers():
-            if layer.customProperty("qgisred_identifier") not in [
-                "qgisred_main_meters"]:
+            if layer.customProperty("qgisred_identifier") != "qgisred_main_meters":
                 for f in layer.getFeatures():
                     link_geom = f.geometry()
                     if link_geom.isEmpty():
