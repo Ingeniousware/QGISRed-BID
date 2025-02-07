@@ -106,6 +106,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         font.setPointSize(12)
         font.setBold(True)
         self.labelFoundElement.setFont(font)
+        self.labelFoundElement.setWordWrap(True)
         
         self.setupConnections()
         self.initializeCustomLayerProperties()
@@ -116,6 +117,9 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if settings.contains("QGISRed/FindElements/geometry"):
             self.restoreGeometry(settings.value("QGISRed/FindElements/geometry"))
 
+    def sizeHint(self):
+        return self.minimumSize()
+    
     def findNodeLayer(self, node_id):
         for layer in self.getCheckedInputGroupLayers():
             identifier = layer.customProperty("qgisred_identifier", "")
