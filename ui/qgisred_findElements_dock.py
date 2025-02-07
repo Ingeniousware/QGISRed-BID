@@ -925,13 +925,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             pass
 
     def getCheckedInputGroupLayers(self):
-        input_layers = []
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
-        
-        if inputs_group:
-            input_layers = inputs_group.checkedLayers()
-        
-        return input_layers
+        return list(reversed(inputs_group.checkedLayers())) if inputs_group else []
 
     def initializeCustomLayerProperties(self):
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
