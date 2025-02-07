@@ -190,8 +190,9 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             self.labelFoundElement.setText("")
             return
 
-        if layer:
-            # Restrict search to the provided layer.
+        if layer and layer.customProperty("qgisred_identifier") in self.sources_and_demands:
+            node_layer, node_feature = self.findNodeLayer(selected_id)
+        elif layer:
             node_feature = None
             for feat in layer.getFeatures():
                 if self.getFeatureIdValue(feat, layer) == selected_id:
@@ -203,27 +204,23 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         if node_layer and node_feature:
             suffixes = []
-
-            # Get the node's identifier from the layer custom property.
             node_identifier = node_layer.customProperty("qgisred_identifier", "")
 
-            # Only check for a source if the node is a junction, reservoir or tank.
             if node_identifier in ["qgisred_main_junctions", "qgisred_main_reservoirs", "qgisred_main_tanks"]:
                 source_layer = self.getLayerByIdentifier("qgisred_main_sources")
                 if source_layer:
                     for src_feat in source_layer.getFeatures():
                         if (not src_feat.geometry().isEmpty() and
-                                self.areOverlappedPoints(node_feature.geometry(), src_feat.geometry())):
+                            self.areOverlappedPoints(node_feature.geometry(), src_feat.geometry())):
                             suffixes.append("(Source)")
                             break
 
-            # For junctions, check for a multiple demand (if any).
             if node_identifier == "qgisred_main_junctions":
                 demand_layer = self.getLayerByIdentifier("qgisred_main_demands")
                 if demand_layer:
                     for dmnd_feat in demand_layer.getFeatures():
                         if (not dmnd_feat.geometry().isEmpty() and
-                                self.areOverlappedPoints(node_feature.geometry(), dmnd_feat.geometry())):
+                            self.areOverlappedPoints(node_feature.geometry(), dmnd_feat.geometry())):
                             suffixes.append("(Mult.Dem)")
                             break
 
@@ -231,10 +228,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             suffix_str = " ".join(suffixes)
             self.labelFoundElement.setText(f"{singular_node_type} {selected_id} {suffix_str}".strip())
         else:
-            # Fallback if no matching node feature is found.
             element_type = self.cbElementType.currentText()
             singular_element_type = self.singular_forms.get(element_type, element_type)
             self.labelFoundElement.setText(f"{singular_element_type} {selected_id}")
+
 
     def setDefaultValue(self):
         self.clearAll()
@@ -325,7 +322,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             if isinstance(lyr, QgsVectorLayer):
                 lyr.removeSelection()
 
-    def findOverlappedNode(self, point_feature, current_layer):
+    def findOverlappedNode(self, point_feature, current_layer, supported_only=False):
         feature_geom = point_feature.geometry()
         if feature_geom.isEmpty():
             return None, None
@@ -333,24 +330,40 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         feature_point = feature_geom.asPoint()
         feature_point_geom = QgsGeometry.fromPointXY(feature_point)
 
-        for node_layer in self.getCheckedInputGroupLayers():
-            if node_layer == current_layer:
-                continue
-
-            node_identifier = node_layer.customProperty("qgisred_identifier", "")
-            if node_identifier in self.node_layers and node_identifier not in self.sources_and_demands:
+        if supported_only:
+            supported_ids = ["qgisred_main_junctions", "qgisred_main_reservoirs", "qgisred_main_tanks"]
+            for node_layer in self.getCheckedInputGroupLayers():
+                if node_layer == current_layer:
+                    continue
+                node_identifier = node_layer.customProperty("qgisred_identifier", "")
+                if node_identifier not in supported_ids:
+                    continue
                 for node_feature in node_layer.getFeatures():
                     node_geom = node_feature.geometry()
                     if node_geom.isEmpty():
                         continue
-
                     node_point = node_geom.asPoint()
                     node_point_geom = QgsGeometry.fromPointXY(node_point)
-
                     if self.areOverlappedPoints(feature_point_geom, node_point_geom):
                         return node_feature, node_layer
+            return None, None
+        else:
+            for node_layer in self.getCheckedInputGroupLayers():
+                if node_layer == current_layer:
+                    continue
 
-        return None, None
+                node_identifier = node_layer.customProperty("qgisred_identifier", "")
+                if node_identifier in self.node_layers and node_identifier not in self.sources_and_demands:
+                    for node_feature in node_layer.getFeatures():
+                        node_geom = node_feature.geometry()
+                        if node_geom.isEmpty():
+                            continue
+
+                        node_point = node_geom.asPoint()
+                        node_point_geom = QgsGeometry.fromPointXY(node_point)
+                        if self.areOverlappedPoints(feature_point_geom, node_point_geom):
+                            return node_feature, node_layer
+            return None, None
 
     def findSourceOrDemandForNodeId(self, node_id):
         node_layer, node_feat = self.findNodeLayer(node_id)
@@ -378,9 +391,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             return "Id"
                 
         identifier = layer.customProperty("qgisred_identifier")
-            
+                
         if identifier in self.sources_and_demands:
-            node_feature, node_layer = self.findOverlappedNode(feature, layer)
+            # Use the restricted lookup so that only junctions/reservoirs/tanks are found.
+            node_feature, node_layer = self.findOverlappedNode(feature, layer, supported_only=True)
             if node_feature:
                 node_id = self.extractNodeId(node_feature.attribute("Id"))
                 if special_naming:
@@ -885,8 +899,11 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         try:
             layer_node.nameChanged.connect(self.onLayerTreeChanged)
             if layer_node.layer():
-                layer_node.layer().dataChanged.connect(self.onLayerTreeChanged)
-                layer_node.visibilityChanged.connect(self.onLayerTreeChanged)
+                layer = layer_node.layer()
+                layer.dataChanged.connect(self.onLayerTreeChanged)
+                layer.featureAdded.connect(self.updateElementIds)
+                layer.featureDeleted.connect(self.updateElementIds)
+                layer.visibilityChanged.connect(self.onLayerTreeChanged)
         except:
             pass
 
@@ -1055,7 +1072,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             node_feature, node_layer = self.findOverlappedNode(dummy_feature, current_layer)
             if node_feature and node_layer.customProperty("qgisred_identifier") == "qgisred_main_junctions":
                 junction_item_text = self.getFeatureIdValue(node_feature, node_layer, special_naming=True)
-                junction_full_name = node_layer.name() + ' ' + junction_item_text
+                singular_name = self.singular_forms.get(node_layer.name(), node_layer.name())
+                junction_full_name = singular_name + ' ' + junction_item_text
                 self.listWidget.addItem(junction_full_name)
                 return
 
@@ -1083,7 +1101,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         node_feature, node_layer = self.findOverlappedNode(feature, current_layer)
         if node_feature and node_layer.customProperty("qgisred_identifier") == "qgisred_main_junctions":
             node_item_text = self.getFeatureIdValue(node_feature, node_layer, special_naming=True)
-            node_full_name = node_layer.name() + ' ' + node_item_text
+            singular_name = self.singular_forms.get(node_layer.name(), node_layer.name())
+            node_full_name = singular_name + ' ' + node_item_text
             self.listWidget.addItem(node_full_name)
             return
 
@@ -1109,9 +1128,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         node_feature, node_layer = self.findOverlappedNode(feature, current_layer)
         if node_feature:
             node_item_text = self.getFeatureIdValue(node_feature, node_layer, special_naming=True)
+            # Use the singular form of the node layer name
             if node_layer.customProperty("qgisred_identifier") == "qgisred_main_junctions":
-                layer_name = node_layer.name()
-                node_item_text = self.singular_forms.get(layer_name, layer_name) + ' ' + node_item_text
+                singular_name = self.singular_forms.get(node_layer.name(), node_layer.name())
+                node_item_text = singular_name + ' ' + node_item_text
             self.listWidget.addItem(node_item_text)
             return
 
@@ -1128,7 +1148,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                         singular = self.singular_forms.get(layer.name(), layer.name())
                         self.listWidget.addItem(f"{singular} {adj_id}")
                         return
-         
+
     def disconnectLayerSignals(self, layer):
         try:
             if hasattr(layer, 'nameChanged'):
