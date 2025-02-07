@@ -88,7 +88,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.link_layers = ["qgisred_main_pipes", "qgisred_main_pumps", "qgisred_main_valves"]
 
         self.node_layers = ["qgisred_main_reservoirs", "qgisred_main_tanks", "qgisred_main_junctions"
-                            , "qgisred_main_sources", "qgisred_main_demands"]
+                            , "qgisred_main_sources", "qgisred_main_demands", "qgisred_main_meters", "qgisred_main_isolationvalves"]
         
         self.special_layers = ["qgisred_main_serviceconnections"]
         
@@ -728,7 +728,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     highlight.setWidth(5)
                     highlight.show()
                     self.current_selected_highlight = highlight
-                    self.adjustMapView(feature)
                     return
 
     def onListItemDoubleClicked(self, item):
@@ -1108,9 +1107,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         tolerance = 1e-6
 
         node_feature, node_layer = self.findOverlappedNode(feature, current_layer)
-        if node_feature and node_layer.customProperty("qgisred_identifier") in [
-            "qgisred_main_junctions", "qgisred_main_tanks", "qgisred_main_reservoirs"
-        ]:
+        if node_feature:
             node_item_text = self.getFeatureIdValue(node_feature, node_layer, special_naming=True)
             if node_layer.customProperty("qgisred_identifier") == "qgisred_main_junctions":
                 layer_name = node_layer.name()
