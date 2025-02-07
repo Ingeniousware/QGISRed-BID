@@ -3,9 +3,9 @@ import os
 from PyQt5.QtGui import QIcon, QFont, QColor
 from PyQt5.QtWidgets import QDockWidget, QMessageBox, QLineEdit
 from qgis.PyQt import uic
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QEvent
 from qgis.PyQt.QtCore import pyqtSlot
-from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsRectangle, QgsVectorLayer, QgsSettings, QgsVectorLayer, QgsFeature, QgsRenderContext, QgsLayerMetadata
+from qgis.core import QgsProject, QgsGeometry, QgsLayerTreeLayer, QgsLayerTreeGroup, QgsPointXY, QgsRectangle, QgsVectorLayer, QgsSettings, QgsVectorLayer, QgsFeature, QgsRenderContext, QgsLayerMetadata
 from qgis.utils import iface
 from qgis.gui import QgsHighlight
 
@@ -28,6 +28,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             
         super(QGISRedFindElementsDock, self).__init__(parent)
         self.setupUi(self)
+
+        self.listWidget.installEventFilter(self)
 
         self.setObjectName("QGISRedFindElementsDock")
         
@@ -126,7 +128,12 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                         return layer, feature
         return None, None
 
-
+    def eventFilter(self, obj, event):
+        if obj == self.listWidget and event.type() == QEvent.FocusOut or (event.type() == QEvent.KeyPress and event.key() == Qt.Key_Escape):
+            self.listWidget.clearSelection()
+            self.listWidget.setCurrentRow(-1)
+        return super(QGISRedFindElementsDock, self).eventFilter(obj, event)
+        
     def getAvailableElementTypes(self):
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
         if not inputs_group:
@@ -138,9 +145,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         for identifier in self.layers_identifiers.values():
             for layer in checked_layers:
-                if layer.customProperty("qgisred_identifier") == identifier:
-                    available_types.append(layer.name())
-                    break
+                if layer:
+                    if layer.customProperty("qgisred_identifier") == identifier:
+                        available_types.append(layer.name())
+                        break
 
         return available_types
 
@@ -151,15 +159,26 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.listWidget.itemClicked.connect(self.onListItemSingleClicked)
         self.listWidget.itemDoubleClicked.connect(self.onListItemDoubleClicked)
         self.btClear.clicked.connect(self.clearAll)
-        QgsProject.instance().cleared.connect(self.clearAll)
+        self.cbElementId.currentIndexChanged.connect(self.onElementIdChanged)
 
-        root = QgsProject.instance().layerTreeRoot()
+        project = QgsProject.instance()
+        project.layersAdded.connect(self.onLayerTreeChanged)
+        project.layersRemoved.connect(self.onLayerTreeChanged)
+        project.readProject.connect(self.onLayerTreeChanged)
+        project.cleared.connect(self.onLayerTreeChanged)
+
+        root = project.layerTreeRoot()
         inputs_group = root.findGroup("Inputs")
         if inputs_group:
             inputs_group.addedChildren.connect(self.onLayerTreeChanged)
             inputs_group.removedChildren.connect(self.onLayerTreeChanged)
             for layer_node in inputs_group.findLayers():
                 self.connectLayerSignals(layer_node)
+
+    @pyqtSlot(int)
+    def onElementIdChanged(self, index):
+        self.labelFoundElement.setText("")
+        self.listWidget.clear()
 
     def initializeElementTypes(self):
         self.cbElementType.clear()
@@ -851,6 +870,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.listWidget.clear()
 
     def onLayerTreeChanged(self):
+        print( "on layer tree changed called:" )
         current_type = self.cbElementType.currentText()
         current_id = self.extractNodeId(self.cbElementId.currentText())
         self.initializeCustomLayerProperties()
@@ -898,14 +918,16 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             for element_type, identifier in self.layers_identifiers.items():
                 if layer_name == element_type:
                     layer_obj = layer.layer()
+                    if not layer_obj:
+                        continue
+
                     custom_property = layer_obj.customProperty("qgisred_identifier", None)
                     if not custom_property:
                         layer_obj.setCustomProperty("qgisred_identifier", identifier)
-                        print("HERE")
-                    layer_obj.setId(identifier)
+
                     layer_metadata = QgsLayerMetadata()
                     layer_metadata.setIdentifier(identifier)
-                    layer.layer().setMetadata(layer_metadata)
+                    layer_obj.setMetadata(layer_metadata)
 
     def findNodesAndLinksAdjacencies(self, feature):
         geom = feature.geometry()
