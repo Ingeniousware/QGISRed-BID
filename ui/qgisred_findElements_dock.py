@@ -624,7 +624,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         for node_layer, feature, node_info in found_nodes:
             self.listWidget.addItem(node_info)
 
-        # Check for adjacent service connections
         self.addServiceConnectionAdjacencies(line_geom, tolerance)
 
     def findAdjacentLinksByGeometry(self, node_feature):
@@ -637,45 +636,54 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         tolerance = 1e-9
         found_links = []
+
         link_map_layers = [
-            layer
-            for layer in self.getCheckedInputGroupLayers()
-            if layer.customProperty("qgisred_identifier") in self.link_layers
+            layer for layer in self.getCheckedInputGroupLayers()
+            if (layer.customProperty("qgisred_identifier") in self.link_layers or
+                layer.customProperty("qgisred_identifier") == "qgisred_main_meters")
         ]
 
         for link_layer in link_map_layers:
-            if link_layer.geometryType() != 1:
-                continue
-
-            identifier = link_layer.customProperty("qgisred_identifier", "")
-            if not identifier:
-                continue
-
-            for f in link_layer.getFeatures():
-                link_geom = f.geometry()
-                if link_geom.isMultipart():
-                    parts = link_geom.asMultiPolyline()
-                    line_points = parts[0] if parts else []
-                else:
-                    line_points = link_geom.asPolyline()
-
-                if not line_points:
+            ident = link_layer.customProperty("qgisred_identifier", "")
+            if ident in self.link_layers:
+                if link_layer.geometryType() != 1:
                     continue
 
-                if (
-                    node_g.distance(link_geom) < tolerance
-                    or self.areOverlappedPoints(node_g, QgsGeometry.fromPointXY(line_points[0]))
-                    or self.areOverlappedPoints(node_g, QgsGeometry.fromPointXY(line_points[-1]))
-                ):
-                    link_id = self.getFeatureIdValue(f, link_layer)
-                    layer_name = link_layer.name()
-                    singular = self.singular_forms.get(layer_name) or layer_name
-                    found_links.append((link_layer, f, f"{singular} {link_id}"))
+                for f in link_layer.getFeatures():
+                    link_geom = f.geometry()
+                    if link_geom.isMultipart():
+                        parts = link_geom.asMultiPolyline()
+                        line_points = parts[0] if parts else []
+                    else:
+                        line_points = link_geom.asPolyline()
+
+                    if not line_points:
+                        continue
+
+                    if (node_g.distance(link_geom) < tolerance or
+                        self.areOverlappedPoints(node_g, QgsGeometry.fromPointXY(line_points[0])) or
+                        self.areOverlappedPoints(node_g, QgsGeometry.fromPointXY(line_points[-1]))):
+                        link_id = self.getFeatureIdValue(f, link_layer)
+                        layer_name = link_layer.name()
+                        singular = self.singular_forms.get(layer_name) or layer_name
+                        found_links.append((link_layer, f, f"{singular} {link_id}"))
+            elif ident == "qgisred_main_meters":
+                if link_layer.geometryType() != 0:
+                    continue
+
+                for f in link_layer.getFeatures():
+                    meter_geom = f.geometry()
+                    if meter_geom.isEmpty():
+                        continue
+                    if node_g.distance(meter_geom) < tolerance:
+                        meter_id = self.getFeatureIdValue(f, link_layer)
+                        layer_name = link_layer.name()
+                        singular = self.singular_forms.get(layer_name) or layer_name
+                        found_links.append((link_layer, f, f"{singular} {meter_id}"))
 
         for link_layer, feature, link_info in found_links:
             self.listWidget.addItem(link_info)
 
-        # Check for adjacent service connections
         self.addServiceConnectionAdjacencies(node_g, tolerance)
 
     def extractTypeAndId(self, text):
@@ -1136,9 +1144,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             return
 
         for layer in self.getCheckedInputGroupLayers():
-            if layer.customProperty("qgisred_identifier") in [
-                "qgisred_main_pipes", "qgisred_main_pumps", "qgisred_main_valves"
-            ]:
+            if layer.customProperty("qgisred_identifier") not in [
+                "qgisred_main_meters"]:
                 for f in layer.getFeatures():
                     link_geom = f.geometry()
                     if link_geom.isEmpty():
