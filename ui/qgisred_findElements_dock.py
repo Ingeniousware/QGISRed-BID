@@ -67,17 +67,17 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         }
 
         self.layers_identifiers = {
-            "Pipes": "qgisred_main_pipes",
-            "Junctions": "qgisred_main_junctions",
-            "Multiple Demands": "qgisred_main_demands",
-            "Reservoirs": "qgisred_main_reservoirs",
-            "Tanks": "qgisred_main_tanks",
-            "Pumps": "qgisred_main_pumps",
-            "Valves": "qgisred_main_valves",
-            "Sources": "qgisred_main_sources",
-            "Service Connections": "qgisred_main_serviceconnections",
-            "Isolation Valves": "qgisred_main_isolationvalves",
-            "Meters": "qgisred_main_meters"
+            "Pipes": "qgisred_pipes",
+            "Junctions": "qgisred_junctions",
+            "Multiple Demands": "qgisred_demands",
+            "Reservoirs": "qgisred_reservoirs",
+            "Tanks": "qgisred_tanks",
+            "Pumps": "qgisred_pumps",
+            "Valves": "qgisred_valves",
+            "Sources": "qgisred_sources",
+            "Service Connections": "qgisred_serviceconnections",
+            "Isolation Valves": "qgisred_isolationvalves",
+            "Meters": "qgisred_meters"
         }
 
         self.original_ids = []
@@ -85,19 +85,19 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.main_highlight = None
         self.current_selected_highlight = None 
 
-        self.link_layers = ["qgisred_main_pipes", "qgisred_main_pumps", "qgisred_main_valves"]
+        self.link_layers = ["qgisred_pipes", "qgisred_pumps", "qgisred_valves"]
 
-        self.node_layers = ["qgisred_main_reservoirs", "qgisred_main_tanks", "qgisred_main_junctions"
-                            , "qgisred_main_sources", "qgisred_main_demands", "qgisred_main_meters", "qgisred_main_isolationvalves"]
+        self.node_layers = ["qgisred_reservoirs", "qgisred_tanks", "qgisred_junctions", 
+                            "qgisred_sources", "qgisred_demands", "qgisred_meters", "qgisred_isolationvalves"]
         
-        self.special_layers = ["qgisred_main_serviceconnections"]
+        self.special_layers = ["qgisred_serviceconnections"]
         
-        self.sources_and_demands = ["qgisred_main_sources", "qgisred_main_demands"]
+        self.sources_and_demands = ["qgisred_sources", "qgisred_demands"]
 
         self.digital_twins = [
-            "qgisred_main_meters",
-            "qgisred_main_isolationvalves",
-            "qgisred_main_serviceconnections"
+            "qgisred_serviceconnections",
+            "qgisred_isolationvalves",
+            "qgisred_meters"
         ]
 
         self.setDockStyle()
@@ -210,8 +210,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             suffixes = []
             node_identifier = node_layer.customProperty("qgisred_identifier", "")
 
-            if node_identifier in ["qgisred_main_junctions", "qgisred_main_reservoirs", "qgisred_main_tanks"]:
-                source_layer = self.getLayerByIdentifier("qgisred_main_sources")
+            if node_identifier in ["qgisred_junctions", "qgisred_reservoirs", "qgisred_tanks"]:
+                source_layer = self.getLayerByIdentifier("qgisred_sources")
                 if source_layer:
                     for src_feat in source_layer.getFeatures():
                         if (not src_feat.geometry().isEmpty() and
@@ -219,8 +219,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                             suffixes.append("(Source)")
                             break
 
-            if node_identifier == "qgisred_main_junctions":
-                demand_layer = self.getLayerByIdentifier("qgisred_main_demands")
+            if node_identifier == "qgisred_junctions":
+                demand_layer = self.getLayerByIdentifier("qgisred_demands")
                 if demand_layer:
                     for dmnd_feat in demand_layer.getFeatures():
                         if (not dmnd_feat.geometry().isEmpty() and
@@ -240,7 +240,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
     def setDefaultValue(self):
         self.clearAll()
 
-        pipes_layer = self.getLayerByIdentifier("qgisred_main_pipes")
+        pipes_layer = self.getLayerByIdentifier("qgisred_pipes")
         if not pipes_layer:
             return
 
@@ -272,7 +272,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if self.leElementMask.text():
             self.filterElementIds()
         else:
-            self.cbElementId.addItem("")
             self.cbElementId.addItems(self.original_ids)
                 
     @pyqtSlot()
@@ -285,7 +284,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         else:
             filtered_items = self.original_ids
             
-        self.cbElementId.addItem("")
         self.cbElementId.addItems(filtered_items)
         
     def clearHighlights(self):
@@ -335,7 +333,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         feature_point_geom = QgsGeometry.fromPointXY(feature_point)
 
         if supported_only:
-            supported_ids = ["qgisred_main_junctions", "qgisred_main_reservoirs", "qgisred_main_tanks"]
+            supported_ids = ["qgisred_junctions", "qgisred_reservoirs", "qgisred_tanks"]
             for node_layer in self.getCheckedInputGroupLayers():
                 if node_layer == current_layer:
                     continue
@@ -404,16 +402,16 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                 if special_naming:
                     singular = self.singular_forms.get(node_layer.name(), node_layer.name())
                     suffix_list = []
-                    if identifier == "qgisred_main_sources":
+                    if identifier == "qgisred_sources":
                         suffix_list.append("(Source)")
                     else:
                         suffix_list.append("(Mult.Dem)")
-                    other_layer_id = "qgisred_main_demands" if identifier == "qgisred_main_sources" else "qgisred_main_sources"
+                    other_layer_id = "qgisred_demands" if identifier == "qgisred_sources" else "qgisred_sources"
                     other_layer_obj = self.getLayerByIdentifier(other_layer_id)
                     if other_layer_obj:
                         for other_feat in other_layer_obj.getFeatures():
                             if self.areOverlappedPoints(node_feature.geometry(), other_feat.geometry()):
-                                if other_layer_id == "qgisred_main_sources":
+                                if other_layer_id == "qgisred_sources":
                                     suffix_list.append("(Source)")
                                 else:
                                     suffix_list.append("(Mult.Dem)")
@@ -425,16 +423,16 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         else:
             value = feature.attribute("Id")
             id_str = str(value) if value is not None else ""
-            if special_naming and identifier in ["qgisred_main_junctions", "qgisred_main_reservoirs", "qgisred_main_tanks"]:
+            if special_naming and identifier in ["qgisred_junctions", "qgisred_reservoirs", "qgisred_tanks"]:
                 suffixes = []
-                source_layer = self.getLayerByIdentifier("qgisred_main_sources")
+                source_layer = self.getLayerByIdentifier("qgisred_sources")
                 if source_layer:
                     for src_feat in source_layer.getFeatures():
                         if self.areOverlappedPoints(feature.geometry(), src_feat.geometry()):
                             suffixes.append("(Source)")
                             break
-                if identifier == "qgisred_main_junctions":
-                    demand_layer = self.getLayerByIdentifier("qgisred_main_demands")
+                if identifier == "qgisred_junctions":
+                    demand_layer = self.getLayerByIdentifier("qgisred_demands")
                     if demand_layer:
                         for dmnd_feat in demand_layer.getFeatures():
                             if self.areOverlappedPoints(feature.geometry(), dmnd_feat.geometry()):
@@ -501,7 +499,6 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                 QMessageBox.information(self, "Info", "Feature not found")
                 return
                 
-            # Now update the label using the specific layer where the feature was found.
             self.updateFoundElementLabel(selected_id, found_feature_layer)
             
             highlight = QgsHighlight(iface.mapCanvas(), found_feature.geometry(), layer)
@@ -513,22 +510,16 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             self.adjustMapView(found_feature)
             
             identifier = layer.customProperty("qgisred_identifier")
-            # if identifier in self.only_node_layers:
-            #     # Only highlight the node; do not show adjacent elements.
-            #     return
-    
             if self.isLineElement(layer):
                 self.findAdjacentNodesByGeometry(found_feature)
-            # elif self.isSpecialElement(layer):
-            #     self.findNodesAndLinksAdjacencies(found_feature)
-            elif identifier == "qgisred_main_meters":
+            elif identifier == "qgisred_meters":
                 self.findMeterAdjacency(found_feature, layer)
-            elif identifier == "qgisred_main_isolationvalves":
+            elif identifier == "qgisred_isolationvalves":
                 self.findIsolationValveAdjacency(found_feature, layer)
-            elif identifier == "qgisred_main_serviceconnections":
+            elif identifier == "qgisred_serviceconnections":
                 self.findServiceConnectionAdjacency(found_feature, layer) 
             else:
-                self.findAdjacentLinksByGeometry(found_feature)
+                self.findAdjacentLinksByGeometry(found_feature, layer)
 
 
     def isLineElement(self, layer):
@@ -543,7 +534,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
     def addServiceConnectionAdjacencies(self, current_geom, tolerance):
         service_layers = [
             layer for layer in self.getCheckedInputGroupLayers()
-            if layer.customProperty("qgisred_identifier") == "qgisred_main_serviceconnections"
+            if layer.customProperty("qgisred_identifier") == "qgisred_serviceconnections"
         ]
         for layer in service_layers:
             for feat in layer.getFeatures():
@@ -554,6 +545,22 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     service_id = self.getFeatureIdValue(feat, layer)
                     singular = self.singular_forms.get(layer.name(), layer.name())
                     item_text = f"{singular} {service_id}"
+                    self.listWidget.addItem(item_text)
+
+    def addIsolationValveAdjacencies(self, current_geom, tolerance):
+        isolation_layers = [
+            layer for layer in self.getCheckedInputGroupLayers()
+            if layer.customProperty("qgisred_identifier") == "qgisred_isolationvalves"
+        ]
+        for layer in isolation_layers:
+            for feat in layer.getFeatures():
+                iso_geom = feat.geometry()
+                if iso_geom.isEmpty():
+                    continue
+                if current_geom.intersects(iso_geom) or current_geom.distance(iso_geom) < tolerance:
+                    iso_id = self.getFeatureIdValue(feat, layer)
+                    singular = self.singular_forms.get(layer.name(), layer.name())
+                    item_text = f"{singular} {iso_id}"
                     self.listWidget.addItem(item_text)
 
     def findAdjacentNodesByGeometry(self, line_feature):
@@ -603,15 +610,15 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     singular = self.singular_forms.get(layer_name) or layer_name
 
                     node_suffixes = []
-                    if identifier in ["qgisred_main_junctions", "qgisred_main_reservoirs", "qgisred_main_tanks"]:
-                        source_layer = self.getLayerByIdentifier("qgisred_main_sources")
+                    if identifier in ["qgisred_junctions", "qgisred_reservoirs", "qgisred_tanks"]:
+                        source_layer = self.getLayerByIdentifier("qgisred_sources")
                         if source_layer:
                             for src_feat in source_layer.getFeatures():
                                 if self.areOverlappedPoints(node_geom, src_feat.geometry()):
                                     node_suffixes.append("(Source)")
                                     break
-                        if identifier == "qgisred_main_junctions":
-                            demand_layer = self.getLayerByIdentifier("qgisred_main_demands")
+                        if identifier == "qgisred_junctions":
+                            demand_layer = self.getLayerByIdentifier("qgisred_demands")
                             if demand_layer:
                                 for dmnd_feat in demand_layer.getFeatures():
                                     if self.areOverlappedPoints(node_geom, dmnd_feat.geometry()):
@@ -630,7 +637,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         self.addServiceConnectionAdjacencies(line_geom, tolerance)
 
-    def findAdjacentLinksByGeometry(self, node_feature):
+    def findAdjacentLinksByGeometry(self, node_feature, layer):
         node_geom = node_feature.geometry()
         if node_geom.isEmpty():
             return
@@ -644,7 +651,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         link_map_layers = [
             layer for layer in self.getCheckedInputGroupLayers()
             if (layer.customProperty("qgisred_identifier") in self.link_layers or
-                layer.customProperty("qgisred_identifier") == "qgisred_main_meters")
+                layer.customProperty("qgisred_identifier") == "qgisred_meters")
         ]
 
         for link_layer in link_map_layers:
@@ -671,7 +678,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                         layer_name = link_layer.name()
                         singular = self.singular_forms.get(layer_name) or layer_name
                         found_links.append((link_layer, f, f"{singular} {link_id}"))
-            elif ident == "qgisred_main_meters":
+            elif ident == "qgisred_meters":
                 if link_layer.geometryType() != 0:
                     continue
 
@@ -689,6 +696,9 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             self.listWidget.addItem(link_info)
 
         self.addServiceConnectionAdjacencies(node_g, tolerance)
+
+        if layer.customProperty("qgisred_identifier") == "qgisred_junctions":
+            self.addIsolationValveAdjacencies(node_g, tolerance)
 
     def extractTypeAndId(self, text):
         original_text = text.strip()
@@ -930,8 +940,15 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
     def getCheckedInputGroupLayers(self):
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
-        return list(reversed(inputs_group.checkedLayers())) if inputs_group else []
-
+        if not inputs_group:
+            return []
+        checked_layers = inputs_group.checkedLayers()
+        ordered_layers = sorted(
+            checked_layers,
+            key=lambda lyr: self.element_types.index(lyr.name()) if lyr.name() in self.element_types else 999
+        )
+        return ordered_layers
+    
     def initializeCustomLayerProperties(self):
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
         if not inputs_group:
@@ -944,9 +961,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     if not layer_obj:
                         continue
 
-                    custom_property = layer_obj.customProperty("qgisred_identifier", None)
-                    if not custom_property:
-                        layer_obj.setCustomProperty("qgisred_identifier", identifier)
+                    layer_obj.setCustomProperty("qgisred_identifier", identifier)
 
                     layer_metadata = QgsLayerMetadata()
                     layer_metadata.setIdentifier(identifier)
@@ -1077,7 +1092,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             dummy_feature = QgsFeature()
             dummy_feature.setGeometry(QgsGeometry.fromPointXY(pt))
             node_feature, node_layer = self.findOverlappedNode(dummy_feature, current_layer)
-            if node_feature and node_layer.customProperty("qgisred_identifier") == "qgisred_main_junctions":
+            if node_feature and node_layer.customProperty("qgisred_identifier") == "qgisred_junctions":
                 junction_item_text = self.getFeatureIdValue(node_feature, node_layer, special_naming=True)
                 singular_name = self.singular_forms.get(node_layer.name(), node_layer.name())
                 junction_full_name = singular_name + ' ' + junction_item_text
@@ -1087,7 +1102,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         for pt in endpoints:
             pt_geom = QgsGeometry.fromPointXY(pt)
             for layer in self.getCheckedInputGroupLayers():
-                if layer.customProperty("qgisred_identifier") == "qgisred_main_pipes":
+                if layer.customProperty("qgisred_identifier") == "qgisred_pipes":
                     for f in layer.getFeatures():
                         pipe_geom = f.geometry()
                         if pipe_geom.isEmpty():
@@ -1106,7 +1121,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         tolerance = 1e-6
 
         node_feature, node_layer = self.findOverlappedNode(feature, current_layer)
-        if node_feature and node_layer.customProperty("qgisred_identifier") == "qgisred_main_junctions":
+        if node_feature and node_layer.customProperty("qgisred_identifier") == "qgisred_junctions":
             node_item_text = self.getFeatureIdValue(node_feature, node_layer, special_naming=True)
             singular_name = self.singular_forms.get(node_layer.name(), node_layer.name())
             node_full_name = singular_name + ' ' + node_item_text
@@ -1114,7 +1129,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             return
 
         for layer in self.getCheckedInputGroupLayers():
-            if layer.customProperty("qgisred_identifier") == "qgisred_main_pipes":
+            if layer.customProperty("qgisred_identifier") == "qgisred_pipes":
                 for f in layer.getFeatures():
                     pipe_geom = f.geometry()
                     if pipe_geom.isEmpty():
@@ -1141,7 +1156,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             return
 
         for layer in self.getCheckedInputGroupLayers():
-            if layer.customProperty("qgisred_identifier") != "qgisred_main_meters":
+            if layer.customProperty("qgisred_identifier") != "qgisred_meters":
                 for f in layer.getFeatures():
                     link_geom = f.geometry()
                     if link_geom.isEmpty():
