@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 from PyQt5.QtGui import QIcon, QFont, QColor
-from PyQt5.QtWidgets import QDockWidget, QMessageBox, QLineEdit
+from PyQt5.QtWidgets import QDockWidget, QMessageBox, QLineEdit, QListWidgetItem
 from qgis.PyQt import uic
 from PyQt5.QtCore import Qt, QTimer, QEvent
 from qgis.PyQt.QtCore import pyqtSlot
@@ -50,6 +50,20 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             'Service Connections',
             'Isolation Valves',
             'Meters'
+        ]
+
+        self.element_identifiers = [
+            'qgisred_pipes', 
+            'qgisred_junctions',
+            'qgisred_demands',
+            'qgisred_reservoirs',
+            'qgisred_tanks',
+            'qgisred_pumps',
+            'qgisred_valves',
+            'qgisred_sources',
+            'qgisred_serviceconnections',
+            'qgisred_isolationvalves',
+            'qgisred_meters'
         ]
  
         self.singular_forms = {
@@ -236,6 +250,35 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             singular_element_type = self.singular_forms.get(element_type, element_type)
             self.labelFoundElement.setText(f"{singular_element_type} {selected_id}")
 
+    def addAdjacencyItem(self, item_text, identifier):
+        new_item = QListWidgetItem(item_text)
+        new_item.setData(Qt.UserRole, identifier)
+        self.listWidget.addItem(new_item)
+
+    def sortListWidgetItems(self):
+        item_data = []
+
+        for i in range(self.listWidget.count()):
+            item = self.listWidget.item(i)
+            text = item.text()
+            identifier = item.data(Qt.UserRole)
+            item_data.append((text, identifier))
+
+        self.listWidget.clear()
+
+        def sort_key(entry):
+            _, iden = entry
+            try:
+                return self.element_identifiers.index(iden)
+            except ValueError:
+                return len(self.element_identifiers)
+
+        item_data.sort(key=sort_key)
+
+        for (text, identifier) in item_data:
+            new_item = QListWidgetItem(text)
+            new_item.setData(Qt.UserRole, identifier)
+            self.listWidget.addItem(new_item)
 
     def setDefaultValue(self):
         self.clearAll()
@@ -521,6 +564,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             else:
                 self.findAdjacentLinksByGeometry(found_feature, layer)
 
+            self.sortListWidgetItems()
 
     def isLineElement(self, layer):
         return layer.customProperty("qgisred_identifier") in self.link_layers
@@ -545,7 +589,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     service_id = self.getFeatureIdValue(feat, layer)
                     singular = self.singular_forms.get(layer.name(), layer.name())
                     item_text = f"{singular} {service_id}"
-                    self.listWidget.addItem(item_text)
+                    self.addAdjacencyItem(item_text, layer.customProperty("qgisred_identifier"))
 
     def addIsolationValveAdjacencies(self, current_geom, tolerance):
         isolation_layers = [
@@ -561,7 +605,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     iso_id = self.getFeatureIdValue(feat, layer)
                     singular = self.singular_forms.get(layer.name(), layer.name())
                     item_text = f"{singular} {iso_id}"
-                    self.listWidget.addItem(item_text)
+                    self.addAdjacencyItem(item_text, layer.customProperty("qgisred_identifier"))
 
     def findAdjacentNodesByGeometry(self, line_feature):
         geom = line_feature.geometry()
@@ -633,7 +677,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     found_nodes.append((node_layer, f, node_info))
 
         for node_layer, feature, node_info in found_nodes:
-            self.listWidget.addItem(node_info)
+            self.addAdjacencyItem(node_info, node_layer.customProperty("qgisred_identifier", ""))
 
         self.addServiceConnectionAdjacencies(line_geom, tolerance)
 
@@ -693,7 +737,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                         found_links.append((link_layer, f, f"{singular} {meter_id}"))
 
         for link_layer, feature, link_info in found_links:
-            self.listWidget.addItem(link_info)
+            self.addAdjacencyItem(link_info, link_layer.customProperty("qgisred_identifier"))
 
         self.addServiceConnectionAdjacencies(node_g, tolerance)
 
@@ -1064,10 +1108,10 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     found_links.append((link_layer, f, f"{singular} {link_id}"))
 
         for node_layer, feature_item, node_info in found_nodes:
-            self.listWidget.addItem(node_info)
+            self.addAdjacencyItem(node_info, node_layer.customProperty("qgisred_identifier"))
 
         for link_layer, feature_item, link_info in found_links:
-            self.listWidget.addItem(link_info)
+            self.addAdjacencyItem(link_info, link_layer.customProperty("qgisred_identifier"))
 
     def findServiceConnectionAdjacency(self, feature, current_layer):
         geom = feature.geometry()
@@ -1096,7 +1140,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                 junction_item_text = self.getFeatureIdValue(node_feature, node_layer, special_naming=True)
                 singular_name = self.singular_forms.get(node_layer.name(), node_layer.name())
                 junction_full_name = singular_name + ' ' + junction_item_text
-                self.listWidget.addItem(junction_full_name)
+                self.addAdjacencyItem(junction_full_name, node_layer.customProperty("qgisred_identifier"))
                 return
 
         for pt in endpoints:
@@ -1110,7 +1154,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                         if pt_geom.distance(pipe_geom) < tolerance:
                             pipe_id = self.getFeatureIdValue(f, layer)
                             singular = self.singular_forms.get(layer.name(), layer.name())
-                            self.listWidget.addItem(f"{singular} {pipe_id}")
+                            full_name = f"{singular} {pipe_id}"
+                            self.addAdjacencyItem(full_name, layer.customProperty("qgisred_identifier"))
                             return
 
     def findIsolationValveAdjacency(self, feature, current_layer):
@@ -1125,7 +1170,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             node_item_text = self.getFeatureIdValue(node_feature, node_layer, special_naming=True)
             singular_name = self.singular_forms.get(node_layer.name(), node_layer.name())
             node_full_name = singular_name + ' ' + node_item_text
-            self.listWidget.addItem(node_full_name)
+            self.addAdjacencyItem(node_full_name, node_layer.customProperty("qgisred_identifier"))
             return
 
         for layer in self.getCheckedInputGroupLayers():
@@ -1137,7 +1182,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     if geom.distance(pipe_geom) < tolerance:
                         pipe_id = self.getFeatureIdValue(f, layer)
                         singular = self.singular_forms.get(layer.name(), layer.name())
-                        self.listWidget.addItem(f"{singular} {pipe_id}")
+                        full_name = f"{singular} {pipe_id}"
+                        self.addAdjacencyItem(full_name, layer.customProperty("qgisred_identifier"))
                         return 
 
     def findMeterAdjacency(self, feature, current_layer):
@@ -1152,7 +1198,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             node_id = self.getFeatureIdValue(node_feature, node_layer, special_naming=True)
             singular_name = self.singular_forms.get(node_layer.name(), node_layer.name())
             node_item_text = singular_name + ' ' + node_id
-            self.listWidget.addItem(node_item_text)
+            self.addAdjacencyItem(node_item_text, node_layer.customProperty("qgisred_identifier"))
             return
 
         for layer in self.getCheckedInputGroupLayers():
@@ -1164,7 +1210,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
                     if geom.distance(link_geom) < tolerance:
                         adj_id = self.getFeatureIdValue(f, layer)
                         singular = self.singular_forms.get(layer.name(), layer.name())
-                        self.listWidget.addItem(f"{singular} {adj_id}")
+                        full_name = f"{singular} {adj_id}"
+                        self.addAdjacencyItem(full_name, layer.customProperty("qgisred_identifier"))
                         return
 
     def disconnectLayerSignals(self, layer):
