@@ -137,6 +137,17 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         available_types = self.getAvailableElementTypes()
         self.cbElementType.addItems(available_types)
 
+    def setDefaultValue(self):
+        self.clearAll()
+
+        pipes_layer = self.getLayerByIdentifier("qgisred_pipes")
+        if not pipes_layer:
+            return
+
+        pipes_layer_name = pipes_layer.name()
+        self.cbElementType.setCurrentText(pipes_layer_name)
+        self.updateElementIds()
+
     # -------------------------------------------------------------------------
     # Event Filter and Signal Connections
     # -------------------------------------------------------------------------
@@ -161,8 +172,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         project = QgsProject.instance()
         project.layersAdded.connect(self.onLayerTreeChanged)
         project.layersRemoved.connect(self.onLayerTreeChanged)
-        project.readProject.connect(self.onLayerTreeChanged)
-        project.cleared.connect(self.onLayerTreeChanged)
+        project.readProject.connect(self.onProjectChanged)
+        project.cleared.connect(self.onProjectChanged)
 
         root = project.layerTreeRoot()
         inputs_group = root.findGroup("Inputs")
@@ -251,7 +262,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             for f in layer.getFeatures():
                 id_val = self.getFeatureIdValue(f, layer, True)
                 if id_val:
-                    self.original_ids.append(self.tr(id_val))
+                    self.original_ids.append(id_val)
             self.original_ids = sorted(set(self.original_ids))
 
         if self.leElementMask.text():
@@ -957,3 +968,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             id_index = self.cbElementId.findText(current_id)
             if id_index >= 0:
                 self.cbElementId.setCurrentIndex(id_index)
+    
+    def onProjectChanged(self):
+        self.clearAll()
+        self.onLayerTreeChanged()
