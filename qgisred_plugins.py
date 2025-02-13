@@ -43,7 +43,7 @@ from .ui.qgisred_toolConnections_dialog import QGISRedServiceConnectionsToolDial
 from .ui.qgisred_toolConnectivity_dialog import QGISRedConnectivityToolDialog
 from .ui.qgisred_loadproject_dialog import QGISRedImportProjectDialog
 from .ui.qgisred_thematicmaps_dialog import QGISRedThematicMapsDialog
-from .ui.qgisred_findElements_dialog import QGISRedFindElementsDialog
+from .ui.qgisred_findElements_dock import QGISRedFindElementsDock
 from .tools.qgisred_utils import QGISRedUtils
 from .tools.qgisred_dependencies import QGISRedDependencies as GISRed
 from .tools.qgisred_moveNodes import QGISRedMoveNodesTool
@@ -451,7 +451,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed/images/iconLayerManagement.png"
         self.add_action(
             icon_path,
-            text=self.tr("Layer management"),
+            text=self.tr("Layer manager"),
             callback=self.runEditProject,
             menubar=self.projectMenu,
             toolbar=self.projectToolbar,
@@ -1467,11 +1467,11 @@ class QGISRed:
             parent=self.iface.mainWindow(),
         )
         self.queriesDropButton = queriesDropButton
-        # Find Elements
+        # Find Elements by ID
         icon_path = ":/plugins/QGISRed/images/iconFindElements.png"
         self.openFindElementsDialog = self.add_action(
             icon_path,
-            text=self.tr("Find Elements"),
+            text=self.tr("Find Elements by ID"),
             callback=self.runFindElements,
             menubar=self.queriesMenu,
             toolbar=self.queriesToolbar,
@@ -1483,20 +1483,8 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed/images/iconElementsProperties.png"
         self.openElementsPropertiesDialog = self.add_action(
             icon_path,
-            text=self.tr("Elements Properties"),
+            text=self.tr("Element Data"),
             callback=self.runElementsProperties,
-            menubar=self.queriesMenu,
-            toolbar=self.queriesToolbar,
-            actionBase=queriesDropButton,
-            add_to_toolbar=True,
-            parent=self.iface.mainWindow(),
-        )
-        # # Live Queries
-        icon_path = ":/plugins/QGISRed/images/iconLiveQueries.png"
-        self.openLiveQueriesDialog = self.add_action(
-            icon_path,
-            text=self.tr("Live Queries"),
-            callback=self.runLiveQueries,
             menubar=self.queriesMenu,
             toolbar=self.queriesToolbar,
             actionBase=queriesDropButton,
@@ -1509,6 +1497,18 @@ class QGISRed:
             icon_path,
             text=self.tr("Thematic Maps"),
             callback=self.runThematicMaps,
+            menubar=self.queriesMenu,
+            toolbar=self.queriesToolbar,
+            actionBase=queriesDropButton,
+            add_to_toolbar=True,
+            parent=self.iface.mainWindow(),
+        )
+        # # Live Queries
+        icon_path = ":/plugins/QGISRed/images/iconLiveQueries.png"
+        self.openLiveQueriesDialog = self.add_action(
+            icon_path,
+            text=self.tr("Live Queries"),
+            callback=self.runLiveQueries,
             menubar=self.queriesMenu,
             toolbar=self.queriesToolbar,
             actionBase=queriesDropButton,
@@ -4393,9 +4393,20 @@ class QGISRed:
         if self.isLayerOnEdition():
             return
 
-        dlg = QGISRedFindElementsDialog()
-        # Run the dialog event loop
-        dlg.exec_()
+        # Check if the dock widget already exists
+        existing_docks = self.iface.mainWindow().findChildren(QGISRedFindElementsDock)
+        if existing_docks:
+            dock = existing_docks[0]
+            self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)
+            dock.show()
+            dock.raise_()
+            dock.activateWindow()
+            dock.onLayerTreeChanged()
+            dock.setDefaultValue()
+        else:
+            self.dock = QGISRedFindElementsDock()
+            self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
+            self.dock.show()
 
     # ==============================================================
     #                        END: QUERIES FIND ELEMENTS
@@ -4535,8 +4546,8 @@ class QGISRed:
                 if 'labels_enabled' in query_info:
                     new_layer.setLabelsEnabled(query_info['labels_enabled'])
 
-                new_layer.setCustomProperty("query_field", query_info['field_name'])
                 new_layer.setCustomProperty("qgisred_identifier", query_info['identifier'])
+                new_layer.setCustomProperty("query_field", query_info['field_name'])
                 new_layer.setReadOnly(True)
                 QgsProject.instance().addMapLayer(new_layer, False)
 
