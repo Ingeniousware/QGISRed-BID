@@ -2054,6 +2054,7 @@ class QGISRed:
         self.removingLayers = False
 
         self.restoreQueryLayers(self.stored_query_layers)
+        self.restoreInputLayers(self.stored_inputs_layer)
 
         if resMessage == "True":
             pass
@@ -2062,6 +2063,7 @@ class QGISRed:
 
     def processCsharpResult(self, b, message):
         self.stored_query_layers = self.storeQueryLayers()
+        self.stored_inputs_layer = self.storeInputsLayers()
 
         # Action
         self.hasToOpenNewLayers = False
@@ -4480,6 +4482,16 @@ class QGISRed:
         
         return query_layers
 
+    def storeInputsLayers(self):
+        self.random_color_queries = [] 
+        input_layers = []
+        inputs_grup = self.getInputGroup()
+
+        if inputs_grup:
+            self._storeLayersRecursive(inputs_grup, input_layers, group_path=[], group_positions=[])
+        
+        return input_layers
+    
     def _process_layer(self, layer, child, parent_group, group_path, group_positions):
         if not layer:
             return None
@@ -4579,6 +4591,48 @@ class QGISRed:
                         lambda input_layer=input_layer, new_layer=new_layer: 
                         self.syncQueryLayer(input_layer, new_layer)
                     )
+
+    def restoreInputLayers(self, input_layers):
+        if not input_layers:
+            return
+
+        inputs_group = self.getInputGroup()
+        for child in inputs_group.children():
+            inputs_group.removeChildNode(child)
+
+        for layer_info in input_layers:
+            new_layer = QgsVectorLayer(layer_info['source'], layer_info['name'], 'ogr')
+            if new_layer.isValid():
+                # if 'style_string' in layer_info and layer_info['style_string']:
+                #     # Load and store the style but do NOT apply a categorized renderer.
+                #     new_layer.loadNamedStyle(layer_info['style_string'])
+                #     new_layer.setCustomProperty("styleURI", layer_info['style_string'])
+                if 'labels_enabled' in layer_info:
+                    new_layer.setLabelsEnabled(layer_info['labels_enabled'])
+                new_layer.setCustomProperty("qgisred_identifier", layer_info['identifier'])
+                new_layer.setCustomProperty("query_field", layer_info['field_name'])
+                #new_layer.setReadOnly(True)
+                QgsProject.instance().addMapLayer(new_layer, False)
+
+                group_path = layer_info.get('group_path', [])
+                group_positions = layer_info.get('group_positions', [])
+                layer_position = layer_info.get('layer_position', None)
+
+                # Ensure that the group hierarchy exists under the Inputs group.
+                parent_group = self.ensureGroupHierarchy(inputs_group, group_path, group_positions)
+                layer_tree_layer = QgsLayerTreeLayer(new_layer)
+                layer_tree_layer.setCustomProperty("showFeatureCount", True)
+                if 'checked' in layer_info:
+                    layer_tree_layer.setItemVisibilityChecked(layer_info['checked'])
+                if 'expanded' in layer_info:
+                    layer_tree_layer.setExpanded(layer_info['expanded'])
+                if layer_position is not None and layer_position <= len(parent_group.children()):
+                    parent_group.insertChildNode(layer_position, layer_tree_layer)
+                else:
+                    parent_group.addChildNode(layer_tree_layer)
+
+                QGISRedUtils().hide_fields(new_layer, layer_info['field_name'])
+
 
     def getSubgroupPosition(self, parent_group, subgroup_name):
         for index, child in enumerate(parent_group.children()):
