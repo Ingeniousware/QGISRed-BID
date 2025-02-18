@@ -53,6 +53,7 @@ from .tools.qgisred_createPipe import QGISRedCreatePipeTool
 from .tools.qgisred_createConnection import QGISRedCreateConnectionTool
 from .tools.qgisred_editLinksGeometry import QGISRedEditLinksGeometryTool
 from .tools.qgisred_selectPoint import QGISRedSelectPointTool
+from .tools.qgisred_identifyFeature import QGISRedIdentifyFeature
 
 # Others imports
 import os
@@ -1482,13 +1483,14 @@ class QGISRed:
         )
         # # Elements Properties
         icon_path = ":/plugins/QGISRed/images/iconElementsProperties.png"
-        self.openElementsPropertiesDialog = self.add_action(
+        self.openElementsPropertyDialog = self.add_action(
             icon_path,
-            text=self.tr("Element Data"),
+            text=self.tr("Elements Property"),
             callback=self.runElementsProperty,
             menubar=self.queriesMenu,
             toolbar=self.queriesToolbar,
             actionBase=queriesDropButton,
+            checable=True,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
@@ -4418,26 +4420,28 @@ class QGISRed:
     # --------------------------------------------------------------
     def runElementsProperty(self):
         if not self.checkDependencies():
-            return
-        # Validations
-        self.defineCurrentProject()
-        if not self.isValidProject():
-            return
-        if self.isLayerOnEdition():
+            self.openElementsPropertyDialog.setChecked(False)
             return
         
-        # Check if the dock widget already exists
-        existing_docks = self.iface.mainWindow().findChildren(QGISRedElementsPropertyDock)
-        if existing_docks:
-            dock = existing_docks[0]
-            self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)
-            dock.show()
-            dock.raise_()
-            dock.activateWindow()
-        else:
-            self.elementsPropertyDock = QGISRedElementsPropertyDock()
-            self.iface.addDockWidget(Qt.RightDockWidgetArea, self.elementsPropertyDock)
-            self.elementsPropertyDock.show()
+        self.defineCurrentProject()
+        if not self.isValidProject() or self.isLayerOnEdition():
+            self.openElementsPropertyDialog.setChecked(False)
+            return
+
+        # Check if the current map tool is already the identify tool.
+        currentTool = self.iface.mapCanvas().mapTool()
+        if isinstance(currentTool, QGISRedIdentifyFeature):
+            self.iface.mapCanvas().unsetMapTool(currentTool)
+            existing_docks = self.iface.mainWindow().findChildren(QGISRedElementsPropertyDock)
+            if existing_docks:
+                dock = existing_docks[0]
+                dock.close()
+            self.openElementsPropertyDialog.setChecked(False)
+            return
+
+        # Otherwise, set the identify tool.
+        self.identifyTool = QGISRedIdentifyFeature(self.iface.mapCanvas(), self.openElementsPropertyDialog)
+        self.iface.mapCanvas().setMapTool(self.identifyTool)
 
     # ==============================================================
     #                        END: QUERIES ELEMENTS PROPERTIES
