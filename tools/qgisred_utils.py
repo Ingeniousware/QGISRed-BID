@@ -4,7 +4,7 @@ from PyQt5.QtCore import QFileInfo
 from PyQt5.QtWidgets import QMessageBox, QFileDialog
 from qgis.core import QgsVectorLayer, QgsProject, QgsLayerTreeLayer, QgsTask, QgsApplication, QgsLayerMetadata
 from qgis.core import QgsSvgMarkerSymbolLayer, QgsSymbol, QgsSingleSymbolRenderer, Qgis
-from qgis.core import QgsLineSymbol, QgsSimpleLineSymbolLayer, QgsProperty
+from qgis.core import QgsLineSymbol, QgsSimpleLineSymbolLayer, QgsProperty, QgsMapLayer
 from qgis.core import QgsMarkerSymbol, QgsMarkerLineSymbolLayer, QgsSimpleMarkerSymbolLayer
 from qgis.core import QgsRendererCategory, QgsCategorizedSymbolRenderer, QgsCoordinateReferenceSystem, QgsVectorLayerCache
 from qgis.gui import QgsAttributeTableFilterModel, QgsAttributeTableModel, QgsAttributeTableView
@@ -17,11 +17,14 @@ import tempfile
 import datetime
 import shutil
 import random
+import logging
 from shutil import copyfile
 import platform
 from zipfile import ZipFile
 from random import randrange
 from xml.etree import ElementTree
+from pathlib import Path
+import logging
 
 
 class QGISRedUtils:
@@ -109,6 +112,9 @@ class QGISRedUtils:
                     self.setStyle(vlayer, name.lower())
             QgsProject.instance().addMapLayer(vlayer, group is None)
             self.setLayerIdentifier(vlayer, name) 
+            identifier = vlayer.customProperty("qgisred_identifier", "")
+            if identifier:
+                self.applyStyleFromMapping(vlayer, identifier)
             if group is not None:
                 if toEnd:
                     group.addChildNode(QgsLayerTreeLayer(vlayer))
@@ -818,10 +824,54 @@ class QGISRedUtils:
         attribute_table_view.setAttributeTableConfig(config)
 
     def setLayerIdentifier(self, layer, layerType):
-        identifier = f"qgisred_main_{layerType.lower()}"
+        identifier = f"qgisred_{layerType.lower()}"
         layer.setId(identifier)
         layer.setCustomProperty("qgisred_identifier", identifier)
         layer_metadata = QgsLayerMetadata()
         layer_metadata.setIdentifier(identifier)
         layer.setMetadata(layer_metadata)
-        print(f"qgisred_main_{layerType.lower()}")
+        print(f"qgisred_{layerType.lower()}")
+
+
+    def applyStyleFromMapping(self, layer, identifier):
+        logger = logging.getLogger(__name__)
+
+        # Remove the prefix and compute base name
+        original_identifier = identifier
+        prefix = "qgisred_"
+        if identifier.startswith(prefix):
+            identifier = identifier[len(prefix):]
+        base_name = identifier.lower()
+
+        # Construct the style folder path using pathlib and convert to POSIX style
+        style_folder = Path(__file__).parent.parent / "layerStyles"
+        qml_path = style_folder / f"{base_name}.qml.bak"
+        qml_path_str = qml_path.as_posix()  # ensures use of "/" slashes
+
+        logger.debug(f"Original identifier '{original_identifier}' converted to base name '{base_name}'")
+        logger.debug(f"Looking for QML file at: {qml_path_str}")
+
+        if not qml_path.exists():
+            logger.error(f"QML style file not found for '{identifier}' in directory: {style_folder}")
+            return
+        if not qml_path.is_file():
+            logger.error(f"Path '{qml_path_str}' is not a file.")
+            return
+
+        if layer is None:
+            logger.error("Layer is None; cannot load style.")
+            return
+        if not layer.isValid():
+            logger.error(f"Layer '{identifier}' is not valid; cannot apply style.")
+            return
+
+        try:
+            message, result = layer.loadNamedStyle(qml_path_str,  categories=QgsMapLayer.AllStyleCategories, flags=Qgis.LoadStyleFlags)
+            if result:
+                print(f"Successfully loaded style for '{identifier}' from {qml_path_str}")
+                layer.triggerRepaint()
+            else:
+                print(f"Failed to load style for '{identifier}' from {qml_path_str}: {message}")
+        except Exception as e:
+            logger.exception(f"Exception while loading style for '{identifier}' from '{qml_path_str}': {e}")
+
