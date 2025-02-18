@@ -44,6 +44,7 @@ from .ui.qgisred_toolConnectivity_dialog import QGISRedConnectivityToolDialog
 from .ui.qgisred_loadproject_dialog import QGISRedImportProjectDialog
 from .ui.qgisred_thematicmaps_dialog import QGISRedThematicMapsDialog
 from .ui.qgisred_findElements_dock import QGISRedFindElementsDock
+from .ui.qgisred_elementsproperty_dock import QGISRedElementsPropertyDock
 from .tools.qgisred_utils import QGISRedUtils
 from .tools.qgisred_dependencies import QGISRedDependencies as GISRed
 from .tools.qgisred_moveNodes import QGISRedMoveNodesTool
@@ -1484,7 +1485,7 @@ class QGISRed:
         self.openElementsPropertiesDialog = self.add_action(
             icon_path,
             text=self.tr("Element Data"),
-            callback=self.runElementsProperties,
+            callback=self.runElementsProperty,
             menubar=self.queriesMenu,
             toolbar=self.queriesToolbar,
             actionBase=queriesDropButton,
@@ -4415,7 +4416,7 @@ class QGISRed:
     # ==============================================================
     #                        START: QUERIES ELEMENTS PROPERTIES
     # --------------------------------------------------------------
-    def runElementsProperties(self):
+    def runElementsProperty(self):
         if not self.checkDependencies():
             return
         # Validations
@@ -4424,10 +4425,20 @@ class QGISRed:
             return
         if self.isLayerOnEdition():
             return
+        
+        # Check if the dock widget already exists
+        existing_docks = self.iface.mainWindow().findChildren(QGISRedElementsPropertyDock)
+        if existing_docks:
+            dock = existing_docks[0]
+            self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)
+            dock.show()
+            dock.raise_()
+            dock.activateWindow()
+        else:
+            self.elementsPropertyDock = QGISRedElementsPropertyDock()
+            self.iface.addDockWidget(Qt.RightDockWidgetArea, self.elementsPropertyDock)
+            self.elementsPropertyDock.show()
 
-        #dlg = QGISRedFindElementsDialog()
-        # Run the dialog event loop
-        #dlg.exec_()
     # ==============================================================
     #                        END: QUERIES ELEMENTS PROPERTIES
     # --------------------------------------------------------------
