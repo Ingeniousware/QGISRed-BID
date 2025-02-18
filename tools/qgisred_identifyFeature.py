@@ -15,14 +15,11 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
 
     def setupConnections(self):
         project = QgsProject.instance()
-        # project.layersAdded.connect(self.onProjectChanged)
-        # project.layersRemoved.connect(self.onProjectChanged)
         project.readProject.connect(self.deactivate)
         project.cleared.connect(self.deactivate)
     
     def canvasReleaseEvent(self, event):
         identified_features = self.identify(event.x(), event.y(), self.TopDownStopAtFirst)
-
         if identified_features:
             identified_feature = identified_features[0]
             feature = identified_feature.mFeature
@@ -36,9 +33,7 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
 
             layer.select(feature.id())
 
-            if self.currentHighlight is not None:
-                self.currentHighlight.hide()
-                self.currentHighlight = None
+            self.clearHighlights()
 
             self.currentHighlight = QgsHighlight(self.canvas, feature.geometry(), layer)
             self.currentHighlight.setColor(Qt.red)
@@ -47,11 +42,38 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
             self.currentHighlight.show()
 
             self.dock = QGISRedElementsPropertyDock.getInstance(iface.mainWindow())
-
             if not self.dock.isVisible():
                 iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
 
-            self.dock.loadFeature(layer, feature)
+            identifier = layer.customProperty("qgisred_identifier")
+            if not identifier:
+                return
+                # Default behavior if no identifier is set.
+                self.dock.loadFeature(layer, feature)
+            else:
+                # Determine which handler and tabs to use based on the identifier.
+                if identifier == 'qgisred_pipes':
+                    tabs = ['tabData', 'tabResults', 'tabCurves', 'tabControls']
+                    self.dock.handlePipes(layer, feature, tabs)
+                elif identifier == 'qgisred_valves':
+                    tabs = ['tabData', 'tabResults', 'tabCurves', 'tabControls']
+                    self.dock.handleValves(layer, feature, tabs)
+                elif identifier == 'qgisred_pumps':
+                    tabs = ['tabData', 'tabResults', 'tabCurves', 'tabPatterns', 'tabControls']
+                    self.dock.handlePumps(layer, feature, tabs)
+                elif identifier == 'qgisred_junctions':
+                    tabs = ['tabData', 'tabResults', 'tabPatterns', 'tabControls']
+                    self.dock.handleJunctions(layer, feature, tabs)
+                elif identifier == 'qgisred_tanks':
+                    tabs = ['tabData', 'tabResults', 'tabCurves', 'tabPatterns', 'tabControls']
+                    self.dock.handleTanks(layer, feature, tabs)
+                elif identifier == 'qgisred_reservoirs':
+                    tabs = ['tabData', 'tabResults', 'tabPatterns', 'tabControls']
+                    self.dock.handleReservoirs(layer, feature, tabs)
+                else:
+                    # Fallback if the identifier does not match any known type.
+                    self.dock.loadFeature(layer, feature)
+
             self.dock.show()
             self.dock.raise_()
             self.dock.activateWindow()
@@ -73,9 +95,9 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
             self.currentHighlight = None
 
     def closeDock(self):
-        if self.dock: 
+        if self.dock:
             self.dock.close()
-    
+
     def setActionUnchecked(self):
         if self.toggle_action:
             self.toggle_action.setChecked(False)

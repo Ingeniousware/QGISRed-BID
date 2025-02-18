@@ -27,26 +27,8 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         super(QGISRedElementsPropertyDock, self).__init__(parent)
         self.setupUi(self)
         
-        # Prevent stacking
         self.setObjectName("QGISRedElementsPropertyDock")
-        
-        # Dock widget is not floating by default
         self.setFloating(False)
-        
-        # if parent:
-        #     parent.addDockWidget(Qt.LeftDockWidgetArea, self)
-        
-        self.singular_forms = {
-            "Reservoirs": "Reservoir",
-            "Tanks": "Tank",
-            "Junctions": "Junction",
-            "Pumps": "Pump",
-            "Valves": "Valve",
-            "Pipes": "Pipe",
-            "Meters": "Meter",
-            "Service Connections": "Service Connection",
-            "Isolation Valves": "Isolation Valve"
-        }
         
         self.original_ids = []
         self.adjacent_highlights = []
@@ -60,54 +42,76 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         font.setBold(True)
 
         self.setupConnections()
-        #self.initializeElementTypes()
 
         settings = QgsSettings()
         if settings.contains("QGISRed/ElementsData/geometry"):
             self.restoreGeometry(settings.value("QGISRed/ElementsData/geometry"))
-
-        
+    
     def setupConnections(self):
-        ...
+        pass
 
     def clearHighlights(self):
-        ...
+        pass
     
     def setDockStyle(self):
         icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconElementsProperties.png')
         self.setWindowIcon(QIcon(icon_path))
-
-        # search_icon = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFilter.png'))
-        # self.leElementMask.addAction(search_icon, QLineEdit.LeadingPosition)
-
-        # self.cbElementType.setStyleSheet("QComboBox { background-color: white; }")
-        # self.cbElementId.setStyleSheet("QComboBox { background-color: white; }")
         
     def clearAllLayerSelections(self):
         for lyr in QgsProject.instance().mapLayers().values():
             if isinstance(lyr, QgsVectorLayer):
                 lyr.removeSelection()
 
-
     def loadFeature(self, layer, feature):
         self.currentLayer = layer
         self.currentFeature = feature
-        
         layer.selectByIds([feature.id()])
-        
-        #self.clearHighlights()
+
+    def setupTabs(self, visible_tabs):
+        all_tabs = {
+            "tabData": getattr(self, "tabData", None),
+            "tabResults": getattr(self, "tabResults", None),
+            "tabCurves": getattr(self, "tabCurves", None),
+            "tabPatterns": getattr(self, "tabPatterns", None),
+            "tabControls": getattr(self, "tabControls", None)
+        }
+        for tab_name, widget in all_tabs.items():
+            if widget is not None:
+                # Show the tab only if its key is in visible_tabs; otherwise hide it.
+                widget.setVisible(tab_name in visible_tabs)
+
+    def handlePipes(self, layer, feature, tabs):
+        self.setupTabs(tabs)
+        self.loadFeature(layer, feature)
+    
+    def handleValves(self, layer, feature, tabs):
+        self.setupTabs(tabs)
+        self.loadFeature(layer, feature)
+
+    def handlePumps(self, layer, feature, tabs):
+        self.setupTabs(tabs)
+        self.loadFeature(layer, feature)
+    
+    def handleJunctions(self, layer, feature, tabs):
+        self.setupTabs(tabs)
+        self.loadFeature(layer, feature)
+    
+    def handleTanks(self, layer, feature, tabs):
+        self.setupTabs(tabs)
+        self.loadFeature(layer, feature)
+    
+    def handleReservoirs(self, layer, feature, tabs):
+        self.setupTabs(tabs)
+        self.loadFeature(layer, feature)
 
     def closeEvent(self, event):
-        # Save geometry
         settings = QgsSettings()
         settings.setValue("QGISRed/ElementsData/geometry", self.saveGeometry())
         
         self.clearHighlights()
         self.clearAllLayerSelections()
         
-        # Clear instance
         QGISRedElementsPropertyDock._instance = None
-        
         super(QGISRedElementsPropertyDock, self).closeEvent(event)
 
     def onProjectClosed(self):
@@ -118,7 +122,3 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
     def clearAll(self):
         self.clearHighlights()
         self.clearAllLayerSelections()
-        self.leElementMask.clear()
-        self.cbElementId.setCurrentIndex(0)
-        self.labelFoundElement.setText("")  
-        self.listWidget.clear()  
