@@ -413,7 +413,7 @@ class QGISRed:
     def addProjectMenu(self):
         #    #Menu
         self.projectMenu = self.qgisredmenu.addMenu(self.tr("Project"))
-        self.projectMenu.setIcon(QIcon(":/plugins/QGISRed/images/iconLayerManagement.png"))
+        self.projectMenu.setIcon(QIcon(":/plugins/QGISRed/images/iconProjectMenu.png"))
         #    #Toolbar
         self.projectToolbar = self.iface.addToolBar(self.tr("QGISRed Project"))
         self.projectToolbar.setObjectName(self.tr("QGISRed Project"))
@@ -421,7 +421,7 @@ class QGISRed:
         self.projectToolbar.setVisible(False)
         #    #Buttons
         projectDropButton = QToolButton()
-        icon_path = ":/plugins/QGISRed/images/iconLayerManagement.png"
+        icon_path = ":/plugins/QGISRed/images/iconProjectMenu.png"
         self.add_action(
             icon_path,
             text=self.tr("Project"),
