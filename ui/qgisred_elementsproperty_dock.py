@@ -1,40 +1,33 @@
 # -*- coding: utf-8 -*-
 import os
-from PyQt5.QtGui import QIcon, QFont, QColor
-from PyQt5.QtWidgets import QDockWidget, QMessageBox, QLineEdit
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QLabel, QToolButton
+from PyQt5.QtWidgets import QTableWidgetItem, QHeaderView, QStyle
+from PyQt5.QtCore import pyqtSlot
 from qgis.PyQt import uic
-from PyQt5.QtCore import Qt
-from qgis.PyQt.QtCore import pyqtSlot
-from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsRectangle, QgsVectorLayer, QgsSettings
-from PyQt5.QtWidgets import QTableWidgetItem, QHeaderView
-from qgis.utils import iface
-from qgis.gui import QgsHighlight
-from PyQt5.QtWidgets import QWidget, QLabel, QHBoxLayout
+from qgis.core import QgsProject, QgsVectorLayer, QgsSettings
 
-FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_elementsproperty_dialog.ui"))
+FORM_CLASS, _ = uic.loadUiType( os.path.join(os.path.dirname(__file__), "qgisred_elementsproperty_dialog.ui") )
 
 class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
     _instance = None
-    
+
     @classmethod
     def getInstance(cls, parent=None):
         if cls._instance is None:
             cls._instance = cls(parent)
-        else:
-            print("[DEBUG] QGISRedElementsPropertyDock instance already exists. Returning the same instance.")
         return cls._instance
 
     def __init__(self, parent=None):
         if QGISRedElementsPropertyDock._instance is not None:
             raise Exception("QGISRedElementsPropertyDock is a singleton! Use getInstance() instead.")
-            
         super(QGISRedElementsPropertyDock, self).__init__(parent)
         self.setupUi(self)
-        
         self.setObjectName("QGISRedElementsPropertyDock")
         self.setFloating(False)
-        
-        print("[DEBUG] QGISRedElementsPropertyDock initialized.")
+        self.setDockStyle()
+        self.setupConnections()
+        self.initCustomTitleBar()
 
         self.singular_forms = {
             self.tr("Pipes"): self.tr("Pipe"),
@@ -53,62 +46,104 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         self.original_ids = []
         self.adjacent_highlights = []
         self.main_highlight = None
-        self.current_selected_highlight = None 
-        
-        self.setDockStyle()
-        
-        font = QFont()
-        font.setPointSize(12)
-        font.setBold(True)
-
-        self.setupConnections()
+        self.current_selected_highlight = None
 
         settings = QgsSettings()
         if settings.contains("QGISRed/ElementsData/geometry"):
-            print("[DEBUG] Restoring geometry for QGISRedElementsPropertyDock.")
             self.restoreGeometry(settings.value("QGISRed/ElementsData/geometry"))
-    
-    def setDockStyle(self):
-        icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconElementsProperties.png')
-        self.setWindowIcon(QIcon(icon_path))
 
-    def setupConnections(self):
-        print("[DEBUG] Setup connections in QGISRedElementsPropertyDock.")
-        # Add signal/slot connections here if needed
-
-    def clearHighlights(self):
-        # Placeholder for highlight cleanup
-        print("[DEBUG] clearHighlights called in QGISRedElementsPropertyDock.")
+    @pyqtSlot()
+    def clearAll(self):
+        self.clearHighlights()
+        self.clearAllLayerSelections()
 
     def clearAllLayerSelections(self):
-        print("[DEBUG] clearAllLayerSelections called.")
         for lyr in QgsProject.instance().mapLayers().values():
             if isinstance(lyr, QgsVectorLayer):
                 lyr.removeSelection()
 
-    def loadFeature(self, layer, feature):
-        print(f"[DEBUG] loadFeature called. Layer: {layer.name()}, Feature ID: {feature.id()}")
-        self.currentLayer = layer
-        self.currentFeature = feature
-        
-        # Select the feature in its layer
-        layer.selectByIds([feature.id()])
-        
-        # Populate the data table widget with feature attributes
-        self.populatedataTableWidget()
+    def clearHighlights(self):
+        pass
 
-        # Determine the singular form of the layer name if available
-        singular_layer_name = self.singular_forms.get(layer.name(), layer.name())
-        
-        # Update the dock widget's title to "SingularName <feature id>"
-        feature_id = feature.attribute("Id")
-        self.setWindowTitle(f"{singular_layer_name} {feature_id}")
+    def closeEvent(self, event):
+        settings = QgsSettings()
+        settings.setValue("QGISRed/ElementsData/geometry", self.saveGeometry())
+        self.clearHighlights()
+        self.clearAllLayerSelections()
+        QGISRedElementsPropertyDock._instance = None
+        super(QGISRedElementsPropertyDock, self).closeEvent(event)
+
+    def initCustomTitleBar(self):
+        titleBar = QWidget(self)
+        layout = QHBoxLayout(titleBar)
+        layout.setContentsMargins(5, 0, 5, 0)
+
+        self.titleLabel = QLabel(self.windowTitle(), titleBar)
+        layout.addWidget(self.titleLabel)
+        layout.addStretch()
+
+        findButton = QToolButton(titleBar)
+        icon_find = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFindElements.png'))
+        findButton.setIcon(icon_find)
+        findButton.setToolTip("Find Elements")
+        findButton.clicked.connect(self.openFindElementsDock)
+        layout.addWidget(findButton)
+
+        self.floatButton = QToolButton(titleBar)
+        float_icon = self.style().standardIcon(QStyle.SP_TitleBarNormalButton)
+        self.floatButton.setIcon(float_icon)
+        self.floatButton.setToolTip("Float")
+        self.floatButton.clicked.connect(self.toggleFloating)
+        layout.addWidget(self.floatButton)
+
+        self.closeButton = QToolButton(titleBar)
+        close_icon = self.style().standardIcon(QStyle.SP_TitleBarCloseButton)
+        self.closeButton.setIcon(close_icon)
+        self.closeButton.setToolTip("Close")
+        self.closeButton.clicked.connect(self.close)
+        layout.addWidget(self.closeButton)
+
+        self.setTitleBarWidget(titleBar)
+
+    def onProjectClosed(self):
+        self.clearHighlights()
+        self.clearAllLayerSelections()
+
+    @pyqtSlot()
+    def openFindElementsDock(self):
+        pass
+
+    def populatedataTableWidget(self):
+        if not hasattr(self, 'dataTableWidget'):
+            return
+        self.dataTableWidget.clearContents()
+        fields = self.currentLayer.fields()
+        attributes = self.currentFeature.attributes()
+        num_fields = len(fields)
+        self.dataTableWidget.setRowCount(num_fields)
+        self.dataTableWidget.setColumnCount(2)
+        self.dataTableWidget.setHorizontalHeaderLabels(["Field", "Value"])
+        self.dataTableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.dataTableWidget.verticalHeader().setVisible(False)
+        for row, field in enumerate(fields):
+            field_item = QTableWidgetItem(field.name())
+            value_item = QTableWidgetItem(str(attributes[row]))
+            self.dataTableWidget.setItem(row, 0, field_item)
+            self.dataTableWidget.setItem(row, 1, value_item)
+
+    def setDockStyle(self):
+        icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconElementsProperties.png')
+        self.setWindowIcon(QIcon(icon_path))
+
+    def setWindowTitle(self, title):
+        super(QGISRedElementsPropertyDock, self).setWindowTitle(title)
+        if hasattr(self, 'titleLabel'):
+            self.titleLabel.setText(title)
+
+    def setupConnections(self):
+        pass
 
     def setupTabs(self, visible_tabs):
-        print("[DEBUG] setupTabs called with visible_tabs:", visible_tabs)
-
-        # Map from your attribute name to the actual tab widget instance
-        # (assuming self.tabData, self.tabResults, etc. are pages added to self.tabWidget)
         tabs_info = {
             "tabData": self.tabData,
             "tabResults": self.tabResults,
@@ -116,113 +151,47 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
             "tabPatterns": self.tabPatterns,
             "tabControls": self.tabControls
         }
-
-        # Iterate over each known tab name and its corresponding widget
         for tab_name, tab_widget in tabs_info.items():
             if tab_widget is None:
-                print(f"[DEBUG] No widget found for '{tab_name}'. Skipping.")
                 continue
-            
-            # Find the tab's index in the QTabWidget
             tab_index = self.tabWidget.indexOf(tab_widget)
             if tab_index == -1:
-                print(f"[DEBUG] Widget '{tab_name}' not found in tabWidget. Skipping.")
                 continue
-            
-            # Determine desired visibility based on whether the tab_name is in visible_tabs
-            is_visible = tab_name in visible_tabs
-            
-            # Use QTabWidget's built-in method to show/hide the tab
-            self.tabWidget.setTabVisible(tab_index, is_visible)
-            
-            print(f"[DEBUG] Setting tab '{tab_name}' visibility to {is_visible}")
+            self.tabWidget.setTabVisible(tab_index, tab_name in visible_tabs)
 
+    @pyqtSlot()
+    def toggleFloating(self):
+        self.setFloating(not self.isFloating())
 
-    def handlePipes(self, layer, feature, tabs):
-        print("[DEBUG] handlePipes called.")
+    def handleJunctions(self, layer, feature, tabs):
         self.setupTabs(tabs)
         self.loadFeature(layer, feature)
-    
-    def handleValves(self, layer, feature, tabs):
-        print("[DEBUG] handleValves called.")
+
+    def handlePipes(self, layer, feature, tabs):
         self.setupTabs(tabs)
         self.loadFeature(layer, feature)
 
     def handlePumps(self, layer, feature, tabs):
-        print("[DEBUG] handlePumps called.")
         self.setupTabs(tabs)
         self.loadFeature(layer, feature)
-    
-    def handleJunctions(self, layer, feature, tabs):
-        print("[DEBUG] handleJunctions called.")
-        self.setupTabs(tabs)
-        self.loadFeature(layer, feature)
-    
-    def handleTanks(self, layer, feature, tabs):
-        print("[DEBUG] handleTanks called.")
-        self.setupTabs(tabs)
-        self.loadFeature(layer, feature)
-    
+
     def handleReservoirs(self, layer, feature, tabs):
-        print("[DEBUG] handleReservoirs called.")
         self.setupTabs(tabs)
         self.loadFeature(layer, feature)
 
-    def populatedataTableWidget(self):
-        # Check that the widget exists
-        if not hasattr(self, 'dataTableWidget'):
-            print("[DEBUG] dataTableWidget widget not found!")
-            return
+    def handleTanks(self, layer, feature, tabs):
+        self.setupTabs(tabs)
+        self.loadFeature(layer, feature)
 
-        # Clear any existing content
-        self.dataTableWidget.clearContents()
+    def handleValves(self, layer, feature, tabs):
+        self.setupTabs(tabs)
+        self.loadFeature(layer, feature)
 
-        # Get the fields and corresponding attribute values
-        fields = self.currentLayer.fields()  # QgsFields object
-        attributes = self.currentFeature.attributes()  # List of attribute values
-
-        # Set up the table: two columns ("Field" and "Value")
-        num_fields = len(fields)
-        self.dataTableWidget.setRowCount(num_fields)
-        self.dataTableWidget.setColumnCount(2)
-        self.dataTableWidget.setHorizontalHeaderLabels(["Field", "Value"])
-
-        # Ensure columns stretch to occupy available horizontal space
-        self.dataTableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        # Hide vertical header indexes
-        self.dataTableWidget.verticalHeader().setVisible(False)
-
-        # Loop over the fields and populate the table rows
-        for row, field in enumerate(fields):
-            field_name = field.name()
-            field_value = attributes[row]
-
-            # Create table items for each column
-            field_item = QTableWidgetItem(field_name)
-            value_item = QTableWidgetItem(str(field_value))
-
-            # Add items to the table widget
-            self.dataTableWidget.setItem(row, 0, field_item)
-            self.dataTableWidget.setItem(row, 1, value_item)
-            
-    def closeEvent(self, event):
-        print("[DEBUG] closeEvent triggered in QGISRedElementsPropertyDock.")
-        settings = QgsSettings()
-        settings.setValue("QGISRed/ElementsData/geometry", self.saveGeometry())
-        
-        self.clearHighlights()
-        self.clearAllLayerSelections()
-        
-        QGISRedElementsPropertyDock._instance = None
-        super(QGISRedElementsPropertyDock, self).closeEvent(event)
-
-    def onProjectClosed(self):
-        print("[DEBUG] onProjectClosed slot called.")
-        self.clearHighlights()
-        self.clearAllLayerSelections()
-
-    @pyqtSlot()
-    def clearAll(self):
-        print("[DEBUG] clearAll slot triggered.")
-        self.clearHighlights()
-        self.clearAllLayerSelections()
+    def loadFeature(self, layer, feature):
+        self.currentLayer = layer
+        self.currentFeature = feature
+        layer.selectByIds([feature.id()])
+        self.populatedataTableWidget()
+        singular_layer_name = self.singular_forms.get(layer.name(), layer.name())
+        feature_id = feature.attribute("Id")
+        self.setWindowTitle(f"{singular_layer_name} {feature_id}")
