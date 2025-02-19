@@ -1469,11 +1469,11 @@ class QGISRed:
             parent=self.iface.mainWindow(),
         )
         self.queriesDropButton = queriesDropButton
-        # Find Elements by ID
+        # Find Elemets by ID
         icon_path = ":/plugins/QGISRed/images/iconFindElements.png"
         self.openFindElementsDialog = self.add_action(
             icon_path,
-            text=self.tr("Find Elements by ID"),
+            text=self.tr("Find Elemets by ID..."),
             callback=self.runFindElements,
             menubar=self.queriesMenu,
             toolbar=self.queriesToolbar,
@@ -1485,7 +1485,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed/images/iconElementsProperties.png"
         self.openElementsPropertyDialog = self.add_action(
             icon_path,
-            text=self.tr("Elements Property"),
+            text=self.tr("Element Properties..."),
             callback=self.runElementsProperty,
             menubar=self.queriesMenu,
             toolbar=self.queriesToolbar,
@@ -1506,11 +1506,11 @@ class QGISRed:
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
-        # # Live Queries
+        # # Queries by Attributes
         icon_path = ":/plugins/QGISRed/images/iconLiveQueries.png"
         self.openLiveQueriesDialog = self.add_action(
             icon_path,
-            text=self.tr("Live Queries"),
+            text=self.tr("Queries by Attributes..."),
             callback=self.runLiveQueries,
             menubar=self.queriesMenu,
             toolbar=self.queriesToolbar,
@@ -1522,7 +1522,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed/images/iconStatisticsAndPlots.png"
         self.openStatisticsAndPlotsDialog = self.add_action(
             icon_path,
-            text=self.tr("Statistics and Plots"),
+            text=self.tr("Statistics && Plots..."),
             callback=self.runStatisticsAndPlots,
             menubar=self.queriesMenu,
             toolbar=self.queriesToolbar,
