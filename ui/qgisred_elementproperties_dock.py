@@ -7,7 +7,7 @@ from PyQt5.QtCore import pyqtSlot
 from qgis.PyQt import uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsSettings
 
-FORM_CLASS, _ = uic.loadUiType( os.path.join(os.path.dirname(__file__), "qgisred_elementsproperty_dialog.ui") )
+FORM_CLASS, _ = uic.loadUiType( os.path.join(os.path.dirname(__file__), "qgisred_elementproperties_dialog.ui") )
 
 class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
     _instance = None

@@ -1,4 +1,4 @@
-from ..ui.qgisred_elementsproperty_dock import QGISRedElementsPropertyDock
+from ..ui.qgisred_elementproperties_dock import QGISRedElementsPropertyDock
 from qgis.gui import QgsMapToolIdentify, QgsHighlight
 from qgis.utils import iface
 from qgis.core import QgsProject, QgsVectorLayer
