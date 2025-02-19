@@ -12,25 +12,29 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         self.currentHighlight = None
         self.dock = None
         self.setupConnections()
+        print("[DEBUG] QGISRedIdentifyFeature initialized.")
 
     def setupConnections(self):
+        print("[DEBUG] Setting up project connections...")
         project = QgsProject.instance()
         project.readProject.connect(self.deactivate)
         project.cleared.connect(self.deactivate)
-    
+
     def canvasReleaseEvent(self, event):
+        print(f"[DEBUG] canvasReleaseEvent triggered at x={event.x()}, y={event.y()}")
         identified_features = self.identify(event.x(), event.y(), self.TopDownStopAtFirst)
+
         if identified_features:
             identified_feature = identified_features[0]
             feature = identified_feature.mFeature
             layer = identified_feature.mLayer
 
-            print("feature:", feature)
+            print("[DEBUG] Identified features found.")
+            print(f"[DEBUG] Feature ID = {feature.id()}, geometry type = {feature.geometry().type() if feature.geometry() else None}")
 
             for lyr in QgsProject.instance().mapLayers().values():
                 if isinstance(lyr, QgsVectorLayer):
                     lyr.removeSelection()
-
             layer.select(feature.id())
 
             self.clearHighlights()
@@ -40,15 +44,20 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
             self.currentHighlight.setWidth(4)
             self.currentHighlight.setFillColor(Qt.transparent)
             self.currentHighlight.show()
+            print("[DEBUG] Highlight set for the identified feature.")
 
+            # Get or create the dock
+            print("[DEBUG] Retrieving QGISRedElementsPropertyDock instance...")
             self.dock = QGISRedElementsPropertyDock.getInstance(iface.mainWindow())
             if not self.dock.isVisible():
                 iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
+                print("[DEBUG] Dock was not visible, added to UI.")
 
             identifier = layer.customProperty("qgisred_identifier")
+            print(f"[DEBUG] layer.customProperty('qgisred_identifier') = {identifier}")
+
             if not identifier:
-                return
-                # Default behavior if no identifier is set.
+                print("[DEBUG] No identifier found, falling back to default loadFeature.")
                 self.dock.loadFeature(layer, feature)
             else:
                 # Determine which handler and tabs to use based on the identifier.
@@ -72,17 +81,22 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
                     self.dock.handleReservoirs(layer, feature, tabs)
                 else:
                     # Fallback if the identifier does not match any known type.
+                    print("[DEBUG] Unrecognized identifier, using generic loadFeature.")
                     self.dock.loadFeature(layer, feature)
 
             self.dock.show()
             self.dock.raise_()
             self.dock.activateWindow()
+        else:
+            print("[DEBUG] No features identified at the clicked location.")
 
     def keyReleaseEvent(self, e):
+        print(f"[DEBUG] keyReleaseEvent triggered. Key = {e.key()}")
         if e.key() == Qt.Key_Escape:
             self.deactivate()
 
     def deactivate(self):
+        print("[DEBUG] Deactivate called: unsetting map tool, clearing highlights, closing dock.")
         self.canvas.unsetMapTool(self.canvas.mapTool())
         self.clearHighlights()
         self.closeDock()
@@ -91,24 +105,28 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
 
     def clearHighlights(self):
         if self.currentHighlight is not None:
+            print("[DEBUG] Hiding current highlight.")
             self.currentHighlight.hide()
             self.currentHighlight = None
 
     def closeDock(self):
         if self.dock:
+            print("[DEBUG] Closing the dock.")
             self.dock.close()
 
     def setActionUnchecked(self):
         if self.toggle_action:
+            print("[DEBUG] Toggling action to unchecked.")
             self.toggle_action.setChecked(False)
 
     def disconnectProjectSignals(self):
+        print("[DEBUG] Disconnecting project signals.")
         project = QgsProject.instance()
         try:
             project.readProject.disconnect(self.deactivate)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[DEBUG] Could not disconnect readProject signal: {e}")
         try:
             project.cleared.disconnect(self.deactivate)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[DEBUG] Could not disconnect cleared signal: {e}")
