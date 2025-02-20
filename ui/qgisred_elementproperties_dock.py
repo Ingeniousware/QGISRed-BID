@@ -3,9 +3,12 @@ import os
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QLabel, QToolButton
 from PyQt5.QtWidgets import QTableWidgetItem, QHeaderView, QStyle
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import pyqtSlot, Qt
 from qgis.PyQt import uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsSettings
+from qgis.utils import iface
+
+from .qgisred_findElements_dock import QGISRedFindElementsDock
 
 FORM_CLASS, _ = uic.loadUiType( os.path.join(os.path.dirname(__file__), "qgisred_elementproperties_dialog.ui") )
 
@@ -47,6 +50,7 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         self.adjacent_highlights = []
         self.main_highlight = None
         self.current_selected_highlight = None
+        self.findElemetsdock = None
 
         settings = QgsSettings()
         if settings.contains("QGISRed/ElementsData/geometry"):
@@ -85,8 +89,8 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         findButton = QToolButton(titleBar)
         icon_find = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFindElements.png'))
         findButton.setIcon(icon_find)
-        findButton.setToolTip("Find Elements")
-        findButton.clicked.connect(self.openFindElementsDock)
+        findButton.setToolTip("Find Elemets by ID")
+        findButton.clicked.connect(self.openFindElemetsDock)
         layout.addWidget(findButton)
 
         self.floatButton = QToolButton(titleBar)
@@ -110,8 +114,23 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         self.clearAllLayerSelections()
 
     @pyqtSlot()
-    def openFindElementsDock(self):
-        pass
+    def openFindElemetsDock(self):
+        existing_docks = iface.mainWindow().findChildren(QGISRedFindElementsDock)
+        if existing_docks:
+            dock = existing_docks[0]
+            iface.addDockWidget(Qt.RightDockWidgetArea, dock)
+            dock.show()
+            dock.raise_()
+            dock.activateWindow()
+            dock.findFeature(self.currentLayer, self.currentFeature)
+            iface.mainWindow().splitDockWidget(dock, self, Qt.Vertical)
+        else:
+            self.findElemetsdock = QGISRedFindElementsDock()
+            iface.addDockWidget(Qt.RightDockWidgetArea, self.findElemetsdock)
+            self.findElemetsdock.findFeature(self.currentLayer, self.currentFeature)
+            self.findElemetsdock.show()
+
+            iface.mainWindow().splitDockWidget(self.findElemetsdock, self, Qt.Vertical)
 
     def populatedataTableWidget(self):
         if not hasattr(self, 'dataTableWidget'):
@@ -195,3 +214,4 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         singular_layer_name = self.singular_forms.get(layer.name(), layer.name())
         feature_id = feature.attribute("Id")
         self.setWindowTitle(f"{singular_layer_name} {feature_id}")
+
