@@ -185,11 +185,10 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
     def populatedataTableWidget(self):
         if not hasattr(self, 'dataTableWidget'):
             return
+        
         self.dataTableWidget.clearContents()
-
-        # Remove grid lines and reduce cell padding
         self.dataTableWidget.setShowGrid(False)
-        self.dataTableWidget.setStyleSheet("QTableWidget::item { padding: 3px; }")
+        self.dataTableWidget.setStyleSheet("QTableWidget::item { padding: 1px; }")
         
         fields = self.currentLayer.fields()
         attributes = self.currentFeature.attributes()
@@ -199,11 +198,11 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         self.dataTableWidget.setHorizontalHeaderLabels(["Property", "Value"])
 
         header = self.dataTableWidget.horizontalHeader()
-        # Set both columns to be interactive (allowing manual resizing)
         header.setSectionResizeMode(QHeaderView.Interactive)
         header.setStyleSheet("QHeaderView::section { font-weight: bold; }")
-        # Initially, set columns to occupy the whole width
-        # (Here we assume an equal distribution)
+        
+        self.dataTableWidget.verticalHeader().setDefaultSectionSize(20)
+        
         total_width = self.dataTableWidget.viewport().width() + 20 
         self.dataTableWidget.setColumnWidth(0, total_width // 2)
         self.dataTableWidget.setColumnWidth(1, total_width // 2)
@@ -215,6 +214,7 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
             value_item = QTableWidgetItem(str(attributes[row]))
             self.dataTableWidget.setItem(row, 0, field_item)
             self.dataTableWidget.setItem(row, 1, value_item)
+
 
     def setDockStyle(self):
         icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconElementsProperties.png')
