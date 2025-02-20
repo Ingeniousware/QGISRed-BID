@@ -83,6 +83,7 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         layout.setContentsMargins(5, 0, 5, 0)
 
         self.titleLabel = QLabel(self.windowTitle(), titleBar)
+        self.titleLabel.setStyleSheet("font-weight: bold;")
         layout.addWidget(self.titleLabel)
         layout.addStretch()
 
@@ -132,18 +133,83 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
 
             iface.mainWindow().splitDockWidget(self.findElemetsdock, self, Qt.Vertical)
 
+    # def populatedataTableWidget(self):
+    #     if not hasattr(self, 'dataTableWidget'):
+    #         return
+    #     self.dataTableWidget.clearContents()
+    #     fields = self.currentLayer.fields()
+    #     attributes = self.currentFeature.attributes()
+    #     num_fields = len(fields)
+    #     self.dataTableWidget.setRowCount(num_fields)
+    #     self.dataTableWidget.setColumnCount(2)
+    #     self.dataTableWidget.setHorizontalHeaderLabels(["Property", "Value"])
+    #     self.dataTableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+    #     self.dataTableWidget.verticalHeader().setVisible(False)
+    #     for row, field in enumerate(fields):
+    #         field_item = QTableWidgetItem(field.name())
+    #         value_item = QTableWidgetItem(str(attributes[row]))
+    #         self.dataTableWidget.setItem(row, 0, field_item)
+    #         self.dataTableWidget.setItem(row, 1, value_item)
+
+    # def populatedataTableWidget(self):
+    #     if not hasattr(self, 'dataTableWidget'):
+    #         return
+    #     self.dataTableWidget.clearContents()
+        
+    #     # Remove grid lines
+    #     self.dataTableWidget.setShowGrid(False)
+
+    #     # Reduce spacing by adjusting cell padding via a stylesheet (adjust the value as needed)
+    #     self.dataTableWidget.setStyleSheet("QTableWidget::item { padding: 3px; }")
+        
+    #     fields = self.currentLayer.fields()
+    #     attributes = self.currentFeature.attributes()
+    #     num_fields = len(fields)
+    #     self.dataTableWidget.setRowCount(num_fields)
+    #     self.dataTableWidget.setColumnCount(2)
+    #     self.dataTableWidget.setHorizontalHeaderLabels(["Property", "Value"])
+        
+    #     # Allow user to adjust column widths manually
+    #     self.dataTableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+    #     self.dataTableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        
+    #     # Hide vertical header if desired
+    #     self.dataTableWidget.verticalHeader().setVisible(False)
+        
+    #     for row, field in enumerate(fields):
+    #         field_item = QTableWidgetItem(field.name())
+    #         value_item = QTableWidgetItem(str(attributes[row]))
+    #         self.dataTableWidget.setItem(row, 0, field_item)
+    #         self.dataTableWidget.setItem(row, 1, value_item)
+
     def populatedataTableWidget(self):
         if not hasattr(self, 'dataTableWidget'):
             return
         self.dataTableWidget.clearContents()
+
+        # Remove grid lines and reduce cell padding
+        self.dataTableWidget.setShowGrid(False)
+        self.dataTableWidget.setStyleSheet("QTableWidget::item { padding: 3px; }")
+        
         fields = self.currentLayer.fields()
         attributes = self.currentFeature.attributes()
         num_fields = len(fields)
         self.dataTableWidget.setRowCount(num_fields)
         self.dataTableWidget.setColumnCount(2)
-        self.dataTableWidget.setHorizontalHeaderLabels(["Field", "Value"])
-        self.dataTableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.dataTableWidget.setHorizontalHeaderLabels(["Property", "Value"])
+
+        header = self.dataTableWidget.horizontalHeader()
+        # Set both columns to be interactive (allowing manual resizing)
+        header.setSectionResizeMode(QHeaderView.Interactive)
+        
+        # Initially, set columns to occupy the whole width
+        # (Here we assume an equal distribution)
+        total_width = self.dataTableWidget.viewport().width() + 20 
+        self.dataTableWidget.setColumnWidth(0, total_width // 2)
+        self.dataTableWidget.setColumnWidth(1, total_width // 2)
+        
         self.dataTableWidget.verticalHeader().setVisible(False)
+        
         for row, field in enumerate(fields):
             field_item = QTableWidgetItem(field.name())
             value_item = QTableWidgetItem(str(attributes[row]))

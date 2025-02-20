@@ -28,10 +28,12 @@
     <height>524287</height>
    </size>
   </property>
+  <!-- Increase main window title size and keep bold -->
   <property name="font">
    <font>
-    <weight>50</weight>
-    <bold>false</bold>
+    <pointsize>12</pointsize>
+    <weight>75</weight>
+    <bold>true</bold>
    </font>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
@@ -53,6 +55,9 @@
     </property>
     <item>
      <widget class="QTabWidget" name="tabWidget">
+      <property name="styleSheet">
+       <string notr="true">QTabBar::tab { font-weight: bold; min-width: 80px; }</string>
+      </property>
       <property name="currentIndex">
        <number>0</number>
       </property>
