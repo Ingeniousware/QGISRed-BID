@@ -28,10 +28,10 @@
     <height>524287</height>
    </size>
   </property>
-  <!-- Increase main window title size and keep bold -->
+  <!-- Increase main window title size to 14 points and keep bold -->
   <property name="font">
    <font>
-    <pointsize>12</pointsize>
+    <pointsize>14</pointsize>
     <weight>75</weight>
     <bold>true</bold>
    </font>
@@ -55,6 +55,7 @@
     </property>
     <item>
      <widget class="QTabWidget" name="tabWidget">
+      <!-- Updated stylesheet for tab titles -->
       <property name="styleSheet">
        <string notr="true">QTabBar::tab { font-weight: bold; min-width: 80px; }</string>
       </property>

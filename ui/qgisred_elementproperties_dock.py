@@ -83,7 +83,7 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         layout.setContentsMargins(5, 0, 5, 0)
 
         self.titleLabel = QLabel(self.windowTitle(), titleBar)
-        self.titleLabel.setStyleSheet("font-weight: bold;")
+        self.titleLabel.setStyleSheet("font-weight: bold; font-size: 12pt;")
         layout.addWidget(self.titleLabel)
         layout.addStretch()
 
@@ -201,7 +201,7 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         header = self.dataTableWidget.horizontalHeader()
         # Set both columns to be interactive (allowing manual resizing)
         header.setSectionResizeMode(QHeaderView.Interactive)
-        
+        header.setStyleSheet("QHeaderView::section { font-weight: bold; }")
         # Initially, set columns to occupy the whole width
         # (Here we assume an equal distribution)
         total_width = self.dataTableWidget.viewport().width() + 20 
