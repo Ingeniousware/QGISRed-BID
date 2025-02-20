@@ -4,6 +4,7 @@ from qgis.utils import iface
 from qgis.core import QgsProject, QgsVectorLayer
 from PyQt5.QtCore import Qt
 
+
 class QGISRedIdentifyFeature(QgsMapToolIdentify):
     def __init__(self, canvas, toggle_action=None):
         super().__init__(canvas)
@@ -12,121 +13,106 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         self.currentHighlight = None
         self.dock = None
         self.setupConnections()
-        print("[DEBUG] QGISRedIdentifyFeature initialized.")
+
+    def clearHighlights(self):
+        if self.currentHighlight is not None:
+            self.currentHighlight.hide()
+            self.currentHighlight = None
+
+    def closeDock(self):
+        if self.dock:
+            self.dock.close()
+
+    def disconnectProjectSignals(self):
+        project = QgsProject.instance()
+        try:
+            project.readProject.disconnect(self.deactivate)
+        except Exception:
+            pass
+        try:
+            project.cleared.disconnect(self.deactivate)
+        except Exception:
+            pass
+
+    def setActionUnchecked(self):
+        if self.toggle_action:
+            self.toggle_action.setChecked(False)
 
     def setupConnections(self):
-        print("[DEBUG] Setting up project connections...")
         project = QgsProject.instance()
         project.readProject.connect(self.deactivate)
         project.cleared.connect(self.deactivate)
 
     def canvasReleaseEvent(self, event):
-        print(f"[DEBUG] canvasReleaseEvent triggered at x={event.x()}, y={event.y()}")
-        identified_features = self.identify(event.x(), event.y(), self.TopDownStopAtFirst)
+        all_features = self.identify(event.x(), event.y(), self.TopDownAll)
+        if not all_features:
+            return
 
-        if identified_features:
-            identified_feature = identified_features[0]
-            feature = identified_feature.mFeature
-            layer = identified_feature.mLayer
+        handlers = {
+            'qgisred_meters': (['tabData', 'tabResults', 'tabCurves', 'tabControls'], 'handleMeters'),
+            'qgisred_isolationvalves': (['tabData', 'tabResults', 'tabCurves', 'tabControls'], 'handleIsolationValves'),
+            'qgisred_valves': (['tabData', 'tabResults', 'tabCurves', 'tabControls'], 'handleValves'),
+            'qgisred_pumps': (['tabData', 'tabResults', 'tabCurves', 'tabPatterns', 'tabControls'], 'handlePumps'),
+            'qgisred_junctions': (['tabData', 'tabResults', 'tabPatterns', 'tabControls'], 'handleJunctions'),
+            'qgisred_tanks': (['tabData', 'tabResults', 'tabCurves', 'tabPatterns', 'tabControls'], 'handleTanks'),
+            'qgisred_reservoirs': (['tabData', 'tabResults', 'tabPatterns', 'tabControls'], 'handleReservoirs'),
+            'qgisred_pipes': (['tabData', 'tabResults', 'tabCurves', 'tabControls'], 'handlePipes'),
+            'qgisred_serviceconnections': (['tabData', 'tabResults', 'tabCurves', 'tabControls'], 'handleServiceConnections')
+        }
 
-            print("[DEBUG] Identified features found.")
-            print(f"[DEBUG] Feature ID = {feature.id()}, geometry type = {feature.geometry().type() if feature.geometry() else None}")
+        selected_feature = None
+        selected_layer = None
+        selected_handler = None
 
-            for lyr in QgsProject.instance().mapLayers().values():
-                if isinstance(lyr, QgsVectorLayer):
-                    lyr.removeSelection()
-            layer.select(feature.id())
+        for identifier_key, handler_data in handlers.items():
+            for result in all_features:
+                identifier = result.mLayer.customProperty("qgisred_identifier")
+                if identifier == identifier_key:
+                    selected_feature = result.mFeature
+                    selected_layer = result.mLayer
+                    selected_handler = handler_data
+                    break 
+            if selected_handler:
+                break
 
-            self.clearHighlights()
+        if not selected_handler:
+            top_result = all_features[0]
+            selected_feature = top_result.mFeature
+            selected_layer = top_result.mLayer
 
-            self.currentHighlight = QgsHighlight(self.canvas, feature.geometry(), layer)
-            self.currentHighlight.setColor(Qt.red)
-            self.currentHighlight.setWidth(4)
-            self.currentHighlight.setFillColor(Qt.transparent)
-            self.currentHighlight.show()
-            print("[DEBUG] Highlight set for the identified feature.")
+        for lyr in QgsProject.instance().mapLayers().values():
+            if isinstance(lyr, QgsVectorLayer):
+                lyr.removeSelection()
+        selected_layer.select(selected_feature.id())
 
-            # Get or create the dock
-            print("[DEBUG] Retrieving QGISRedElementsPropertyDock instance...")
-            self.dock = QGISRedElementsPropertyDock.getInstance(iface.mainWindow())
-            if not self.dock.isVisible():
-                iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
-                print("[DEBUG] Dock was not visible, added to UI.")
+        self.clearHighlights()
+        self.currentHighlight = QgsHighlight(self.canvas, selected_feature.geometry(), selected_layer)
+        self.currentHighlight.setColor(Qt.red)
+        self.currentHighlight.setWidth(4)
+        self.currentHighlight.setFillColor(Qt.transparent)
+        self.currentHighlight.show()
 
-            identifier = layer.customProperty("qgisred_identifier")
-            print(f"[DEBUG] layer.customProperty('qgisred_identifier') = {identifier}")
+        self.dock = QGISRedElementsPropertyDock.getInstance(iface.mainWindow())
+        if not self.dock.isVisible():
+            iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
 
-            if not identifier:
-                print("[DEBUG] No identifier found, falling back to default loadFeature.")
-                self.dock.loadFeature(layer, feature)
-            else:
-                # Determine which handler and tabs to use based on the identifier.
-                if identifier == 'qgisred_pipes':
-                    tabs = ['tabData', 'tabResults', 'tabCurves', 'tabControls']
-                    self.dock.handlePipes(layer, feature, tabs)
-                elif identifier == 'qgisred_valves':
-                    tabs = ['tabData', 'tabResults', 'tabCurves', 'tabControls']
-                    self.dock.handleValves(layer, feature, tabs)
-                elif identifier == 'qgisred_pumps':
-                    tabs = ['tabData', 'tabResults', 'tabCurves', 'tabPatterns', 'tabControls']
-                    self.dock.handlePumps(layer, feature, tabs)
-                elif identifier == 'qgisred_junctions':
-                    tabs = ['tabData', 'tabResults', 'tabPatterns', 'tabControls']
-                    self.dock.handleJunctions(layer, feature, tabs)
-                elif identifier == 'qgisred_tanks':
-                    tabs = ['tabData', 'tabResults', 'tabCurves', 'tabPatterns', 'tabControls']
-                    self.dock.handleTanks(layer, feature, tabs)
-                elif identifier == 'qgisred_reservoirs':
-                    tabs = ['tabData', 'tabResults', 'tabPatterns', 'tabControls']
-                    self.dock.handleReservoirs(layer, feature, tabs)
-                else:
-                    # Fallback if the identifier does not match any known type.
-                    print("[DEBUG] Unrecognized identifier, using generic loadFeature.")
-                    self.dock.loadFeature(layer, feature)
-
-            self.dock.show()
-            self.dock.raise_()
-            self.dock.activateWindow()
+        if selected_handler:
+            tabs, method_name = selected_handler
+            getattr(self.dock, method_name)(selected_layer, selected_feature, tabs)
         else:
-            print("[DEBUG] No features identified at the clicked location.")
+            self.dock.loadFeature(selected_layer, selected_feature)
 
-    def keyReleaseEvent(self, e):
-        print(f"[DEBUG] keyReleaseEvent triggered. Key = {e.key()}")
-        if e.key() == Qt.Key_Escape:
-            self.deactivate()
+        self.dock.show()
+        self.dock.raise_()
+        self.dock.activateWindow()
 
     def deactivate(self):
-        print("[DEBUG] Deactivate called: unsetting map tool, clearing highlights, closing dock.")
         self.canvas.unsetMapTool(self.canvas.mapTool())
         self.clearHighlights()
         self.closeDock()
         self.disconnectProjectSignals()
         self.setActionUnchecked()
 
-    def clearHighlights(self):
-        if self.currentHighlight is not None:
-            print("[DEBUG] Hiding current highlight.")
-            self.currentHighlight.hide()
-            self.currentHighlight = None
-
-    def closeDock(self):
-        if self.dock:
-            print("[DEBUG] Closing the dock.")
-            self.dock.close()
-
-    def setActionUnchecked(self):
-        if self.toggle_action:
-            print("[DEBUG] Toggling action to unchecked.")
-            self.toggle_action.setChecked(False)
-
-    def disconnectProjectSignals(self):
-        print("[DEBUG] Disconnecting project signals.")
-        project = QgsProject.instance()
-        try:
-            project.readProject.disconnect(self.deactivate)
-        except Exception as e:
-            print(f"[DEBUG] Could not disconnect readProject signal: {e}")
-        try:
-            project.cleared.disconnect(self.deactivate)
-        except Exception as e:
-            print(f"[DEBUG] Could not disconnect cleared signal: {e}")
+    def keyReleaseEvent(self, e):
+        if e.key() == Qt.Key_Escape:
+            self.deactivate()

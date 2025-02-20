@@ -80,7 +80,7 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
     def initCustomTitleBar(self):
         titleBar = QWidget(self)
         layout = QHBoxLayout(titleBar)
-        layout.setContentsMargins(5, 0, 5, 0)
+        #layout.setContentsMargins(5, 0, 5, 0)
 
         self.titleLabel = QLabel(self.windowTitle(), titleBar)
         self.titleLabel.setStyleSheet("font-weight: bold; font-size: 12pt;")
@@ -132,55 +132,6 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
             self.findElemetsdock.show()
 
             iface.mainWindow().splitDockWidget(self.findElemetsdock, self, Qt.Vertical)
-
-    # def populatedataTableWidget(self):
-    #     if not hasattr(self, 'dataTableWidget'):
-    #         return
-    #     self.dataTableWidget.clearContents()
-    #     fields = self.currentLayer.fields()
-    #     attributes = self.currentFeature.attributes()
-    #     num_fields = len(fields)
-    #     self.dataTableWidget.setRowCount(num_fields)
-    #     self.dataTableWidget.setColumnCount(2)
-    #     self.dataTableWidget.setHorizontalHeaderLabels(["Property", "Value"])
-    #     self.dataTableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-    #     self.dataTableWidget.verticalHeader().setVisible(False)
-    #     for row, field in enumerate(fields):
-    #         field_item = QTableWidgetItem(field.name())
-    #         value_item = QTableWidgetItem(str(attributes[row]))
-    #         self.dataTableWidget.setItem(row, 0, field_item)
-    #         self.dataTableWidget.setItem(row, 1, value_item)
-
-    # def populatedataTableWidget(self):
-    #     if not hasattr(self, 'dataTableWidget'):
-    #         return
-    #     self.dataTableWidget.clearContents()
-        
-    #     # Remove grid lines
-    #     self.dataTableWidget.setShowGrid(False)
-
-    #     # Reduce spacing by adjusting cell padding via a stylesheet (adjust the value as needed)
-    #     self.dataTableWidget.setStyleSheet("QTableWidget::item { padding: 3px; }")
-        
-    #     fields = self.currentLayer.fields()
-    #     attributes = self.currentFeature.attributes()
-    #     num_fields = len(fields)
-    #     self.dataTableWidget.setRowCount(num_fields)
-    #     self.dataTableWidget.setColumnCount(2)
-    #     self.dataTableWidget.setHorizontalHeaderLabels(["Property", "Value"])
-        
-    #     # Allow user to adjust column widths manually
-    #     self.dataTableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-    #     self.dataTableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        
-    #     # Hide vertical header if desired
-    #     self.dataTableWidget.verticalHeader().setVisible(False)
-        
-    #     for row, field in enumerate(fields):
-    #         field_item = QTableWidgetItem(field.name())
-    #         value_item = QTableWidgetItem(str(attributes[row]))
-    #         self.dataTableWidget.setItem(row, 0, field_item)
-    #         self.dataTableWidget.setItem(row, 1, value_item)
 
     def populatedataTableWidget(self):
         if not hasattr(self, 'dataTableWidget'):
@@ -242,7 +193,11 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
             tab_index = self.tabWidget.indexOf(tab_widget)
             if tab_index == -1:
                 continue
-            self.tabWidget.setTabVisible(tab_index, tab_name in visible_tabs)
+            if tab_name == "tabResults": # hide results tab for now
+                self.tabWidget.setTabVisible(tab_index, False)
+            else:
+                self.tabWidget.setTabVisible(tab_index, tab_name in visible_tabs)
+
 
     @pyqtSlot()
     def toggleFloating(self):
@@ -269,6 +224,18 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         self.loadFeature(layer, feature)
 
     def handleValves(self, layer, feature, tabs):
+        self.setupTabs(tabs)
+        self.loadFeature(layer, feature)
+    
+    def handleMeters(self, layer, feature, tabs):
+        self.setupTabs(tabs)
+        self.loadFeature(layer, feature)
+
+    def handleIsolationValves(self, layer, feature, tabs):
+        self.setupTabs(tabs)
+        self.loadFeature(layer, feature)
+
+    def handleServiceConnections(self, layer, feature, tabs):
         self.setupTabs(tabs)
         self.loadFeature(layer, feature)
 
