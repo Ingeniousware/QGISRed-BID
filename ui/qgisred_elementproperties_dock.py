@@ -3,7 +3,7 @@ import os
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QLabel, QToolButton
 from PyQt5.QtWidgets import QTableWidgetItem, QHeaderView, QStyle
-from PyQt5.QtCore import pyqtSlot, Qt
+from PyQt5.QtCore import pyqtSlot, Qt, QEvent
 from qgis.PyQt import uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsSettings
 from qgis.utils import iface
@@ -53,8 +53,16 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         self.findElemetsdock = None
 
         settings = QgsSettings()
-        if settings.contains("QGISRed/ElementsData/geometry"):
-            self.restoreGeometry(settings.value("QGISRed/ElementsData/geometry"))
+        if settings.contains("QGISRed/ElementProperties/geometry"):
+            self.restoreGeometry(settings.value("QGISRed/ElementProperties/geometry"))
+    
+    def closeEvent(self, event):
+        settings = QgsSettings()
+        settings.setValue("QGISRed/ElementProperties/geometry", self.saveGeometry())
+        self.clearHighlights()
+        self.clearAllLayerSelections()
+        QGISRedFindElementsDock._instance = None
+        super(QGISRedFindElementsDock, self).closeEvent(event)
 
     @pyqtSlot()
     def clearAll(self):
@@ -118,13 +126,13 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
     def openFindElemetsDock(self):
         existing_docks = iface.mainWindow().findChildren(QGISRedFindElementsDock)
         if existing_docks:
-            dock = existing_docks[0]
-            iface.addDockWidget(Qt.RightDockWidgetArea, dock)
-            dock.show()
-            dock.raise_()
-            dock.activateWindow()
-            dock.findFeature(self.currentLayer, self.currentFeature)
-            iface.mainWindow().splitDockWidget(dock, self, Qt.Vertical)
+            self.findElemetsdock = existing_docks[0]
+            iface.addDockWidget(Qt.RightDockWidgetArea, self.findElemetsdock)
+            self.findElemetsdock.show()
+            self.findElemetsdock.raise_()
+            self.findElemetsdock.activateWindow()
+            self.findElemetsdock.findFeature(self.currentLayer, self.currentFeature)
+            iface.mainWindow().splitDockWidget(self.findElemetsdock, self, Qt.Vertical)
         else:
             self.findElemetsdock = QGISRedFindElementsDock()
             iface.addDockWidget(Qt.RightDockWidgetArea, self.findElemetsdock)

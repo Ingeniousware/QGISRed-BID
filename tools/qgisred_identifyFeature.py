@@ -96,6 +96,9 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         if not self.dock.isVisible():
             iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
 
+        if self.dock.findElemetsdock:
+            self.dock.findElemetsdock.findFeature(selected_layer, selected_feature)
+
         if selected_handler:
             tabs, method_name = selected_handler
             getattr(self.dock, method_name)(selected_layer, selected_feature, tabs)
