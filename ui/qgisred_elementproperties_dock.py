@@ -208,7 +208,6 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
             else:
                 self.tabWidget.setTabVisible(tab_index, tab_name in visible_tabs)
 
-
     @pyqtSlot()
     def toggleFloating(self):
         self.setFloating(not self.isFloating())
@@ -249,12 +248,61 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         self.setupTabs(tabs)
         self.loadFeature(layer, feature)
 
+    def getCheckedInputGroupLayers(self):
+        inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
+        if not inputs_group:
+            return []
+        return inputs_group.checkedLayers()
+
+    def findOverlappingFeatures(self, target_feature, search_identifier):
+        overlapping_features = []
+        target_geom = target_feature.geometry()
+        
+        for layer in self.getCheckedInputGroupLayers():
+            if layer.customProperty("qgisred_identifier") == search_identifier:
+                for feat in layer.getFeatures():
+                    if target_geom.intersects(feat.geometry()):
+                        overlapping_features.append(feat)
+        return overlapping_features
+
     def loadFeature(self, layer, feature):
         self.currentLayer = layer
         self.currentFeature = feature
         layer.selectByIds([feature.id()])
         self.populatedataTableWidget()
-        singular_layer_name = self.singular_forms.get(layer.name(), layer.name())
-        feature_id = feature.attribute("Id")
-        self.setWindowTitle(f"{singular_layer_name} {feature_id}")
 
+        base_title = f"{self.singular_forms.get(layer.name(), layer.name())} {feature.attribute('Id')}"
+        suffix_source = ""
+        suffix_demand = ""
+
+        id_property = layer.customProperty("qgisred_identifier")
+        if id_property in ["qgisred_junctions", "qgisred_reservoirs", "qgisred_tanks"]:
+            source_features = self.findOverlappingFeatures(feature, "qgisred_sources")
+            if source_features:
+                suffix_source = "(Source)"
+                for src_feat in source_features:
+                    self.appendFeatureProperties(src_feat, "Source")
+            if id_property == "qgisred_junctions":
+                demand_features = self.findOverlappingFeatures(feature, "qgisred_demands")
+                if demand_features:
+                    suffix_demand = "(Mult.Dem)"
+                    for dem_feat in demand_features:
+                        self.appendFeatureProperties(dem_feat, "Mult.Dem")
+
+        self.setWindowTitle(f"{base_title} {suffix_source}{suffix_demand}")
+
+    def appendFeatureProperties(self, feature, label_suffix=""):
+        if not hasattr(self, 'dataTableWidget'):
+            return
+        fields = feature.fields()
+        attributes = feature.attributes()
+        current_row_count = self.dataTableWidget.rowCount()
+        new_row_count = current_row_count + len(fields)
+        self.dataTableWidget.setRowCount(new_row_count)
+        for i, field in enumerate(fields):
+            # Append the label suffix to the field name.
+            field_name = f"{field.name()} ({label_suffix})"
+            field_item = QTableWidgetItem(field_name)
+            value_item = QTableWidgetItem(str(attributes[i]))
+            self.dataTableWidget.setItem(current_row_count + i, 0, field_item)
+            self.dataTableWidget.setItem(current_row_count + i, 1, value_item)
