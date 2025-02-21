@@ -2,7 +2,7 @@
 import os
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QLabel, QToolButton
-from PyQt5.QtWidgets import QTableWidgetItem, QHeaderView, QStyle
+from PyQt5.QtWidgets import QTableWidgetItem, QHeaderView, QStyle, QAbstractItemView
 from PyQt5.QtCore import pyqtSlot, Qt, QEvent
 from qgis.PyQt import uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsSettings
@@ -149,13 +149,15 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         self.dataTableWidget.setShowGrid(False)
         self.dataTableWidget.setStyleSheet("QTableWidget::item { padding: 1px; }")
         
+        self.dataTableWidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        
         fields = self.currentLayer.fields()
         attributes = self.currentFeature.attributes()
         num_fields = len(fields)
         self.dataTableWidget.setRowCount(num_fields)
         self.dataTableWidget.setColumnCount(2)
         self.dataTableWidget.setHorizontalHeaderLabels(["Property", "Value"])
-
+        
         header = self.dataTableWidget.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Interactive)
         header.setStyleSheet("QHeaderView::section { font-weight: bold; }")
