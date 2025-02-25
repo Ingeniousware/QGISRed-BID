@@ -88,10 +88,12 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
     def initCustomTitleBar(self):
         titleBar = QWidget(self)
         layout = QHBoxLayout(titleBar)
-        #layout.setContentsMargins(5, 0, 5, 0)
+        layout.setContentsMargins(5, 0, 5, 0)
 
         self.titleLabel = QLabel(self.windowTitle(), titleBar)
-        self.titleLabel.setStyleSheet("font-weight: bold; font-size: 12pt;")
+        #self.titleLabel.setStyleSheet("font-weight: bold; font-size: 12pt;")
+        #self.titleLabel.setStyleSheet("font-size: 12pt;")
+        self.titleLabel.setText("Element Properties")
         layout.addWidget(self.titleLabel)
         layout.addStretch()
 
@@ -126,20 +128,23 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
     def openFindElemetsDock(self):
         existing_docks = iface.mainWindow().findChildren(QGISRedFindElementsDock)
         if existing_docks:
-            self.findElemetsdock = existing_docks[0]
-            iface.addDockWidget(Qt.RightDockWidgetArea, self.findElemetsdock)
-            self.findElemetsdock.show()
-            self.findElemetsdock.raise_()
-            self.findElemetsdock.activateWindow()
-            self.findElemetsdock.findFeature(self.currentLayer, self.currentFeature)
-            iface.mainWindow().splitDockWidget(self.findElemetsdock, self, Qt.Vertical)
+            dock = existing_docks[0]
+            if dock.isVisible():
+                dock.close()
+                return
+            iface.addDockWidget(Qt.RightDockWidgetArea, dock)
+            dock.show()
+            dock.raise_()
+            dock.activateWindow()
+            dock.findFeature(self.currentLayer, self.currentFeature)
+            iface.mainWindow().splitDockWidget(dock, self, Qt.Vertical)
         else:
             self.findElemetsdock = QGISRedFindElementsDock()
             iface.addDockWidget(Qt.RightDockWidgetArea, self.findElemetsdock)
             self.findElemetsdock.findFeature(self.currentLayer, self.currentFeature)
             self.findElemetsdock.show()
-
             iface.mainWindow().splitDockWidget(self.findElemetsdock, self, Qt.Vertical)
+
 
     def populatedataTableWidget(self):
         if not hasattr(self, 'dataTableWidget'):
@@ -180,11 +185,6 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
     def setDockStyle(self):
         icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconElementsProperties.png')
         self.setWindowIcon(QIcon(icon_path))
-
-    def setWindowTitle(self, title):
-        super(QGISRedElementsPropertyDock, self).setWindowTitle(title)
-        if hasattr(self, 'titleLabel'):
-            self.titleLabel.setText(title)
 
     def setupConnections(self):
         pass
@@ -289,7 +289,8 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
                     for dem_feat in demand_features:
                         self.appendFeatureProperties(dem_feat, "Mult.Dem")
 
-        self.setWindowTitle(f"{base_title} {suffix_source}{suffix_demand}")
+        self.labelFoundElement.setText(f"{base_title} {suffix_source}{suffix_demand}")
+        self.labelFoundElement.setStyleSheet("font-weight: bold; font-size: 12pt;")
 
     def appendFeatureProperties(self, feature, label_suffix=""):
         if not hasattr(self, 'dataTableWidget'):
