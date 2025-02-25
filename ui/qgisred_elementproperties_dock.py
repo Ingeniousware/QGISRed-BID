@@ -89,6 +89,7 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         self.titleLabel = QLabel(self.windowTitle(), titleBar)
         #self.titleLabel.setStyleSheet("font-weight: bold; font-size: 12pt;")
         #self.titleLabel.setStyleSheet("font-size: 12pt;")
+        self.titleLabel.setStyleSheet("font-weight: normal")
         self.titleLabel.setText("Element Properties")
         layout.addWidget(self.titleLabel)
         layout.addStretch()
