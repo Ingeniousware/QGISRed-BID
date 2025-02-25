@@ -21,7 +21,7 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
             cls._instance = cls(parent)
         return cls._instance
 
-    def __init__(self, parent=None):
+    def __init__(self, canvas, parent=None):
         if QGISRedElementsPropertyDock._instance is not None:
             raise Exception("QGISRedElementsPropertyDock is a singleton! Use getInstance() instead.")
         super(QGISRedElementsPropertyDock, self).__init__(parent)
@@ -31,6 +31,8 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         self.setDockStyle()
         self.setupConnections()
         self.initCustomTitleBar()
+
+        self.canvas = canvas
 
         self.singular_forms = {
             self.tr("Pipes"): self.tr("Pipe"),
@@ -51,6 +53,8 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         self.main_highlight = None
         self.current_selected_highlight = None
         self.findElemetsdock = None
+        self.currentLayer = None
+        self.currentFeature = None
 
         settings = QgsSettings()
         if settings.contains("QGISRed/ElementProperties/geometry"):
@@ -61,8 +65,8 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         settings.setValue("QGISRed/ElementProperties/geometry", self.saveGeometry())
         self.clearHighlights()
         self.clearAllLayerSelections()
-        QGISRedFindElementsDock._instance = None
-        super(QGISRedFindElementsDock, self).closeEvent(event)
+        QGISRedElementsPropertyDock._instance = None
+        super(QGISRedElementsPropertyDock, self).closeEvent(event)
 
     @pyqtSlot()
     def clearAll(self):
@@ -76,14 +80,6 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
 
     def clearHighlights(self):
         pass
-
-    def closeEvent(self, event):
-        settings = QgsSettings()
-        settings.setValue("QGISRed/ElementsData/geometry", self.saveGeometry())
-        self.clearHighlights()
-        self.clearAllLayerSelections()
-        QGISRedElementsPropertyDock._instance = None
-        super(QGISRedElementsPropertyDock, self).closeEvent(event)
 
     def initCustomTitleBar(self):
         titleBar = QWidget(self)
@@ -136,12 +132,14 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
             dock.show()
             dock.raise_()
             dock.activateWindow()
-            dock.findFeature(self.currentLayer, self.currentFeature)
+            if self.currentLayer and self.currentFeature:
+                dock.findFeature(self.currentLayer, self.currentFeature)
             iface.mainWindow().splitDockWidget(dock, self, Qt.Vertical)
         else:
-            self.findElemetsdock = QGISRedFindElementsDock()
+            self.findElemetsdock = QGISRedFindElementsDock(self.canvas)
             iface.addDockWidget(Qt.RightDockWidgetArea, self.findElemetsdock)
-            self.findElemetsdock.findFeature(self.currentLayer, self.currentFeature)
+            if self.currentLayer and self.currentFeature:
+                self.findElemetsdock.findFeature(self.currentLayer, self.currentFeature)
             self.findElemetsdock.show()
             iface.mainWindow().splitDockWidget(self.findElemetsdock, self, Qt.Vertical)
 
@@ -266,6 +264,9 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         return overlapping_features
 
     def loadFeature(self, layer, feature):
+        if not layer or not feature:
+            return
+
         self.currentLayer = layer
         self.currentFeature = feature
         layer.selectByIds([feature.id()])

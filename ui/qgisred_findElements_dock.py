@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 import os
 from PyQt5.QtGui import QIcon, QFont, QColor
-from PyQt5.QtWidgets import QDockWidget, QMessageBox, QLineEdit, QListWidgetItem
-from qgis.PyQt import uic
+from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QLabel, QToolButton, QMessageBox, QLineEdit
+from PyQt5.QtWidgets import QListWidgetItem, QTableWidgetItem, QHeaderView, QStyle, QAbstractItemView
 from PyQt5.QtCore import Qt, QEvent, pyqtSlot
-from qgis.core import QgsProject, QgsGeometry, QgsPointXY, QgsRectangle, QgsVectorLayer, QgsSettings, QgsFeature, QgsLayerMetadata
+from qgis.PyQt import uic
+from qgis.core import QgsProject, QgsVectorLayer, QgsSettings, QgsGeometry, QgsPointXY, QgsRectangle, QgsFeature, QgsLayerMetadata
 from qgis.utils import iface
 from qgis.gui import QgsHighlight
 
@@ -24,7 +25,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             cls._instance = cls(parent)
         return cls._instance
 
-    def __init__(self, parent=None):
+    def __init__(self, canvas, parent=None):
         if QGISRedFindElementsDock._instance is not None:
             raise Exception("QGISRedFindElementsDock is a singleton! Use getInstance() instead.")
         super(QGISRedFindElementsDock, self).__init__(parent)
@@ -35,6 +36,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if parent:
             parent.addDockWidget(Qt.LeftDockWidgetArea, self)
 
+        self.canvas = canvas
         # Element types, identifiers, and singular forms
         self.element_types = [
             self.tr('Pipes'),
@@ -82,6 +84,8 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.main_highlight = None
         self.current_selected_highlight = None 
 
+        self.currentLayer = None
+        self.currentFeature = None
         # Layer groups for adjacency purposes
         self.link_layers = ["qgisred_pipes", "qgisred_pumps", "qgisred_valves"]
         self.node_layers = ["qgisred_reservoirs", "qgisred_tanks", "qgisred_junctions", 
@@ -109,6 +113,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         return self.minimumSize()
 
     def setDockStyle(self):
+        self.initCustomTitleBar()
         icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFindElements.png')
         self.setWindowIcon(QIcon(icon_path))
         search_icon = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFilter.png'))
@@ -229,6 +234,9 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         if not found_feature:
             QMessageBox.information(self, self.tr("Info"), self.tr("Feature not found"))
             return
+
+        self.currentLayer = found_feature_layer
+        self.currentFeature = found_feature
 
         self.updateFoundElementLabel(selected_id, found_feature_layer)
         highlight = QgsHighlight(iface.mapCanvas(), found_feature.geometry(), layer)
@@ -1012,3 +1020,64 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             self.findAdjacentLinksByGeometry(feature, layer)
         
         self.sortListWidgetItems()
+
+    def initCustomTitleBar(self):
+        titleBar = QWidget(self)
+        layout = QHBoxLayout(titleBar)
+        layout.setContentsMargins(5, 0, 5, 0)
+
+        self.titleLabel = QLabel("Find Elements by Id", titleBar)
+        layout.addWidget(self.titleLabel)
+        layout.addStretch()
+
+        epButton = QToolButton(titleBar)
+        icon_ep = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', 'iconElementsProperties.png'))
+        epButton.setIcon(icon_ep)
+        epButton.setToolTip("Element Properties")
+        epButton.clicked.connect(self.openElementPropertiesDock)
+        layout.addWidget(epButton)
+
+        self.floatButton = QToolButton(titleBar)
+        float_icon = self.style().standardIcon(QStyle.SP_TitleBarNormalButton)
+        self.floatButton.setIcon(float_icon)
+        self.floatButton.setToolTip("Float")
+        self.floatButton.clicked.connect(self.toggleFloating)
+        layout.addWidget(self.floatButton)
+
+        # Close button for this dock
+        self.closeButton = QToolButton(titleBar)
+        close_icon = self.style().standardIcon(QStyle.SP_TitleBarCloseButton)
+        self.closeButton.setIcon(close_icon)
+        self.closeButton.setToolTip("Close")
+        self.closeButton.clicked.connect(self.close)
+        layout.addWidget(self.closeButton)
+
+        self.setTitleBarWidget(titleBar)
+    
+    @pyqtSlot()
+    def openElementPropertiesDock(self):
+        from .qgisred_elementproperties_dock import QGISRedElementsPropertyDock
+        from ..tools.qgisred_identifyFeature import QGISRedIdentifyFeature
+
+        existing_docks = iface.mainWindow().findChildren(QGISRedElementsPropertyDock)
+        self.identifyTool = QGISRedIdentifyFeature(self.canvas)
+        if existing_docks:
+            dock = existing_docks[0]
+            if dock.isVisible():
+                dock.close()
+            else:
+                iface.addDockWidget(Qt.RightDockWidgetArea, dock)
+                dock.show()
+                dock.raise_()
+                dock.loadFeature(self.currentLayer, self.currentFeature)
+                self.canvas.setMapTool(self.identifyTool)
+        else:
+            dock = QGISRedElementsPropertyDock.getInstance()
+            iface.addDockWidget(Qt.RightDockWidgetArea, dock)
+            dock.loadFeature(self.currentLayer, self.currentFeature)
+            dock.show()
+            self.canvas.setMapTool(self.identifyTool)
+
+    @pyqtSlot()
+    def toggleFloating(self):
+        self.setFloating(not self.isFloating())

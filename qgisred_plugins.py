@@ -4407,7 +4407,7 @@ class QGISRed:
             dock.onLayerTreeChanged()
             dock.setDefaultValue()
         else:
-            self.dock = QGISRedFindElementsDock()
+            self.dock = QGISRedFindElementsDock(self.iface.mapCanvas())
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
             self.dock.show()
 
