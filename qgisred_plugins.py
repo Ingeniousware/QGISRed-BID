@@ -4397,7 +4397,7 @@ class QGISRed:
             return
 
         # Check if the dock widget already exists
-        existing_docks = self.iface.mainWindow().findChildren(QGISRedFindElementsDock)
+        existing_docks = self.iface.mapCanvas().findChildren(QGISRedFindElementsDock)
         if existing_docks:
             dock = existing_docks[0]
             self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)

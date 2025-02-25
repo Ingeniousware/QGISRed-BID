@@ -983,43 +983,67 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
     ## Methods related to external class QGISRedElementProperties class 
     def findFeature(self, layer, feature):
+        print("DEBUG: findFeature called with layer:", layer.name(), "and feature id:", feature.id())
+        
         element_type_text = layer.name()
+        print("DEBUG: element_type_text set to:", element_type_text)
         self.cbElementType.setCurrentText(element_type_text)
         
+        print("DEBUG: Calling updateElementIds()")
         self.updateElementIds()
         
         feature_id_text = self.getFeatureIdValue(feature, layer, special_naming=True)
+        print("DEBUG: feature_id_text obtained:", feature_id_text)
+        
         index = self.cbElementId.findText(feature_id_text)
+        print("DEBUG: Index found in cbElementId for feature_id_text:", index)
         if index >= 0:
             self.cbElementId.setCurrentIndex(index)
-
+            print("DEBUG: cbElementId index set to:", index)
+        else:
+            print("DEBUG: feature_id_text not found in cbElementId")
+        
+        print("DEBUG: Clearing highlights, layer selections, and listWidget")
         self.clearHighlights()
         self.clearAllLayerSelections()
         self.listWidget.clear()
 
+        print("DEBUG: Updating found element label with feature_id_text:", feature_id_text)
         self.updateFoundElementLabel(feature_id_text, layer)
 
+        print("DEBUG: Creating highlight for the feature")
         highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), layer)
         highlight.setColor(QColor("red"))
         highlight.setWidth(5)
         highlight.show()
         self.main_highlight = highlight
-
+        print("DEBUG: Highlight created and shown")
+        
+        print("DEBUG: Adjusting map view to feature")
         self.adjustMapView(feature)
-
+        
         identifier = layer.customProperty("qgisred_identifier")
+        print("DEBUG: Identifier from layer:", identifier)
         if self.isLineElement(layer):
+            print("DEBUG: Layer is a line element; calling findAdjacentNodesByGeometry")
             self.findAdjacentNodesByGeometry(feature)
         elif identifier == "qgisred_meters":
+            print("DEBUG: Identifier is 'qgisred_meters'; calling findMeterAdjacency")
             self.findMeterAdjacency(feature, layer)
         elif identifier == "qgisred_isolationvalves":
+            print("DEBUG: Identifier is 'qgisred_isolationvalves'; calling findIsolationValveAdjacency")
             self.findIsolationValveAdjacency(feature, layer)
         elif identifier == "qgisred_serviceconnections":
+            print("DEBUG: Identifier is 'qgisred_serviceconnections'; calling findServiceConnectionAdjacency")
             self.findServiceConnectionAdjacency(feature, layer)
         else:
+            print("DEBUG: Calling findAdjacentLinksByGeometry")
             self.findAdjacentLinksByGeometry(feature, layer)
         
+        print("DEBUG: Sorting list widget items")
         self.sortListWidgetItems()
+        print("DEBUG: findFeature complete")
+
 
     def initCustomTitleBar(self):
         titleBar = QWidget(self)
@@ -1029,6 +1053,14 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         self.titleLabel = QLabel("Find Elements by Id", titleBar)
         layout.addWidget(self.titleLabel)
         layout.addStretch()
+
+        # New Identify Button
+        self.identifyButton = QToolButton(titleBar)
+        icon_identify = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', "cursor.png"))
+        self.identifyButton.setIcon(icon_identify)
+        self.identifyButton.setToolTip("Identify Feature")
+        self.identifyButton.clicked.connect(self.openIdentifyForFindDock)
+        layout.addWidget(self.identifyButton)
 
         epButton = QToolButton(titleBar)
         icon_ep = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', 'iconElementsProperties.png'))
@@ -1054,6 +1086,11 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
 
         self.setTitleBarWidget(titleBar)
     
+    def openIdentifyForFindDock(self):
+        from ..tools.qgisred_identifyFeature import QGISRedIdentifyFeature
+        self.identifyTool = QGISRedIdentifyFeature(self.canvas, useFindDock=True)
+        self.canvas.setMapTool(self.identifyTool)
+
     @pyqtSlot()
     def openElementPropertiesDock(self):
         from .qgisred_elementproperties_dock import QGISRedElementsPropertyDock
