@@ -137,7 +137,7 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
                 dock.findFeature(self.currentLayer, self.currentFeature)
             iface.mainWindow().splitDockWidget(dock, self, Qt.Vertical)
         else:
-            self.findElemetsdock = QGISRedFindElementsDock(self.canvas)
+            self.findElemetsdock = QGISRedFindElementsDock.getInstance(self.canvas)
             iface.addDockWidget(Qt.RightDockWidgetArea, self.findElemetsdock)
             if self.currentLayer and self.currentFeature:
                 self.findElemetsdock.findFeature(self.currentLayer, self.currentFeature)
