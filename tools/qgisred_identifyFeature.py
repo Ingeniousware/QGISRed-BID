@@ -12,6 +12,7 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         self.useFindDock = useFindDock
         self.currentHighlight = None
         self.dock = None
+        self.find_elements_dock = None
         self.ignoreNextRelease = False
         self.setupConnections()
 
@@ -45,26 +46,34 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         self.currentHighlight.show()
 
     def showFeatureInDock(self, layer, feature, handler=None):
+        from ..ui.qgisred_findElements_dock import QGISRedFindElementsDock
         if self.useFindDock:
-            print("use dockkk" )
-            from ..ui.qgisred_findElements_dock import QGISRedFindElementsDock
+            # Get the existing instance or create a new one if needed
             self.dock = QGISRedFindElementsDock.getInstance(self.canvas)
             self.dock.findFeature(layer, feature)
-            return
-        else:
-            self.dock = QGISRedElementsPropertyDock.getInstance(self.canvas)
             if not self.dock.isVisible():
                 iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
-            if self.dock.findElemetsdock:
-                self.dock.findElemetsdock.findFeature(layer, feature)
-            if handler:
-                tabs, method_name = handler
-                getattr(self.dock, method_name)(layer, feature, tabs)
-            else:
-                self.dock.loadFeature(layer, feature)
-            self.dock.show()
-            self.dock.raise_()
-            self.dock.activateWindow()
+                self.dock.show()
+                self.dock.raise_()
+                self.dock.activateWindow()
+            return
+        
+        self.dock = QGISRedElementsPropertyDock.getInstance(self.canvas)
+        if not self.dock.isVisible():
+            iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
+        # Make sure to use the getInstance method to get the existing instance
+        if hasattr(self.dock, 'findElemetsdock'):
+            find_dock = QGISRedFindElementsDock.getInstance(self.canvas)
+            self.dock.findElemetsdock = find_dock
+            self.dock.findElemetsdock.findFeature(layer, feature)
+        if handler:
+            tabs, method_name = handler
+            getattr(self.dock, method_name)(layer, feature, tabs)
+        else:
+            self.dock.loadFeature(layer, feature)
+        self.dock.show()
+        self.dock.raise_()
+        self.dock.activateWindow()
 
     def selectFeature(self, layer, feature):
         layer.select(feature.id())
@@ -152,10 +161,10 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
 
         selected_layer, selected_feature, selected_handler = self.getFeatureByPriority(all_features)
 
-        if self.useFindDock:
-            print("true 1")
-            self.showFeatureInDock(selected_layer, selected_feature, selected_handler)
-            return
+        # if self.useFindDock:
+        #     print("true 1")
+        #     self.showFeatureInDock(selected_layer, selected_feature, selected_handler)
+        #     return
         
         self.clearSelections()
         self.selectFeature(selected_layer, selected_feature)
@@ -182,10 +191,10 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         identifier = selected_layer.customProperty("qgisred_identifier")
         selected_handler = handlers.get(identifier, None)
 
-        if self.useFindDock:
-            print("true 2")
-            self.showFeatureInDock(selected_layer, selected_feature, selected_handler)
-            return
+        # if self.useFindDock:
+        #     print("true 2")
+        #     self.showFeatureInDock(selected_layer, selected_feature, selected_handler)
+        #     return
     
         self.clearSelections()
         self.selectFeature(selected_layer, selected_feature)

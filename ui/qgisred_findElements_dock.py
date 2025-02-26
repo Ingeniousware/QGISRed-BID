@@ -1096,7 +1096,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
         from .qgisred_elementproperties_dock import QGISRedElementsPropertyDock
         from ..tools.qgisred_identifyFeature import QGISRedIdentifyFeature
 
-        existing_docks = iface.mainWindow().findChildren(QGISRedElementsPropertyDock)
+        existing_docks = self.canvas.findChildren(QGISRedElementsPropertyDock)
         self.identifyTool = QGISRedIdentifyFeature(self.canvas)
         if existing_docks:
             dock = existing_docks[0]

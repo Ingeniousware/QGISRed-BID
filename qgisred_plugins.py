@@ -4432,7 +4432,7 @@ class QGISRed:
         currentTool = self.iface.mapCanvas().mapTool()
         if isinstance(currentTool, QGISRedIdentifyFeature):
             self.iface.mapCanvas().unsetMapTool(currentTool)
-            existing_docks = self.iface.mainWindow().findChildren(QGISRedElementsPropertyDock)
+            existing_docks = self.iface.mapCanvas().findChildren(QGISRedElementsPropertyDock)
             if existing_docks:
                 dock = existing_docks[0]
                 dock.close()

@@ -135,14 +135,14 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
             dock.activateWindow()
             if self.currentLayer and self.currentFeature:
                 dock.findFeature(self.currentLayer, self.currentFeature)
-            self.canvas.splitDockWidget(dock, self, Qt.Vertical)
+            iface.mainWindow().splitDockWidget(dock, self, Qt.Vertical)
         else:
             self.findElemetsdock = QGISRedFindElementsDock(self.canvas)
             iface.addDockWidget(Qt.RightDockWidgetArea, self.findElemetsdock)
             if self.currentLayer and self.currentFeature:
                 self.findElemetsdock.findFeature(self.currentLayer, self.currentFeature)
             self.findElemetsdock.show()
-            self.canvas.splitDockWidget(self.findElemetsdock, self, Qt.Vertical)
+            iface.mainWindow().splitDockWidget(self.findElemetsdock, self, Qt.Vertical)
 
 
     def populatedataTableWidget(self):
