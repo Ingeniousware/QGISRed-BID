@@ -76,6 +76,7 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
             self.tr("Meters"): self.tr("Meter")
         }
 
+        self.reverse_singular_forms = {singular: plural for plural, singular in self.singular_forms.items()}
         # Used for caching element IDs and highlight objects
         self.original_ids = []
         self.adjacent_highlights = []
@@ -322,21 +323,49 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
     def onListItemDoubleClicked(self, item):
         item_text = item.text()
         self.leElementMask.clear()
-        singular_type, selected_id, full_id = self.extractTypeAndId(item_text)
+        
+        # Store type/ID info in item's user data to avoid expensive parsing
+        singular_type = item.data(Qt.UserRole + 1)
+        selected_id = item.data(Qt.UserRole + 2)
+        full_id = item.data(Qt.UserRole + 3)
+        
+        # If data isn't stored in user data, extract it (fallback)
         if not singular_type or not selected_id:
-            return
-        element_type = None
-        for plural, singular in self.singular_forms.items():
-            if singular == singular_type:
-                element_type = plural
-                break
-        if not element_type:
-            element_type = singular_type
+            singular_type, selected_id, full_id = self.extractTypeAndId(item_text)
+            if not singular_type or not selected_id:
+                return
+        
+        # Use a direct mapping instead of a loop
+        element_type = self.reverse_singular_forms.get(singular_type, singular_type)
+        
+        # Block signals during UI updates to prevent cascading events
+        self.cbElementType.blockSignals(True)
+        self.cbElementId.blockSignals(True)
+        
         self.cbElementType.setCurrentText(element_type)
-        index = self.cbElementId.findText(full_id)
-        if index >= 0:
-            self.cbElementId.setCurrentIndex(index)
+        
+        # Update IDs more efficiently by only populating what's needed
+        self.updateElementIdsForSelected(element_type, full_id)
+        
+        # Re-enable signals
+        self.cbElementType.blockSignals(False)
+        self.cbElementId.blockSignals(False)
+        
+        # Now perform the expensive find operation
         self.findElement()
+
+    def updateElementIdsForSelected(self, element_type, target_id):
+        """More efficient version that only loads IDs if necessary"""
+        self.cbElementId.clear()
+        
+        # If we already know the ID we want, just add that one
+        if target_id:
+            self.cbElementId.addItem(target_id)
+            self.cbElementId.setCurrentIndex(0)
+            return
+            
+        # Otherwise fall back to the more expensive operation
+        self.updateElementIds()
 
     def closeEvent(self, event):
         root = QgsProject.instance().layerTreeRoot()
@@ -675,26 +704,42 @@ class QGISRedFindElementsDock(QDockWidget, FORM_CLASS):
     # Adjacency Methods
     # -------------------------------------------------------------------------
     def addAdjacencyItem(self, item_text, identifier):
+        singular_type, selected_id, full_id = self.extractTypeAndId(item_text)
+        
         new_item = QListWidgetItem(self.tr(item_text))
         new_item.setData(Qt.UserRole, identifier)
+        new_item.setData(Qt.UserRole + 1, singular_type)
+        new_item.setData(Qt.UserRole + 2, selected_id)
+        new_item.setData(Qt.UserRole + 3, full_id)
+        
         self.listWidget.addItem(new_item)
 
     def sortListWidgetItems(self):
         items = []
         for i in range(self.listWidget.count()):
             item = self.listWidget.item(i)
-            items.append((item.text(), item.data(Qt.UserRole)))
+            text = item.text()
+            identifier = item.data(Qt.UserRole)
+            singular_type = item.data(Qt.UserRole + 1)
+            selected_id = item.data(Qt.UserRole + 2)
+            full_id = item.data(Qt.UserRole + 3)
+            items.append((text, identifier, singular_type, selected_id, full_id))
+        
         self.listWidget.clear()
 
         def sort_key(entry):
-            _, iden = entry
+            _, iden, *_ = entry
             try:
                 return list(self.element_identifiers.values()).index(iden)
             except ValueError:
                 return len(self.element_identifiers)
-        for text, identifier in sorted(items, key=sort_key):
+        
+        for text, identifier, singular_type, selected_id, full_id in sorted(items, key=sort_key):
             new_item = QListWidgetItem(text)
             new_item.setData(Qt.UserRole, identifier)
+            new_item.setData(Qt.UserRole + 1, singular_type)
+            new_item.setData(Qt.UserRole + 2, selected_id)
+            new_item.setData(Qt.UserRole + 3, full_id)
             self.listWidget.addItem(new_item)
 
     def addServiceConnectionAdjacencies(self, current_geom, tolerance):
