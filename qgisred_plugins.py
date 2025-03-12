@@ -45,6 +45,7 @@ from .ui.qgisred_loadproject_dialog import QGISRedImportProjectDialog
 from .ui.qgisred_thematicmaps_dialog import QGISRedThematicMapsDialog
 from .ui.qgisred_findElements_dock import QGISRedFindElementsDock
 from .ui.qgisred_elementproperties_dock import QGISRedElementsPropertyDock
+from .ui.qgisred_unified_find_properties import QGISRedElementsExplorerDock
 from .tools.qgisred_utils import QGISRedUtils
 from .tools.qgisred_dependencies import QGISRedDependencies as GISRed
 from .tools.qgisred_moveNodes import QGISRedMoveNodesTool
@@ -4397,7 +4398,20 @@ class QGISRed:
             return
 
         # Check if the dock widget already exists
-        existing_docks = self.iface.mapCanvas().findChildren(QGISRedFindElementsDock)
+        # existing_docks = self.iface.mapCanvas().findChildren(QGISRedFindElementsDock)
+        # if existing_docks:
+        #     dock = existing_docks[0]
+        #     self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)
+        #     dock.show()
+        #     dock.raise_()
+        #     dock.activateWindow()
+        #     dock.onLayerTreeChanged()
+        #     dock.setDefaultValue()
+        # else:
+        #     self.dock = QGISRedFindElementsDock(self.iface.mapCanvas())
+        #     self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
+        #     self.dock.show()
+        existing_docks = self.iface.mapCanvas().findChildren(QGISRedElementsExplorerDock)
         if existing_docks:
             dock = existing_docks[0]
             self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)
@@ -4407,7 +4421,7 @@ class QGISRed:
             dock.onLayerTreeChanged()
             dock.setDefaultValue()
         else:
-            self.dock = QGISRedFindElementsDock(self.iface.mapCanvas())
+            self.dock = QGISRedElementsExplorerDock(self.iface.mapCanvas())
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
             self.dock.show()
 
@@ -4428,20 +4442,20 @@ class QGISRed:
             self.openElementsPropertyDialog.setChecked(False)
             return
 
-        # Check if the current map tool is already the identify tool.
-        currentTool = self.iface.mapCanvas().mapTool()
-        if isinstance(currentTool, QGISRedIdentifyFeature):
-            self.iface.mapCanvas().unsetMapTool(currentTool)
-            existing_docks = self.iface.mapCanvas().findChildren(QGISRedElementsPropertyDock)
-            if existing_docks:
-                dock = existing_docks[0]
-                dock.close()
-            self.openElementsPropertyDialog.setChecked(False)
-            return
+        # # Check if the current map tool is already the identify tool.
+        # currentTool = self.iface.mapCanvas().mapTool()
+        # if isinstance(currentTool, QGISRedIdentifyFeature):
+        #     self.iface.mapCanvas().unsetMapTool(currentTool)
+        #     existing_docks = self.iface.mapCanvas().findChildren(QGISRedElementsPropertyDock)
+        #     if existing_docks:
+        #         dock = existing_docks[0]
+        #         dock.close()
+        #     self.openElementsPropertyDialog.setChecked(False)
+        #     return
 
-        # Otherwise, set the identify tool.
-        self.identifyTool = QGISRedIdentifyFeature(self.iface.mapCanvas(), self.openElementsPropertyDialog)
-        self.iface.mapCanvas().setMapTool(self.identifyTool)
+        # # Otherwise, set the identify tool.
+        # self.identifyTool = QGISRedIdentifyFeature(self.iface.mapCanvas(), self.openElementsPropertyDialog)
+        # self.iface.mapCanvas().setMapTool(self.identifyTool)
 
     # ==============================================================
     #                        END: QUERIES ELEMENTS PROPERTIES
