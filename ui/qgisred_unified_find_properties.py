@@ -26,7 +26,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             cls._instance.setComponentVisibility(show_find_elements, show_element_properties)
         return cls._instance
 
-    def __init__(self, canvas, parent=None):
+    def __init__(self, canvas, parent=None, show_find_elements=True, show_element_properties=True):
         if self._instance is not None:
             raise Exception(f"{self.__class__.__name__} is a singleton! Use getInstance() instead.")
         super(self.__class__, self).__init__(parent)
@@ -37,7 +37,9 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             parent.addDockWidget(Qt.LeftDockWidgetArea, self)
 
         self.canvas = canvas
-        
+        self.find_elements_visible = show_find_elements
+        self.element_properties_visible = show_element_properties
+
         # Element types, identifiers, and singular forms
         self.element_types = [
             self.tr('Pipes'),
@@ -110,6 +112,10 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             self.labelFoundElement.setWordWrap(True)
             self.labelFoundElement.setText("")
         
+        # Set initial component visibility
+        self.findElementsDock.setVisible(show_find_elements)
+        self.elementPropertiesDock.setVisible(show_element_properties)
+
         self.setDockStyle()
         self.setupConnections()
         
@@ -119,6 +125,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         if hasattr(self, 'initializeElementTypes'):
             self.initializeElementTypes()
         
+        self.placeConnectedElements()
+
         # Restore geometry if available
         settings = QgsSettings()
         if settings.contains("QGISRed/ElementsExplorer/geometry"):
@@ -303,13 +311,13 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         layout.addWidget(self.titleLabel)
         layout.addStretch()
 
-        # New Identify Button
-        self.identifyButton = QToolButton(titleBar)
-        icon_identify = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', "cursor.png"))
-        self.identifyButton.setIcon(icon_identify)
-        self.identifyButton.setToolTip("Identify Feature")
-        self.identifyButton.clicked.connect(self.openIdentifyForFindDock)
-        layout.addWidget(self.identifyButton)
+        # # New Identify Button
+        # self.identifyButton = QToolButton(titleBar)
+        # icon_identify = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', "cursor.png"))
+        # self.identifyButton.setIcon(icon_identify)
+        # self.identifyButton.setToolTip("Identify Feature")
+        # self.identifyButton.clicked.connect(self.openIdentifyForFindDock)
+        # layout.addWidget(self.identifyButton)
 
         epButton = QToolButton(titleBar)
         icon_ep = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', 'iconElementsProperties.png'))
@@ -318,20 +326,20 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         epButton.clicked.connect(self.openElementPropertiesDock)
         layout.addWidget(epButton)
 
-        self.floatButton = QToolButton(titleBar)
-        float_icon = self.style().standardIcon(QStyle.SP_TitleBarNormalButton)
-        self.floatButton.setIcon(float_icon)
-        self.floatButton.setToolTip("Float")
-        self.floatButton.clicked.connect(self.toggleFloating)
-        layout.addWidget(self.floatButton)
+        # self.floatButton = QToolButton(titleBar)
+        # float_icon = self.style().standardIcon(QStyle.SP_TitleBarNormalButton)
+        # self.floatButton.setIcon(float_icon)
+        # self.floatButton.setToolTip("Float")
+        # self.floatButton.clicked.connect(self.toggleFloating)
+        # layout.addWidget(self.floatButton)
 
-        # Close button for this dock
-        self.closeButton = QToolButton(titleBar)
-        close_icon = self.style().standardIcon(QStyle.SP_TitleBarCloseButton)
-        self.closeButton.setIcon(close_icon)
-        self.closeButton.setToolTip("Close")
-        self.closeButton.clicked.connect(self.toggleFindElementsDockVisibility)
-        layout.addWidget(self.closeButton)
+        # # Close button for this dock
+        # self.closeButton = QToolButton(titleBar)
+        # close_icon = self.style().standardIcon(QStyle.SP_TitleBarCloseButton)
+        # self.closeButton.setIcon(close_icon)
+        # self.closeButton.setToolTip("Close")
+        # self.closeButton.clicked.connect(self.toggleFindElementsDockVisibility)
+        # layout.addWidget(self.closeButton)
 
         self.findElementsDock.setTitleBarWidget(titleBar)
 
@@ -355,19 +363,19 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         findButton.clicked.connect(self.openFindElementsDock)
         layout.addWidget(findButton)
 
-        self.floatButton = QToolButton(titleBar)
-        float_icon = self.style().standardIcon(QStyle.SP_TitleBarNormalButton)
-        self.floatButton.setIcon(float_icon)
-        self.floatButton.setToolTip("Float")
-        self.floatButton.clicked.connect(self.toggleFloating)
-        layout.addWidget(self.floatButton)
+        # self.floatButton = QToolButton(titleBar)
+        # float_icon = self.style().standardIcon(QStyle.SP_TitleBarNormalButton)
+        # self.floatButton.setIcon(float_icon)
+        # self.floatButton.setToolTip("Float")
+        # self.floatButton.clicked.connect(self.toggleFloating)
+        # layout.addWidget(self.floatButton)
 
-        self.closeButton = QToolButton(titleBar)
-        close_icon = self.style().standardIcon(QStyle.SP_TitleBarCloseButton)
-        self.closeButton.setIcon(close_icon)
-        self.closeButton.setToolTip("Close")
-        self.closeButton.clicked.connect(self.toggleElementPropertiesVisibility)
-        layout.addWidget(self.closeButton)
+        # self.closeButton = QToolButton(titleBar)
+        # close_icon = self.style().standardIcon(QStyle.SP_TitleBarCloseButton)
+        # self.closeButton.setIcon(close_icon)
+        # self.closeButton.setToolTip("Close")
+        # self.closeButton.clicked.connect(self.toggleElementPropertiesVisibility)
+        # layout.addWidget(self.closeButton)
 
         self.elementPropertiesDock.setTitleBarWidget(titleBar)
 
@@ -397,43 +405,179 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
 
     @pyqtSlot()
     def openElementPropertiesDock(self):
+        """
+        Handle the toggling of the Element Properties dock according to the rules.
+        """
         from ..tools.qgisred_identifyFeature import QGISRedIdentifyFeature
         
         self.identifyTool = QGISRedIdentifyFeature(self.canvas)
         
-        if self.elementPropertiesDock.isVisible():
-            self.elementPropertiesDock.hide()
-        else:
+        if not self._instance:
+            # If EE dock doesn't exist, create it with EP visible and FE not visible
+            self.setComponentVisibility(False, True)
+        elif not self.element_properties_visible:
+            # If EP dock is not visible, make it visible
+            self.element_properties_visible = True
             self.elementPropertiesDock.show()
             self.elementPropertiesDock.raise_()
-            #self.elementPropertiesDock.loadFeature(self.currentLayer, self.currentFeature)
-            self.canvas.setMapTool(self.identifyTool)
+            self.placeConnectedElements()
+        elif self.find_elements_visible and self.element_properties_visible:
+            # If both docks are visible, hide EP
+            self.element_properties_visible = False
+            self.elementPropertiesDock.hide()
+            self.placeConnectedElements()
+        else:
+            # If only EP is visible, close the EE dock entirely
+            self.close()
+        
+        # Set the identify tool active
+        self.canvas.setMapTool(self.identifyTool)
 
     @pyqtSlot()
     def openFindElementsDock(self):
+        """
+        Handle the toggling of the Find Elements dock according to the rules.
+        """
         from ..tools.qgisred_identifyFeature import QGISRedIdentifyFeature
         
         self.identifyTool = QGISRedIdentifyFeature(self.canvas)
         
-        if self.findElementsDock.isVisible():
-            self.findElementsDock.hide()
-        else:
+        if not self._instance:
+            # If EE dock doesn't exist, create it with FE visible and EP not visible
+            self.setComponentVisibility(True, False)
+        elif not self.find_elements_visible:
+            # If FE dock is not visible, make it visible
+            self.find_elements_visible = True
             self.findElementsDock.show()
             self.findElementsDock.raise_()
-            #self.elementPropertiesDock.loadFeature(self.currentLayer, self.currentFeature)
-            self.canvas.setMapTool(self.identifyTool)
+            self.placeConnectedElements()
+        elif self.find_elements_visible and self.element_properties_visible:
+            # If both docks are visible, hide FE
+            self.find_elements_visible = False
+            self.findElementsDock.hide()
+            self.placeConnectedElements()
+        else:
+            # If only FE is visible, close the EE dock entirely
+            self.close()
+        
+        # Set the identify tool active
+        self.canvas.setMapTool(self.identifyTool)
 
     def toggleFindElementsDockVisibility(self):
-        if self.findElementsDock.isVisible():
-            self.findElementsDock.hide()
-        else:
+        """
+        Toggle the visibility of the Find Elements dock.
+        """
+        self.find_elements_visible = not self.find_elements_visible
+        if self.find_elements_visible:
             self.findElementsDock.show()
+        else:
+            self.findElementsDock.hide()
+        
+        # When toggling dock visibility directly, close the entire dock
+        # if neither FE nor EP is visible
+        if not self.find_elements_visible and not self.element_properties_visible:
+            self.close()
+        else:
+            self.placeConnectedElements()
     
     def toggleElementPropertiesVisibility(self):
-        if self.elementPropertiesDock.isVisible():
-            self.elementPropertiesDock.hide()
-        else:
+        """
+        Toggle the visibility of the Element Properties dock.
+        """
+        self.element_properties_visible = not self.element_properties_visible
+        if self.element_properties_visible:
             self.elementPropertiesDock.show()
+        else:
+            self.elementPropertiesDock.hide()
+        
+        # When toggling dock visibility directly, close the entire dock
+        # if neither FE nor EP is visible
+        if not self.find_elements_visible and not self.element_properties_visible:
+            self.close()
+        else:
+            self.placeConnectedElements()
+
+    def removeConnectedElementsFromLayouts(self):
+        """
+        Remove the Connected Elements widgets from any layout they might be in.
+        """
+        # Temporarily reparent the widgets to remove them from their layout
+        if self.labelAdjacentNodeLinks.parent():
+            self.labelAdjacentNodeLinks.setParent(None)
+        if self.listWidget.parent():
+            self.listWidget.setParent(None)
+        
+        # Clean up any layout they were in
+        layouts_to_check = []
+        if hasattr(self, 'verticalLayoutFindElements'):
+            layouts_to_check.append(self.verticalLayoutFindElements)
+        if hasattr(self, 'verticalLayoutElementProperties'):
+            layouts_to_check.append(self.verticalLayoutElementProperties)
+        
+        for layout in layouts_to_check:
+            for i in range(layout.count() - 1, -1, -1):
+                item = layout.itemAt(i)
+                if isinstance(item, QVBoxLayout) and (
+                    item.indexOf(self.labelAdjacentNodeLinks) != -1 or 
+                    item.indexOf(self.listWidget) != -1
+                ):
+                    layout.removeItem(item)
+                    # Properly delete the layout to avoid memory leaks
+                    while item.count():
+                        child = item.takeAt(0)
+                        if child.widget():
+                            child.widget().setParent(None)
+                    item.deleteLater()
+
+    def placeConnectedElements(self):
+        """
+        Place the Connected Elements section (labelAdjacentNodeLinks and listWidget)
+        with EP if it's visible, otherwise with FE.
+        """
+        connected_elements_layout = QVBoxLayout()
+        connected_elements_layout.setContentsMargins(0, 0, 0, 0)
+        connected_elements_layout.addWidget(self.labelAdjacentNodeLinks)
+        connected_elements_layout.addWidget(self.listWidget)
+        
+        # Get layout references
+        if hasattr(self, 'verticalLayoutFindElements'):
+            fe_layout = self.verticalLayoutFindElements
+        else:
+            fe_layout = None
+            
+        if hasattr(self, 'verticalLayoutElementProperties'):
+            ep_layout = self.verticalLayoutElementProperties
+        else:
+            ep_layout = None
+        
+        # First, remove the Connected Elements from wherever they currently are
+        self.removeConnectedElementsFromLayouts()
+        
+        # Then place them in the correct layout
+        if self.element_properties_visible:
+            # Place with EP if it's visible
+            if ep_layout:
+                ep_layout.addLayout(connected_elements_layout)
+        else:
+            # Otherwise place with FE
+            if fe_layout:
+                fe_layout.addLayout(connected_elements_layout)
+
+    def setComponentVisibility(self, show_find_elements, show_element_properties):
+        """
+        Set the visibility of the find elements and element properties components
+        and properly place the Connected Elements section.
+        """
+        # Store visibility state
+        self.find_elements_visible = show_find_elements
+        self.element_properties_visible = show_element_properties
+        
+        # Set the dock components visibility
+        self.findElementsDock.setVisible(show_find_elements)
+        self.elementPropertiesDock.setVisible(show_element_properties)
+        
+        # Move Connected Elements to the appropriate location
+        self.placeConnectedElements()
 
     def openIdentifyForFindDock(self):
         from ..tools.qgisred_identifyFeature import QGISRedIdentifyFeature

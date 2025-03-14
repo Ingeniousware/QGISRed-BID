@@ -4386,76 +4386,127 @@ class QGISRed:
     # ==============================================================
     #                        START: QUERIES FIND ELEMENTS
     # --------------------------------------------------------------
+    # ==============================================================
+    #                        START: QUERIES FIND ELEMENTS
+    # --------------------------------------------------------------
 
     def runFindElements(self):
+        print("Running runFindElements...")
         if not self.checkDependencies():
+            print("Dependencies not met. Exiting runFindElements.")
             return
+
         # Validations
         self.defineCurrentProject()
+        print("Current project defined.")
+        
         if not self.isValidProject():
+            print("Invalid project. Exiting runFindElements.")
             return
         if self.isLayerOnEdition():
+            print("Layer is on edition. Exiting runFindElements.")
             return
 
-        # Check if the dock widget already exists
-        # existing_docks = self.iface.mapCanvas().findChildren(QGISRedFindElementsDock)
-        # if existing_docks:
-        #     dock = existing_docks[0]
-        #     self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)
-        #     dock.show()
-        #     dock.raise_()
-        #     dock.activateWindow()
-        #     dock.onLayerTreeChanged()
-        #     dock.setDefaultValue()
-        # else:
-        #     self.dock = QGISRedFindElementsDock(self.iface.mapCanvas())
-        #     self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
-        #     self.dock.show()
-        existing_docks = self.iface.mapCanvas().findChildren(QGISRedElementsExplorerDock)
-        if existing_docks:
-            dock = existing_docks[0]
+        # First, check if the dock widget already exists by using the singleton instance
+        existing_dock = QGISRedElementsExplorerDock._instance
+        print(f"Existing dock: {existing_dock}")
+
+        if existing_dock:
+            print("Dock exists, retrieving instance with Find Elements visible.")
+            # dock = QGISRedElementsExplorerDock.getInstance(
+            #     self.iface.mapCanvas(),
+            #     self.iface.mainWindow(),
+            #     show_find_elements=True,
+            #     show_element_properties=False
+            # )
+            existing_dock.toggleFindElementsDockVisibility()
+        else:
+            print("No existing dock, creating new instance with Find Elements visible.")
+            dock = QGISRedElementsExplorerDock.getInstance(
+                self.iface.mapCanvas(),
+                self.iface.mainWindow(),
+                show_find_elements=True,
+                show_element_properties=False
+            )
+            # Add it to the right dock area
             self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)
-            dock.openFindElementsDock()
+            print("Dock widget added to the interface.")
+
+            # Make sure the dock is visible and in focus
+            print("Showing and activating the dock.")
+            dock.show()
             dock.raise_()
             dock.activateWindow()
-            dock.onLayerTreeChanged()
-            dock.setDefaultValue()
-        else:
-            self.dock = QGISRedElementsExplorerDock(self.iface.mapCanvas())
-            self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
-            self.dock.show()
 
-    # ==============================================================
-    #                        END: QUERIES FIND ELEMENTS
-    # --------------------------------------------------------------
+            # Update the dock with current data if those methods exist
+            if hasattr(dock, 'onLayerTreeChanged'):
+                print("Calling dock.onLayerTreeChanged()")
+                dock.onLayerTreeChanged()
+            if hasattr(dock, 'setDefaultValue'):
+                print("Calling dock.setDefaultValue()")
+                dock.setDefaultValue()
 
-    # ==============================================================
-    #                        START: QUERIES ELEMENTS PROPERTIES
-    # --------------------------------------------------------------
+            print("runFindElements completed.")
+
+# ==============================================================
+#                        END: QUERIES FIND ELEMENTS
+# --------------------------------------------------------------
+
+# ==============================================================
+#                        START: QUERIES ELEMENTS PROPERTIES
+# --------------------------------------------------------------
     def runElementsProperty(self):
+        print("Running runElementsProperty...")
         if not self.checkDependencies():
+            print("Dependencies not met. Unchecking openElementsPropertyDialog and exiting runElementsProperty.")
             self.openElementsPropertyDialog.setChecked(False)
             return
-        
+
         self.defineCurrentProject()
+        print("Current project defined.")
+
         if not self.isValidProject() or self.isLayerOnEdition():
+            print("Invalid project or layer is on edition. Unchecking openElementsPropertyDialog and exiting runElementsProperty.")
             self.openElementsPropertyDialog.setChecked(False)
             return
 
-        # # Check if the current map tool is already the identify tool.
-        # currentTool = self.iface.mapCanvas().mapTool()
-        # if isinstance(currentTool, QGISRedIdentifyFeature):
-        #     self.iface.mapCanvas().unsetMapTool(currentTool)
-        #     existing_docks = self.iface.mapCanvas().findChildren(QGISRedElementsPropertyDock)
-        #     if existing_docks:
-        #         dock = existing_docks[0]
-        #         dock.close()
-        #     self.openElementsPropertyDialog.setChecked(False)
-        #     return
+        # Check if the dock already exists using the singleton instance
+        existing_dock = QGISRedElementsExplorerDock._instance
+        print(f"Existing dock: {existing_dock}")
 
-        # # Otherwise, set the identify tool.
-        # self.identifyTool = QGISRedIdentifyFeature(self.iface.mapCanvas(), self.openElementsPropertyDialog)
-        # self.iface.mapCanvas().setMapTool(self.identifyTool)
+        if existing_dock:
+            print("Dock exists, retrieving instance with both Find Elements and Element Properties visible.")
+            # dock = QGISRedElementsExplorerDock.getInstance(
+            #     self.iface.mapCanvas(),
+            #     self.iface.mainWindow(),
+            #     show_find_elements=True,
+            #     show_element_properties=True
+            # )
+            existing_dock.toggleElementPropertiesVisibility()
+        else:
+            print("No existing dock, creating new instance with Element Properties visible.")
+            dock = QGISRedElementsExplorerDock.getInstance(
+                self.iface.mapCanvas(),
+                self.iface.mainWindow(),
+                show_find_elements=False,
+                show_element_properties=True
+            )
+            # Add it to the right dock area
+            self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)
+            print("Dock widget added to the interface.")
+
+            # Make sure the dock is visible and in focus
+            print("Showing and activating the dock.")
+            dock.show()
+            dock.raise_()
+            dock.activateWindow()
+
+            # Set the identify tool for the map canvas
+            print("Setting identify tool for map canvas.")
+            self.identifyTool = QGISRedIdentifyFeature(self.iface.mapCanvas())
+            self.iface.mapCanvas().setMapTool(self.identifyTool)
+
+            print("runElementsProperty completed.")
 
     # ==============================================================
     #                        END: QUERIES ELEMENTS PROPERTIES
