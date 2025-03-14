@@ -1,4 +1,5 @@
-from ..ui.qgisred_elementproperties_dock import QGISRedElementsPropertyDock
+#from ..ui.qgisred_elementproperties_dock import QGISRedElementsPropertyDock
+from ..ui.qgisred_unified_find_properties import QGISRedElementsExplorerDock
 from qgis.gui import QgsMapToolIdentify, QgsHighlight
 from qgis.utils import iface
 from qgis.core import QgsProject, QgsVectorLayer
@@ -46,10 +47,9 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         self.currentHighlight.show()
 
     def showFeatureInDock(self, layer, feature, handler=None):
-        from ..ui.qgisred_findElements_dock import QGISRedFindElementsDock
         if self.useFindDock:
             # Get the existing instance or create a new one if needed
-            self.dock = QGISRedFindElementsDock.getInstance(self.canvas)
+            self.dock = QGISRedElementsExplorerDock.getInstance(self.canvas)
             self.dock.findFeature(layer, feature)
             if not self.dock.isVisible():
                 iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
@@ -58,12 +58,12 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
                 self.dock.activateWindow()
             return
         
-        self.dock = QGISRedElementsPropertyDock.getInstance(self.canvas)
+        self.dock = QGISRedElementsExplorerDock.getInstance(self.canvas)
         if not self.dock.isVisible():
             iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
         # Make sure to use the getInstance method to get the existing instance
         if hasattr(self.dock, 'findElemetsdock'):
-            find_dock = QGISRedFindElementsDock.getInstance(self.canvas)
+            find_dock = QGISRedElementsExplorerDock.getInstance(self.canvas)
             self.dock.findElemetsdock = find_dock
             self.dock.findElemetsdock.findFeature(layer, feature)
         if handler:

@@ -498,70 +498,53 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             self.placeConnectedElements()
 
     def removeConnectedElementsFromLayouts(self):
-        """
-        Remove the Connected Elements widgets from any layout they might be in.
-        """
-        # Temporarily reparent the widgets to remove them from their layout
-        if self.labelAdjacentNodeLinks.parent():
-            self.labelAdjacentNodeLinks.setParent(None)
-        if self.listWidget.parent():
-            self.listWidget.setParent(None)
+        """Remove connected elements from any layout they might be in"""
+        # Temporarily reparent widgets to None
+        self.labelAdjacentNodeLinks.setParent(None)
+        self.listWidget.setParent(None)
         
-        # Clean up any layout they were in
-        layouts_to_check = []
-        if hasattr(self, 'verticalLayoutFindElements'):
-            layouts_to_check.append(self.verticalLayoutFindElements)
-        if hasattr(self, 'verticalLayoutElementProperties'):
-            layouts_to_check.append(self.verticalLayoutElementProperties)
-        
-        for layout in layouts_to_check:
-            for i in range(layout.count() - 1, -1, -1):
-                item = layout.itemAt(i)
-                if isinstance(item, QVBoxLayout) and (
-                    item.indexOf(self.labelAdjacentNodeLinks) != -1 or 
-                    item.indexOf(self.listWidget) != -1
-                ):
-                    layout.removeItem(item)
-                    # Properly delete the layout to avoid memory leaks
-                    while item.count():
-                        child = item.takeAt(0)
-                        if child.widget():
-                            child.widget().setParent(None)
-                    item.deleteLater()
+        # Clean layouts in both docks
+        for dock in [self.findElementsDock, self.elementPropertiesDock]:
+            content = dock.widget()
+            if not content:
+                continue
+                
+            # Get main layout of dock contents
+            main_layout = content.layout()
+            if not main_layout:
+                continue
+                
+            # Search through all layout items
+            for i in reversed(range(main_layout.count())):
+                item = main_layout.itemAt(i)
+                if item and item.widget() in [self.labelAdjacentNodeLinks, self.listWidget]:
+                    main_layout.removeItem(item)
+                    item.widget().setParent(None)
 
     def placeConnectedElements(self):
-        """
-        Place the Connected Elements section (labelAdjacentNodeLinks and listWidget)
-        with EP if it's visible, otherwise with FE.
-        """
-        connected_elements_layout = QVBoxLayout()
-        connected_elements_layout.setContentsMargins(0, 0, 0, 0)
-        connected_elements_layout.addWidget(self.labelAdjacentNodeLinks)
-        connected_elements_layout.addWidget(self.listWidget)
-        
-        # Get layout references
-        if hasattr(self, 'verticalLayoutFindElements'):
-            fe_layout = self.verticalLayoutFindElements
-        else:
-            fe_layout = None
-            
-        if hasattr(self, 'verticalLayoutElementProperties'):
-            ep_layout = self.verticalLayoutElementProperties
-        else:
-            ep_layout = None
-        
-        # First, remove the Connected Elements from wherever they currently are
+        """Place connected elements under the appropriate section"""
+        # Remove from any existing layout first
         self.removeConnectedElementsFromLayouts()
         
-        # Then place them in the correct layout
+        # Determine target dock and its content layout
         if self.element_properties_visible:
-            # Place with EP if it's visible
-            if ep_layout:
-                ep_layout.addLayout(connected_elements_layout)
+            target_dock = self.elementPropertiesDock
+            position = 1  # After properties content
         else:
-            # Otherwise place with FE
-            if fe_layout:
-                fe_layout.addLayout(connected_elements_layout)
+            target_dock = self.findElementsDock
+            position = 7  # Position after labelFoundElement in findElementsDock's verticalLayout_3
+            
+        # Get the target layout
+        content = target_dock.widget()
+        main_layout = content.layout()
+        
+        # Create container layout if needed
+        container = QVBoxLayout()
+        container.addWidget(self.labelAdjacentNodeLinks)
+        container.addWidget(self.listWidget)
+        
+        # Insert into correct position
+        main_layout.insertLayout(position, container)
 
     def setComponentVisibility(self, show_find_elements, show_element_properties):
         """

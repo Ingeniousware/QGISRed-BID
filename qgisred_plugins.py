@@ -1479,6 +1479,7 @@ class QGISRed:
             menubar=self.queriesMenu,
             toolbar=self.queriesToolbar,
             actionBase=queriesDropButton,
+            checable=True,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
@@ -4393,6 +4394,7 @@ class QGISRed:
     def runFindElements(self):
         print("Running runFindElements...")
         if not self.checkDependencies():
+            self.openFindElementsDialog.setChecked(False)
             print("Dependencies not met. Exiting runFindElements.")
             return
 
@@ -4400,10 +4402,8 @@ class QGISRed:
         self.defineCurrentProject()
         print("Current project defined.")
         
-        if not self.isValidProject():
-            print("Invalid project. Exiting runFindElements.")
-            return
-        if self.isLayerOnEdition():
+        if not self.isValidProject() or self.isLayerOnEdition():
+            self.openFindElementsDialog.setChecked(False)
             print("Layer is on edition. Exiting runFindElements.")
             return
 
@@ -4447,6 +4447,11 @@ class QGISRed:
                 dock.setDefaultValue()
 
             print("runFindElements completed.")
+
+            # Set the identify tool for the map canvas
+            print("Setting identify tool for map canvas.")
+            self.identifyTool = QGISRedIdentifyFeature(self.iface.mapCanvas(), useFindDock=True)
+            self.iface.mapCanvas().setMapTool(self.identifyTool)
 
 # ==============================================================
 #                        END: QUERIES FIND ELEMENTS
