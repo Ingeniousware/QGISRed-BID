@@ -4450,7 +4450,7 @@ class QGISRed:
 
             # Set the identify tool for the map canvas
             print("Setting identify tool for map canvas.")
-            self.identifyTool = QGISRedIdentifyFeature(self.iface.mapCanvas(), useFindDock=True)
+            self.identifyTool = QGISRedIdentifyFeature(self.iface.mapCanvas())
             self.iface.mapCanvas().setMapTool(self.identifyTool)
 
 # ==============================================================
@@ -4494,7 +4494,7 @@ class QGISRed:
                 self.iface.mapCanvas(),
                 self.iface.mainWindow(),
                 show_find_elements=False,
-                show_element_properties=True
+                show_element_properties=False
             )
             # Add it to the right dock area
             self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)
@@ -4508,7 +4508,7 @@ class QGISRed:
 
             # Set the identify tool for the map canvas
             print("Setting identify tool for map canvas.")
-            self.identifyTool = QGISRedIdentifyFeature(self.iface.mapCanvas())
+            self.identifyTool = QGISRedIdentifyFeature(self.iface.mapCanvas(), use_element_properties_dock=True)
             self.iface.mapCanvas().setMapTool(self.identifyTool)
 
             print("runElementsProperty completed.")
