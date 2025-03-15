@@ -2,7 +2,7 @@
 import os
 from PyQt5.QtGui import QIcon, QFont, QColor
 from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QToolButton, QMessageBox, QLineEdit
-from PyQt5.QtWidgets import QListWidgetItem, QTableWidgetItem, QHeaderView, QStyle, QAbstractItemView
+from PyQt5.QtWidgets import QListWidgetItem, QTableWidgetItem, QHeaderView, QStyle, QAbstractItemView, QFrame 
 from PyQt5.QtCore import Qt, QEvent, pyqtSlot
 from qgis.PyQt import uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsSettings, QgsGeometry, QgsPointXY, QgsRectangle, QgsFeature, QgsLayerMetadata
@@ -110,8 +110,17 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             font.setBold(True)
             self.labelFoundElement.setFont(font)
             self.labelFoundElement.setWordWrap(True)
-            self.labelFoundElement.setText("")
+            self.labelFoundElement.setText("AAA")
         
+        # if hasattr(self, 'labelFoundElementProperty'):
+        #     font = QFont()
+        #     font.setPointSize(12)
+        #     font.setBold(True)
+        #     self.labelFoundElementProperty.setFont(font)
+        #     self.labelFoundElementProperty.setWordWrap(True)
+        #     self.labelFoundElementProperty.setText("AAA")
+        #     self.labelFoundElementProperty.setVisible(show_element_properties)
+
         # Set initial component visibility
         self.findElementsDock.setVisible(show_find_elements)
         self.elementPropertiesDock.setVisible(show_element_properties)
@@ -125,6 +134,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         if hasattr(self, 'initializeElementTypes'):
             self.initializeElementTypes()
         
+
         self.placeConnectedElements()
 
         # Restore geometry if available
@@ -324,6 +334,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         epButton.setIcon(icon_ep)
         epButton.setToolTip("Element Properties")
         epButton.clicked.connect(self.openElementPropertiesDock)
+        epButton.setCheckable(True)
+        epButton.setChecked(self.element_properties_visible)
         layout.addWidget(epButton)
 
         # self.floatButton = QToolButton(titleBar)
@@ -361,6 +373,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         findButton.setIcon(icon_find)
         findButton.setToolTip("Find Elements by ID")
         findButton.clicked.connect(self.openFindElementsDock)
+        findButton.setCheckable(True)
+        findButton.setChecked(self.find_elements_visible)
         layout.addWidget(findButton)
 
         # self.floatButton = QToolButton(titleBar)
@@ -443,22 +457,25 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.identifyTool = QGISRedIdentifyFeature(self.canvas)
         
         if not self._instance:
-            # If EE dock doesn't exist, create it with FE visible and EP not visible
+            # Create new instance with FE visible and EP hidden
             self.setComponentVisibility(True, False)
-        elif not self.find_elements_visible:
-            # If FE dock is not visible, make it visible
-            self.find_elements_visible = True
-            self.findElementsDock.show()
-            self.findElementsDock.raise_()
-            self.placeConnectedElements()
-        elif self.find_elements_visible and self.element_properties_visible:
-            # If both docks are visible, hide FE
-            self.find_elements_visible = False
-            self.findElementsDock.hide()
-            self.placeConnectedElements()
         else:
-            # If only FE is visible, close the EE dock entirely
-            self.close()
+            # Get current visibility states
+            current_fe = self.find_elements_visible
+            current_ep = self.element_properties_visible
+            
+            if not current_fe and not current_ep:
+                # Both hidden: show FE
+                self.setComponentVisibility(True, False)
+            elif current_fe and current_ep:
+                # Both visible: hide FE
+                self.setComponentVisibility(False, True)
+            elif current_fe and not current_ep:
+                # Only FE visible: close entire dock
+                self.close()
+            else:  # EP visible, FE hidden
+                # Show FE
+                self.setComponentVisibility(True, True)
         
         # Set the identify tool active
         self.canvas.setMapTool(self.identifyTool)
@@ -526,19 +543,19 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         # Remove from any existing layout first
         self.removeConnectedElementsFromLayouts()
         
-        # Determine target dock and its content layout
+        # Determine target dock and position
         if self.element_properties_visible:
             target_dock = self.elementPropertiesDock
-            position = 1  # After properties content
+            position = 2  # After properties content
         else:
             target_dock = self.findElementsDock
-            position = 7  # Position after labelFoundElement in findElementsDock's verticalLayout_3
+            position = 1  # Position after labelFoundElement in findElementsDock's verticalLayout_3
             
         # Get the target layout
         content = target_dock.widget()
         main_layout = content.layout()
         
-        # Create container layout if needed
+        # Create container layout
         container = QVBoxLayout()
         container.addWidget(self.labelAdjacentNodeLinks)
         container.addWidget(self.listWidget)
@@ -546,23 +563,32 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         # Insert into correct position
         main_layout.insertLayout(position, container)
 
+        # Adjust labelFoundElement position below the line in findElementsDock when elementPropertiesDock is hidden
+        if target_dock == self.findElementsDock and not self.element_properties_visible:
+            # Find the line widget (assuming it's a QFrame named 'line')
+            line = content.findChild(QFrame, "line")
+            if line:
+                line_index = main_layout.indexOf(line)
+                if line_index != -1:
+                    # Remove labelFoundElement from current position
+                    main_layout.removeWidget(self.labelFoundElement)
+                    # Insert it immediately after the line
+                    main_layout.insertWidget(line_index + 1, self.labelFoundElement)
+                    # Ensure the line and label are visible
+                    line.show()
+                    self.labelFoundElement.show()
+
     def setComponentVisibility(self, show_find_elements, show_element_properties):
-        """
-        Set the visibility of the find elements and element properties components
-        and properly place the Connected Elements section.
-        """
-        # Store visibility state
         self.find_elements_visible = show_find_elements
         self.element_properties_visible = show_element_properties
         
-        # Set the dock components visibility
         self.findElementsDock.setVisible(show_find_elements)
         self.elementPropertiesDock.setVisible(show_element_properties)
         
-        # Move Connected Elements to the appropriate location
         self.placeConnectedElements()
 
     def openIdentifyForFindDock(self):
         from ..tools.qgisred_identifyFeature import QGISRedIdentifyFeature
         self.identifyTool = QGISRedIdentifyFeature(self.canvas, useFindDock=True)
         self.canvas.setMapTool(self.identifyTool)
+
