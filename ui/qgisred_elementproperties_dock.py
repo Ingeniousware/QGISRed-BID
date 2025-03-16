@@ -202,8 +202,6 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
             tab_index = self.tabWidget.indexOf(tab_widget)
             if tab_index == -1:
                 continue
-            if tab_name == "tabResults": # hide results tab for now
-                self.tabWidget.setTabVisible(tab_index, False)
             else:
                 self.tabWidget.setTabVisible(tab_index, tab_name in visible_tabs)
 

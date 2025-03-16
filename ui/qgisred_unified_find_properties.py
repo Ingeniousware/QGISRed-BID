@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 import os
 from PyQt5.QtGui import QIcon, QFont, QColor
-from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QToolButton, QMessageBox, QLineEdit
+from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QLabel, QToolButton, QMessageBox, QLineEdit
 from PyQt5.QtWidgets import QListWidgetItem, QTableWidgetItem, QHeaderView, QStyle, QAbstractItemView, QFrame 
-from PyQt5.QtCore import Qt, QEvent, pyqtSlot
+from PyQt5.QtCore import Qt, pyqtSlot
 from qgis.PyQt import uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsSettings, QgsGeometry, QgsPointXY, QgsRectangle, QgsFeature, QgsLayerMetadata
 from qgis.utils import iface
 from qgis.gui import QgsHighlight
-from ..tools.qgisred_utils import QGISRedUtils
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_unified_find_properties.ui"))
 
@@ -83,7 +82,6 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.adjacent_highlights = []
         self.main_highlight = None
         self.current_selected_highlight = None
-        #self.findElemetsdock = None
         
         self.currentLayer = None
         self.currentFeature = None
@@ -141,6 +139,14 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         if hasattr(self, 'cbElementId'):
             self.cbElementId.setStyleSheet("QComboBox { background-color: white; }")
 
+        self.tempHideOtherTabs()
+
+    #TODO Delete later after other tabs construction
+    def tempHideOtherTabs(self):
+        self.tabWidget.setTabVisible(1, False)
+        self.tabWidget.setTabVisible(2, False)
+        self.tabWidget.setTabVisible(3, False)
+        self.tabWidget.setTabVisible(4, False)
 
     def clearAll(self):
         self.clearHighlights()
@@ -186,80 +192,24 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         settings = QgsSettings()
         settings.setValue(f"QGISRed/ElementsExplorer/geometry", self.saveGeometry())
         
-        # Disconnect signals if available
-        # root = QgsProject.instance().layerTreeRoot()
-        # inputs_group = root.findGroup("Inputs")
-        # if inputs_group and hasattr(self, 'onLayerTreeChanged'):
-        #     try:
-        #         inputs_group.addedChildren.disconnect(self.onLayerTreeChanged)
-        #         inputs_group.removedChildren.disconnect(self.onLayerTreeChanged)
-        #         for layer_node in inputs_group.findLayers():
-        #             if hasattr(self, 'disconnectLayerSignals'):
-        #                 self.disconnectLayerSignals(layer_node.layer())
-        #     except Exception:
-        #         pass
+        #Disconnect signals if available
+        root = QgsProject.instance().layerTreeRoot()
+        inputs_group = root.findGroup("Inputs")
+        if inputs_group and hasattr(self, 'onLayerTreeChanged'):
+            try:
+                inputs_group.addedChildren.disconnect(self.onLayerTreeChanged)
+                inputs_group.removedChildren.disconnect(self.onLayerTreeChanged)
+                for layer_node in inputs_group.findLayers():
+                    if hasattr(self, 'disconnectLayerSignals'):
+                        self.disconnectLayerSignals(layer_node.layer())
+            except Exception:
+                pass
         
         self.clearHighlights()
         self.clearAllLayerSelections()
         self.__class__._instance = None
         super(self.__class__, self).closeEvent(event)
-    #TODO
-    # def closeEvent(self, event):
-    #     root = QgsProject.instance().layerTreeRoot()
-    #     inputs_group = root.findGroup("Inputs")
-    #     if inputs_group:
-    #         try:
-    #             inputs_group.addedChildren.disconnect(self.onLayerTreeChanged)
-    #             inputs_group.removedChildren.disconnect(self.onLayerTreeChanged)
-    #             for layer_node in inputs_group.findLayers():
-    #                 self.disconnectLayerSignals(layer_node.layer())
-    #         except Exception:
-    #             pass
-    #     settings = QgsSettings()
-    #     settings.setValue("QGISRed/FindElements/geometry", self.saveGeometry())
-    #     self.clearHighlights()
-    #     self.clearAllLayerSelections()
-    #     QGISRedFindElementsDock._instance = None
-    #     super(QGISRedFindElementsDock, self).closeEvent(event)
 
-    # def setupConnections(self):
-    #     ...
-        # Connect signals for UI elements if they exist
-        # if hasattr(self, 'cbElementType'):
-        #     self.cbElementType.currentIndexChanged.connect(self.updateElementIds)
-        # if hasattr(self, 'leElementMask'):
-        #     self.leElementMask.textChanged.connect(self.filterElementIds)
-        # if hasattr(self, 'btFind'):
-        #     self.btFind.clicked.connect(self.onFindButtonClicked)
-        # if hasattr(self, 'listWidget'):
-        #     self.listWidget.itemClicked.connect(self.onListItemSingleClicked)
-        #     self.listWidget.itemDoubleClicked.connect(self.onListItemDoubleClicked)
-        # if hasattr(self, 'btClear'):
-        #     self.btClear.clicked.connect(self.clearAll)
-        # if hasattr(self, 'cbElementId'):
-        #     self.cbElementId.currentIndexChanged.connect(self.onElementIdChanged)
-
-        # Connect project signals
-        # project = QgsProject.instance()
-        # if hasattr(self, 'onLayerTreeChanged'):
-        #     project.layersAdded.connect(self.onLayerTreeChanged)
-        #     project.layersRemoved.connect(self.onLayerTreeChanged)
-        # if hasattr(self, 'onProjectChanged'):
-        #     project.readProject.connect(self.onProjectChanged)
-        #     project.cleared.connect(self.onProjectChanged)
-
-        # Connect input group signals
-        # root = project.layerTreeRoot()
-        # inputs_group = root.findGroup("Inputs")
-        # if inputs_group and hasattr(self, 'onLayerTreeChanged'):
-        #     inputs_group.addedChildren.connect(self.onLayerTreeChanged)
-        #     inputs_group.removedChildren.connect(self.onLayerTreeChanged)
-            
-        #     # Connect layer signals
-        #     if hasattr(self, 'connectLayerSignals'):
-        #         for layer_node in inputs_group.findLayers():
-        #             self.connectLayerSignals(layer_node)
-    
     def getCheckedInputGroupLayers(self):
         inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
         if not inputs_group:
@@ -329,7 +279,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         layout.setContentsMargins(0, 0, 0, 0)
         
         self.explorerTitleLabel = QLabel("Elements Explorer", titleBar)
-        self.explorerTitleLabel.setStyleSheet("font-weight: bold; font-size: 12pt; color: darkblue;")
+        self.explorerTitleLabel.setStyleSheet("font-size: 10pt;")
         layout.addWidget(self.explorerTitleLabel)
         
         layout.addStretch()
@@ -601,24 +551,26 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             self.dataTableWidget.setItem(row, 0, field_item)
             self.dataTableWidget.setItem(row, 1, value_item)
 
+    #TODO Only data tab for now, rest is hidden
     def setupTabs(self, visible_tabs):
-        tabs_info = {
-            "tabData": self.tabData,
-            "tabResults": self.tabResults,
-            "tabCurves": self.tabCurves,
-            "tabPatterns": self.tabPatterns,
-            "tabControls": self.tabControls
-        }
-        for tab_name, tab_widget in tabs_info.items():
-            if tab_widget is None:
-                continue
-            tab_index = self.tabWidget.indexOf(tab_widget)
-            if tab_index == -1:
-                continue
-            if tab_name == "tabResults": # hide results tab for now
-                self.tabWidget.setTabVisible(tab_index, False)
-            else:
-                self.tabWidget.setTabVisible(tab_index, tab_name in visible_tabs)
+        ...
+        # tabs_info = {
+        #     "tabData": self.tabData,
+        #     "tabResults": self.tabResults,
+        #     "tabCurves": self.tabCurves,
+        #     "tabPatterns": self.tabPatterns,
+        #     "tabControls": self.tabControls
+        # }
+        # for tab_name, tab_widget in tabs_info.items():
+        #     if tab_widget is None:
+        #         continue
+        #     tab_index = self.tabWidget.indexOf(tab_widget)
+        #     if tab_index == -1:
+        #         continue
+        #     if tab_name == "tabResults": # hide results tab for now
+        #         self.tabWidget.setTabVisible(tab_index, False)
+        #     else:
+        #         self.tabWidget.setTabVisible(tab_index, tab_name in visible_tabs)
 
     def handleJunctions(self, layer, feature, tabs):
         self.setupTabs(tabs)
@@ -1428,66 +1380,44 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
                         return
 
     def findFeature(self, layer, feature):
-        print("DEBUG: findFeature called with layer:", layer.name(), "and feature id:", feature.id())
-        
         element_type_text = layer.name()
-        print("DEBUG: element_type_text set to:", element_type_text)
         self.cbElementType.setCurrentText(element_type_text)
         
-        print("DEBUG: Calling updateElementIds()")
         self.updateElementIds()
         
         feature_id_text = self.getFeatureIdValue(feature, layer, special_naming=True)
-        print("DEBUG: feature_id_text obtained:", feature_id_text)
         
         index = self.cbElementId.findText(feature_id_text)
-        print("DEBUG: Index found in cbElementId for feature_id_text:", index)
         if index >= 0:
             self.cbElementId.setCurrentIndex(index)
-            print("DEBUG: cbElementId index set to:", index)
-        else:
-            print("DEBUG: feature_id_text not found in cbElementId")
-        
-        print("DEBUG: Clearing highlights, layer selections, and listWidget")
+
         self.clearHighlights()
         self.clearAllLayerSelections()
         self.listWidget.clear()
 
-        print("DEBUG: Updating found element label with feature_id_text:", feature_id_text)
         self.updateFoundElementLabel(feature_id_text, layer)
 
-        print("DEBUG: Creating highlight for the feature")
         highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), layer)
         highlight.setColor(QColor("red"))
         highlight.setWidth(5)
         highlight.show()
         self.main_highlight = highlight
-        print("DEBUG: Highlight created and shown")
-        
-        print("DEBUG: Adjusting map view to feature")
+
         self.adjustMapView(feature)
         
         identifier = layer.customProperty("qgisred_identifier")
-        print("DEBUG: Identifier from layer:", identifier)
         if self.isLineElement(layer):
-            print("DEBUG: Layer is a line element; calling findAdjacentNodesByGeometry")
             self.findAdjacentNodesByGeometry(feature)
         elif identifier == "qgisred_meters":
-            print("DEBUG: Identifier is 'qgisred_meters'; calling findMeterAdjacency")
             self.findMeterAdjacency(feature, layer)
         elif identifier == "qgisred_isolationvalves":
-            print("DEBUG: Identifier is 'qgisred_isolationvalves'; calling findIsolationValveAdjacency")
             self.findIsolationValveAdjacency(feature, layer)
         elif identifier == "qgisred_serviceconnections":
-            print("DEBUG: Identifier is 'qgisred_serviceconnections'; calling findServiceConnectionAdjacency")
             self.findServiceConnectionAdjacency(feature, layer)
         else:
-            print("DEBUG: Calling findAdjacentLinksByGeometry")
             self.findAdjacentLinksByGeometry(feature, layer)
         
-        print("DEBUG: Sorting list widget items")
         self.sortListWidgetItems()
-        print("DEBUG: findFeature complete")
 
         self.loadFeature(layer, feature)
 
