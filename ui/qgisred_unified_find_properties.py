@@ -355,48 +355,26 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
 
     @pyqtSlot()
     def openElementPropertiesDock(self):
-        from ..tools.qgisred_identifyFeature import QGISRedIdentifyFeature
-        
-        self.identifyTool = QGISRedIdentifyFeature(self.canvas)
-        
+        """Display the element properties dock."""
         if not self._instance:
             self.setComponentVisibility(False, True)
         elif not self.element_properties_visible:
-            self.element_properties_visible = True
-            self.elementPropertiesDock.show()
-            self.elementPropertiesDock.raise_()
-            self.placeConnectedElements()
+            self.setComponentVisibility(self.find_elements_visible, True)
         elif self.find_elements_visible and self.element_properties_visible:
-            self.element_properties_visible = False
-            self.elementPropertiesDock.hide()
-            self.placeConnectedElements()
+            self.setComponentVisibility(True, False)
         else:
             self.close()
 
-        self.canvas.setMapTool(self.identifyTool)
-
     @pyqtSlot()
     def openFindElementsDock(self):
-        from ..tools.qgisred_identifyFeature import QGISRedIdentifyFeature
-        
-        self.identifyTool = QGISRedIdentifyFeature(self.canvas)
-        
         if not self._instance:
             self.setComponentVisibility(True, False)
+        elif not self.find_elements_visible:
+            self.setComponentVisibility(True, self.element_properties_visible)
+        elif self.find_elements_visible and not self.element_properties_visible:
+            self.close()
         else:
-            current_fe = self.find_elements_visible
-            current_ep = self.element_properties_visible
-            
-            if not current_fe and not current_ep:
-                self.setComponentVisibility(True, False)
-            elif current_fe and current_ep:
-                self.setComponentVisibility(False, True)
-            elif current_fe and not current_ep:
-                self.close()
-            else:
-                self.setComponentVisibility(True, True)
-        
-        self.canvas.setMapTool(self.identifyTool)
+            self.setComponentVisibility(False, True)
 
     def toggleFindElementsDockVisibility(self):
         self.find_elements_visible = not self.find_elements_visible
@@ -477,20 +455,29 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
                 fe_layout.addWidget(self.listWidget)
 
     def setComponentVisibility(self, show_find_elements, show_element_properties):
+        """Set visibility of find elements and element properties docks."""
+        # Update the visibility state variables
         self.find_elements_visible = show_find_elements
         self.element_properties_visible = show_element_properties
         
-        print(" changed for FE ", show_find_elements, " and for EP : ", show_element_properties)
+        # Emit signals for visibility changes
         self.findElementsDockVisibilityChanged.emit(show_find_elements)
         self.elementPropertiesDockVisibilityChanged.emit(show_element_properties)
 
+        # Update UI button states
         self.findButton.setChecked(show_find_elements)
         self.epButton.setChecked(show_element_properties)
         
+        # Show/hide the actual dock components
         self.findElementsDock.setVisible(show_find_elements)
         self.elementPropertiesDock.setVisible(show_element_properties)
         
+        # Rearrange the dock contents if needed
         self.placeConnectedElements()
+        
+        # If both components are hidden, close the dock
+        if not show_find_elements and not show_element_properties:
+            self.close()
 
     def openIdentifyForFindDock(self):
         from ..tools.qgisred_identifyFeature import QGISRedIdentifyFeature

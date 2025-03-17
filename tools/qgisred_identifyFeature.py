@@ -6,14 +6,14 @@ from qgis.core import QgsProject, QgsVectorLayer
 from PyQt5.QtCore import Qt
 
 class QGISRedIdentifyFeature(QgsMapToolIdentify):
-    def __init__(self, canvas, toggle_action=None, use_element_properties_dock=True):
+    def __init__(self, canvas, toggle_action=None, use_find_elements_dock=False, use_element_properties_dock=True):
         super().__init__(canvas)
         self.canvas = canvas
         self.toggle_action = toggle_action
+        self.use_find_elements_dock = use_find_elements_dock
         self.use_element_properties_dock = use_element_properties_dock
         self.currentHighlight = None
         self.dock = None
-        self.find_elements_dock = None
         self.ignoreNextRelease = False
         self.setupConnections()
 
@@ -47,36 +47,35 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         self.currentHighlight.show()
 
     def showFeatureInDock(self, layer, feature, handler=None):
-        self.dock = QGISRedElementsExplorerDock.getInstance(self.canvas, self.use_element_properties_dock)
-
-        if not self.dock.isVisible():
-            iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
-
-        self.dock.findFeature(layer, feature)
-
+        # Get or create the dock
+        self.dock = QGISRedElementsExplorerDock.getInstance(
+            self.canvas, 
+            iface.mainWindow()
+        )
+        
+        # Configure dock visibility based on action mode
+        if self.use_find_elements_dock and not self.use_element_properties_dock:
+            # FindElements mode - show only findElementsDock
+            if not self.dock.find_elements_visible:
+                self.dock.setComponentVisibility(True, False)
+        elif self.use_element_properties_dock and not self.use_find_elements_dock:
+            # ElementProperties mode - show only elementPropertiesDock
+            # If dock is not visible, make it visible now since user clicked a feature
+            if not self.dock.element_properties_visible:
+                self.dock.setComponentVisibility(False, True)
+        else:
+            # Both modes - show both docks
+            self.dock.setComponentVisibility(True, True)
+            
+        # If the dock isn't visible at all, add it to the UI
         if not self.dock.isVisible():
             iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
             self.dock.show()
             self.dock.raise_()
             self.dock.activateWindow()
-        # return
-        
-        # self.dock = QGISRedElementsExplorerDock.getInstance(self.canvas)
-        # if not self.dock.isVisible():
-        #     iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
-        # # Make sure to use the getInstance method to get the existing instance
-        # if hasattr(self.dock, 'findElemetsdock'):
-        #     find_dock = QGISRedElementsExplorerDock.getInstance(self.canvas)
-        #     self.dock.findElemetsdock = find_dock
-        #     self.dock.findElemetsdock.findFeature(layer, feature)
-        # if handler:
-        #     tabs, method_name = handler
-        #     getattr(self.dock, method_name)(layer, feature, tabs)
-        # else:
-        #     self.dock.loadFeature(layer, feature)
-        # self.dock.show()
-        # self.dock.raise_()
-        # self.dock.activateWindow()
+            
+        # Load the selected feature information
+        self.dock.findFeature(layer, feature)
 
     def selectFeature(self, layer, feature):
         layer.select(feature.id())
@@ -197,7 +196,10 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
     def deactivate(self):
         self.canvas.unsetMapTool(self.canvas.mapTool())
         self.clearHighlights()
-        self.closeDock()
+        
+        if self.use_find_elements_dock and not self.use_element_properties_dock:
+            self.closeDock()
+            
         self.disconnectProjectSignals()
         self.setActionUnchecked()
 
