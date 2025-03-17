@@ -13,15 +13,23 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_
 
 class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
     _instance = None
-    dockVisibilityChanged = pyqtSignal(bool)  # Main dock visibility
-    findElementsDockVisibilityChanged = pyqtSignal(bool)  # Find elements dock visibility
-    elementPropertiesDockVisibilityChanged = pyqtSignal(bool)  # Element properties dock visibility
-        
+    dockVisibilityChanged = pyqtSignal(bool)
+    findElementsDockVisibilityChanged = pyqtSignal(bool)
+    elementPropertiesDockVisibilityChanged = pyqtSignal(bool)
+
     @classmethod
     def getInstance(cls, canvas, parent=None, show_find_elements=True, show_element_properties=True):
         if cls._instance is None:
             cls._instance = cls(canvas, parent, show_find_elements, show_element_properties)
+        else:
+            if hasattr(cls._instance, 'elementPropertiesDock') and cls._instance.elementPropertiesDock is not None:
+                if cls._instance.elementPropertiesDock.isVisible() != show_element_properties:
+                    cls._instance.elementPropertiesDock.setVisible(show_element_properties)
+            if hasattr(cls._instance, 'findElementsDock') and cls._instance.findElementsDock is not None:
+                if show_find_elements and not cls._instance.findElementsDock.isVisible():
+                    cls._instance.findElementsDock.setVisible(True)
         return cls._instance
+
 
     def __init__(self, canvas, parent=None, show_find_elements=True, show_element_properties=True):
         if self._instance is not None:
@@ -118,12 +126,11 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
 
         self.placeConnectedElements()
 
-        # Restore geometry from settings
-        settings = QgsSettings()
+        settings = QgsSettings()\
+        
         if settings.contains("QGISRed/ElementsExplorer/geometry"):
             self.restoreGeometry(settings.value("QGISRed/ElementsExplorer/geometry"))
         
-        # Also restore the dock's state (floating or docked)
         if settings.contains("QGISRed/ElementsExplorer/floating"):
             self.setFloating(settings.value("QGISRed/ElementsExplorer/floating", type=bool))
     
@@ -355,7 +362,6 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
 
     @pyqtSlot()
     def openElementPropertiesDock(self):
-        """Display the element properties dock."""
         if not self._instance:
             self.setComponentVisibility(False, True)
         elif not self.element_properties_visible:
@@ -455,27 +461,20 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
                 fe_layout.addWidget(self.listWidget)
 
     def setComponentVisibility(self, show_find_elements, show_element_properties):
-        """Set visibility of find elements and element properties docks."""
-        # Update the visibility state variables
         self.find_elements_visible = show_find_elements
         self.element_properties_visible = show_element_properties
         
-        # Emit signals for visibility changes
         self.findElementsDockVisibilityChanged.emit(show_find_elements)
         self.elementPropertiesDockVisibilityChanged.emit(show_element_properties)
 
-        # Update UI button states
         self.findButton.setChecked(show_find_elements)
         self.epButton.setChecked(show_element_properties)
         
-        # Show/hide the actual dock components
         self.findElementsDock.setVisible(show_find_elements)
         self.elementPropertiesDock.setVisible(show_element_properties)
         
-        # Rearrange the dock contents if needed
         self.placeConnectedElements()
         
-        # If both components are hidden, close the dock
         if not show_find_elements and not show_element_properties:
             self.close()
 
@@ -488,12 +487,6 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
     @pyqtSlot()
     def toggleFloating(self):
         self.setFloating(not self.isFloating())
-    
-    # def getCheckedInputGroupLayers(self):
-    #     inputs_group = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
-    #     if not inputs_group:
-    #         return []
-    #     return inputs_group.checkedLayers()
 
     def setupConnections(self):
         self.cbElementType.currentIndexChanged.connect(self.updateElementIds)
@@ -524,12 +517,16 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
 #------- Common Functions -----------------
     @pyqtSlot(bool)
     def onDockVisibilityChanged(self, visible):
-        if not self.findElementsDock.isVisible() and not self.elementPropertiesDock.isVisible():
+        find_dock_visible = self.findElementsDock.isVisible() 
+        element_properties_visible = self.elementPropertiesDock.isVisible()
+
+        if not find_dock_visible and not element_properties_visible:
             self.close()
             return
         
-        self.setComponentVisibility(self.findElementsDock.isVisible(), self.elementPropertiesDock.isVisible())
-        #self.placeConnectedElements()
+        self.setComponentVisibility(find_dock_visible, element_properties_visible)
+        self.findElementsDockVisibilityChanged.emit(find_dock_visible)
+        self.elementPropertiesDockVisibilityChanged.emit(element_properties_visible)
 
 #------- Element Properties -----------------
     def populatedataTableWidget(self):
@@ -723,6 +720,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
     def onElementIdChanged(self, index):
         self.labelFoundElement.setText("")
         self.listWidget.clear()
+        self.dataTableWidget.clear()
 
     @pyqtSlot()
     def onFindButtonClicked(self):

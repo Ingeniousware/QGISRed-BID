@@ -1,4 +1,3 @@
-#from ..ui.qgisred_elementproperties_dock import QGISRedElementsPropertyDock
 from ..ui.qgisred_unified_find_properties import QGISRedElementsExplorerDock
 from qgis.gui import QgsMapToolIdentify, QgsHighlight
 from qgis.utils import iface
@@ -44,17 +43,18 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         self.currentHighlight.setWidth(4)
         self.currentHighlight.setFillColor(Qt.transparent)
         self.currentHighlight.show()
-
+    
     def showFeatureInDock(self, layer, feature, handler=None):
         self.dock = QGISRedElementsExplorerDock.getInstance(
             self.canvas, 
-            iface.mainWindow()
+            iface.mainWindow(),
+            show_find_elements=False,
+            show_element_properties=self.use_element_properties_dock
         )
         
-        if self.use_element_properties_dock:
-            if not self.dock.elementPropertiesDock.isVisible():
-                self.dock.elementPropertiesDock.show()
-
+        if self.dock is None:
+            return
+        
         if not self.dock.isVisible():
             iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
             self.dock.show()
@@ -65,7 +65,7 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
 
         if hasattr(self.dock, 'dockVisibilityChanged'):
             self.dock.dockVisibilityChanged.connect(self.deactivate)
-        
+
     def selectFeature(self, layer, feature):
         layer.select(feature.id())
 
@@ -137,6 +137,10 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         project = QgsProject.instance()
         project.readProject.connect(self.deactivate)
         project.cleared.connect(self.deactivate)
+        
+        # if hasattr(self, 'dock') and self.dock is not None:
+        #     self.dock.elementPropertiesDockVisibilityChanged.connect(lambda value : self.setUseElementProperties(value))
+
 
     # -----------------------
     # Event Handlers
@@ -183,13 +187,8 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         self.showFeatureInDock(selected_layer, selected_feature, selected_handler)
 
     def deactivate(self):
-        #if hasattr(self, "docka") and self.dock and not self.dock.isVisible():
-        self.canvas.unsetMapTool(self.canvas.mapTool())
         self.clearHighlights()
-        
-        # if self.use_find_elements_dock and not self.use_element_properties_dock:
-        #     self.closeDock()
-            
+
         self.disconnectProjectSignals()
         self.setActionUnchecked()
 

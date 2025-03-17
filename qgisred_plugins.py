@@ -4420,33 +4420,37 @@ class QGISRed:
                     self.identifyTool.setUseElementProperties(True)
             return
         
-        # if existing_dock:
-        #     existing_dock.toggleFindElementsDockVisibility()
-        # else:
-        dock = QGISRedElementsExplorerDock.getInstance(
-            self.iface.mapCanvas(),
-            self.iface.mainWindow(),
-            show_find_elements=True,
-            show_element_properties=False
-        )
-        self.connectExplorerSignals(dock)
+        if not existing_dock:
+            element_properties_visible = False
+            dock = QGISRedElementsExplorerDock.getInstance(
+                self.iface.mapCanvas(),
+                self.iface.mainWindow(),
+                show_find_elements=True,
+                show_element_properties=False
+            )
 
-        self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)
+            self.connectExplorerSignals(dock)
 
-        dock.show()
-        dock.raise_()
-        dock.activateWindow()
+            self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)
+            
+            dock.show()
+            dock.raise_()
+            dock.activateWindow()
 
-        if hasattr(dock, 'onLayerTreeChanged'):
-            dock.onLayerTreeChanged()
-        if hasattr(dock, 'setDefaultValue'):
-            dock.setDefaultValue()
+            if hasattr(dock, 'onLayerTreeChanged'):
+                dock.onLayerTreeChanged()
+            if hasattr(dock, 'setDefaultValue'):
+                dock.setDefaultValue()
 
-        # Create and set the identify tool
+        else:
+            element_properties_visible = True
+            existing_dock.toggleFindElementsDockVisibility()
+
         self.identifyTool = QGISRedIdentifyFeature(
             self.iface.mapCanvas(), 
-            use_element_properties_dock=False
+            use_element_properties_dock=element_properties_visible
         )
+
         self.iface.mapCanvas().setMapTool(self.identifyTool)
 
 # ==============================================================
@@ -4512,21 +4516,26 @@ class QGISRed:
             explorer_dock.elementPropertiesDockVisibilityChanged.connect(self.onElementPropertiesDockVisibilityChanged)
 
     def onExplorerVisibilityChanged(self, visible):
-        if not visible:
-            self.iface.mapCanvas().unsetMapTool(self.identifyTool)
 
+        if visible:
+            pass
+        else:
             if hasattr(self, 'openFindElementsDialog'):
                 self.openFindElementsDialog.setChecked(False)
+            
             if hasattr(self, 'openElementsPropertyDialog'):
-                self.openElementsPropertyDialog.setChecked(False)
+                if self.openElementsPropertyDialog.isChecked():
+                    self.identifyTool.setUseElementProperties(True)
+                else:
+                    self.iface.mapCanvas().unsetMapTool(self.identifyTool)
 
     def onFindElementsDockVisibilityChanged(self, visible):
         if hasattr(self, 'openFindElementsDialog'):
+            print("onFindElementsDockVisibilityChanged visible", visible )
             self.openFindElementsDialog.setChecked(visible)
 
     def onElementPropertiesDockVisibilityChanged(self, visible):
-        if hasattr(self, 'openElementsPropertyDialog'):
-            self.openElementsPropertyDialog.setChecked(visible)
+        ...
 
     # ==============================================================
     #                        END: COMMON FE AND EP
