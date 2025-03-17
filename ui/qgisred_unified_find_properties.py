@@ -517,7 +517,19 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             inputs_group.removedChildren.connect(self.onLayerTreeChanged)
             for layer_node in inputs_group.findLayers():
                 self.connectLayerSignals(layer_node)
+        
+        self.findElementsDock.visibilityChanged.connect(self.onDockVisibilityChanged)
+        self.elementPropertiesDock.visibilityChanged.connect(self.onDockVisibilityChanged)
+
 #------- Common Functions -----------------
+    @pyqtSlot(bool)
+    def onDockVisibilityChanged(self, visible):
+        if not self.findElementsDock.isVisible() and not self.elementPropertiesDock.isVisible():
+            self.close()
+            return
+        
+        self.setComponentVisibility(self.findElementsDock.isVisible(), self.elementPropertiesDock.isVisible())
+        #self.placeConnectedElements()
 
 #------- Element Properties -----------------
     def populatedataTableWidget(self):
