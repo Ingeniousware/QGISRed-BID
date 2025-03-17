@@ -71,12 +71,20 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         print("showFeatureInDock: Finding feature in dock")
         self.dock.findFeature(layer, feature)
         
-        if hasattr(self.dock, 'elementPropertiesDockVisibilityChanged'):
-            self.dock.elementPropertiesDockVisibilityChanged.connect(lambda value : self.setUseElementProperties(value))
+        if hasattr(self.dock, 'dockFocusChanged'):
+            print("connected")
+            self.dock.dockFocusChanged.connect(self.setIdentifyFeatureAsMapTool)
 
         if hasattr(self.dock, 'dockVisibilityChanged'):
             print("showFeatureInDock: Connecting dockVisibilityChanged signal")
             self.dock.dockVisibilityChanged.connect(self.deactivate)
+        
+        # if hasattr(self.dock, 'dockFocusChanged'):
+        #     print("showFeatureInDock: Connecting dockVisibilityChanged signal")
+        #     self.dock.dockFocusChanged.connect(self.deactivate)
+
+    def setIdentifyFeatureAsMapTool(self):
+        self.canvas.setMapTool(self)
 
     def selectFeature(self, layer, feature):
         print("selectFeature: Selecting feature with id", feature.id())

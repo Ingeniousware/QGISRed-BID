@@ -3,7 +3,7 @@ import os
 from PyQt5.QtGui import QIcon, QFont, QColor
 from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QLabel, QToolButton, QMessageBox, QLineEdit
 from PyQt5.QtWidgets import QListWidgetItem, QTableWidgetItem, QHeaderView, QStyle, QAbstractItemView, QFrame 
-from PyQt5.QtCore import Qt, pyqtSlot, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSlot, pyqtSignal, QEvent  
 from qgis.PyQt import uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsSettings, QgsGeometry, QgsPointXY, QgsRectangle, QgsFeature, QgsLayerMetadata
 from qgis.utils import iface
@@ -16,6 +16,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
     dockVisibilityChanged = pyqtSignal(bool)
     findElementsDockVisibilityChanged = pyqtSignal(bool)
     elementPropertiesDockVisibilityChanged = pyqtSignal(bool)
+    dockFocusChanged = pyqtSignal(bool)
 
     @classmethod
     def getInstance(cls, canvas, parent=None, show_find_elements=True, show_element_properties=True):
@@ -36,6 +37,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             raise Exception(f"{self.__class__.__name__} is a singleton! Use getInstance() instead.")
         super(self.__class__, self).__init__(parent)
         self.setupUi(self)
+        self.setupEventFilters() 
         self.setObjectName(self.__class__.__name__)
         self.setFloating(False)
         if parent:
@@ -128,19 +130,54 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
 
         settings = QgsSettings()
         
-        if settings.contains("QGISRed/ElementsExplorer/geometry"):
-            self.restoreGeometry(settings.value("QGISRed/ElementsExplorer/geometry"))
+        # if settings.contains("QGISRed/ElementsExplorer/geometry"):
+        #     self.restoreGeometry(settings.value("QGISRed/ElementsExplorer/geometry"))
         
         # if settings.contains("QGISRed/ElementsExplorer/floating"):
         #     self.setFloating(settings.value("QGISRed/ElementsExplorer/floating", type=bool))
+
+    def setupEventFilters(self):
+        main_widget = self.widget()
+        self.installEventFilterRecursive(main_widget)
+
+    def installEventFilterRecursive(self, widget):
+        if widget:
+            widget.installEventFilter(self)
+            for child in widget.children():
+                if isinstance(child, QWidget):
+                    self.installEventFilterRecursive(child)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.FocusIn:
+            if obj != self and self.isAncestorOf(obj):
+                self.reestablishIdentifyTool()
+                self.onLayerTreeChanged()
+        return super(QGISRedElementsExplorerDock, self).eventFilter(obj, event)
     
+    def reestablishIdentifyTool(self):
+        from ..tools.qgisred_identifyFeature import QGISRedIdentifyFeature
+        
+        current_tool = self.canvas.mapTool()
+        if not isinstance(current_tool, QGISRedIdentifyFeature):
+            self.dockFocusChanged.emit(True)
+
+    # def focusInEvent(self, event):
+    #     super(QGISRedElementsExplorerDock, self).focusInEvent(event)
+    #     self.reestablishIdentifyTool()
+        
+    #     self.onLayerTreeChanged()
+
+    # def focusOutEvent(self, event):
+    #     super(QGISRedElementsExplorerDock, self).focusOutEvent(event)
+        
+    #     self.dockFocusChanged.emit(False)
+
     def resizeToMinimumHeight(self):
         self.layout().activate()
         self.adjustSize()
         self.setFixedHeight(self.sizeHint().height())
 
     def setDockStyle(self):
-        self.initElementsExplorerCustomTitleBar()
         self.initFindElementsCustomTitleBar()
         self.initElementPropertiesCustomTitleBar()
 
@@ -209,8 +246,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
     def closeEvent(self, event):
         self.dockVisibilityChanged.emit(False)
         settings = QgsSettings()
-        settings.setValue("QGISRed/ElementsExplorer/geometry", self.saveGeometry())
-        settings.setValue("QGISRed/ElementsExplorer/floating", self.isFloating())
+        # settings.setValue("QGISRed/ElementsExplorer/geometry", self.saveGeometry())
+        # settings.setValue("QGISRed/ElementsExplorer/floating", self.isFloating())
 
         #Disconnect signals if available
         root = QgsProject.instance().layerTreeRoot()
