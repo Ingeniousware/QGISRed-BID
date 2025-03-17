@@ -131,8 +131,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         if settings.contains("QGISRed/ElementsExplorer/geometry"):
             self.restoreGeometry(settings.value("QGISRed/ElementsExplorer/geometry"))
         
-        if settings.contains("QGISRed/ElementsExplorer/floating"):
-            self.setFloating(settings.value("QGISRed/ElementsExplorer/floating", type=bool))
+        # if settings.contains("QGISRed/ElementsExplorer/floating"):
+        #     self.setFloating(settings.value("QGISRed/ElementsExplorer/floating", type=bool))
     
     def setDockStyle(self):
         self.initElementsExplorerCustomTitleBar()
