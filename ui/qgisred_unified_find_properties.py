@@ -126,13 +126,13 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
 
         self.placeConnectedElements()
 
-        settings = QgsSettings()\
+        settings = QgsSettings()
         
         if settings.contains("QGISRed/ElementsExplorer/geometry"):
             self.restoreGeometry(settings.value("QGISRed/ElementsExplorer/geometry"))
         
-        if settings.contains("QGISRed/ElementsExplorer/floating"):
-            self.setFloating(settings.value("QGISRed/ElementsExplorer/floating", type=bool))
+        # if settings.contains("QGISRed/ElementsExplorer/floating"):
+        #     self.setFloating(settings.value("QGISRed/ElementsExplorer/floating", type=bool))
     
     def resizeToMinimumHeight(self):
         self.layout().activate()

@@ -70,6 +70,9 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
             
         print("showFeatureInDock: Finding feature in dock")
         self.dock.findFeature(layer, feature)
+        
+        if hasattr(self.dock, 'elementPropertiesDockVisibilityChanged'):
+            self.dock.elementPropertiesDockVisibilityChanged.connect(lambda value : self.setUseElementProperties(value))
 
         if hasattr(self.dock, 'dockVisibilityChanged'):
             print("showFeatureInDock: Connecting dockVisibilityChanged signal")
