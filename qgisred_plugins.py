@@ -4562,7 +4562,7 @@ class QGISRed:
 
     def onElementPropertiesDockVisibilityChanged(self, visible):
         if hasattr(self, 'openElementsPropertyDialog'):
-            print("onFindElementsDockVisibilityChanged visible", visible )
+            print("onElementPropertiesDockVisibilityChanged visible", visible )
             self.openElementsPropertyDialog.setChecked(visible)
 
     # ==============================================================

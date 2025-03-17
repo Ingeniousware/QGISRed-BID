@@ -131,9 +131,14 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         if settings.contains("QGISRed/ElementsExplorer/geometry"):
             self.restoreGeometry(settings.value("QGISRed/ElementsExplorer/geometry"))
         
-        # if settings.contains("QGISRed/ElementsExplorer/floating"):
-        #     self.setFloating(settings.value("QGISRed/ElementsExplorer/floating", type=bool))
+        if settings.contains("QGISRed/ElementsExplorer/floating"):
+            self.setFloating(settings.value("QGISRed/ElementsExplorer/floating", type=bool))
     
+    def resizeToMinimumHeight(self):
+        self.layout().activate()
+        self.adjustSize()
+        self.setFixedHeight(self.sizeHint().height())
+
     def setDockStyle(self):
         self.initElementsExplorerCustomTitleBar()
         self.initFindElementsCustomTitleBar()
@@ -330,6 +335,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.epButton.setIcon(icon_ep)
         self.epButton.setToolTip("Element Properties")
         self.epButton.clicked.connect(self.openElementPropertiesDock)
+        self.epButton.clicked.connect(self.toggleElementPropertiesDock)
         self.epButton.setCheckable(True)
         layout.addWidget(self.epButton)
 
@@ -353,12 +359,30 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.findButton.setIcon(icon_find)
         self.findButton.setToolTip("Find Elements by ID")
         self.findButton.clicked.connect(self.openFindElementsDock)
+        self.findButton.clicked.connect(self.toggleFindElementsDock)
         self.findButton.setCheckable(True)
         layout.addWidget(self.findButton)
         
         self.elementPropertiesDock.setTitleBarWidget(titleBar)
 
         self.findButton.setChecked(not self.findElementsDock.isVisible())
+
+    @pyqtSlot()
+    def toggleElementPropertiesDock(self):
+        visibility = not self.elementPropertiesDock.isVisible()
+        self.elementPropertiesDock.setVisible(visibility)
+        self.elementPropertiesDockVisibilityChanged.emit(visibility)
+
+    @pyqtSlot()
+    def toggleFindElementsDock(self):
+        current_visibility = self.findElementsDock.isVisible()
+        self.findElementsDockVisibilityChanged.emit(current_visibility)
+
+    @pyqtSlot()
+    def toggleElementPropertiesDock(self):
+        current_visibility = self.elementPropertiesDock.isVisible()
+        self.elementPropertiesDockVisibilityChanged.emit(current_visibility)
+
 
     @pyqtSlot()
     def openElementPropertiesDock(self):
@@ -393,7 +417,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             self.close()
         else:
             self.placeConnectedElements()
-    
+
     def toggleElementPropertiesVisibility(self):
         self.element_properties_visible = not self.element_properties_visible
         if self.element_properties_visible:
@@ -405,7 +429,6 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             self.close()
         else:
             self.placeConnectedElements()
-
     def removeConnectedElementsFromLayouts(self):
         for widget in [self.labelFoundElement, self.labelAdjacentNodeLinks, self.listWidget]:
             if widget:
@@ -474,7 +497,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.elementPropertiesDock.setVisible(show_element_properties)
         
         self.placeConnectedElements()
-        
+        self.resizeToMinimumHeight() 
+
         if not show_find_elements and not show_element_properties:
             self.close()
 
@@ -527,7 +551,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.setComponentVisibility(find_dock_visible, element_properties_visible)
         self.findElementsDockVisibilityChanged.emit(find_dock_visible)
         self.elementPropertiesDockVisibilityChanged.emit(element_properties_visible)
-
+        self.resizeToMinimumHeight() 
+        
 #------- Element Properties -----------------
     def populatedataTableWidget(self):
         if not hasattr(self, 'dataTableWidget'):
