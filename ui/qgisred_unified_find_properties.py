@@ -3,7 +3,7 @@ import os
 from PyQt5.QtGui import QIcon, QFont, QColor
 from PyQt5.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QLabel, QToolButton, QMessageBox, QLineEdit
 from PyQt5.QtWidgets import QListWidgetItem, QTableWidgetItem, QHeaderView, QStyle, QAbstractItemView, QFrame 
-from PyQt5.QtCore import Qt, pyqtSlot
+from PyQt5.QtCore import Qt, pyqtSlot, pyqtSignal
 from qgis.PyQt import uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsSettings, QgsGeometry, QgsPointXY, QgsRectangle, QgsFeature, QgsLayerMetadata
 from qgis.utils import iface
@@ -13,13 +13,14 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_
 
 class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
     _instance = None
-
+    dockVisibilityChanged = pyqtSignal(bool)  # Main dock visibility
+    findElementsDockVisibilityChanged = pyqtSignal(bool)  # Find elements dock visibility
+    elementPropertiesDockVisibilityChanged = pyqtSignal(bool)  # Element properties dock visibility
+        
     @classmethod
-    def getInstance(cls, canvas=None, parent=None, show_find_elements=True, show_element_properties=True):
+    def getInstance(cls, canvas, parent=None, show_find_elements=True, show_element_properties=True):
         if cls._instance is None:
             cls._instance = cls(canvas, parent, show_find_elements, show_element_properties)
-        else:
-            cls._instance.setComponentVisibility(show_find_elements, show_element_properties)
         return cls._instance
 
     def __init__(self, canvas, parent=None, show_find_elements=True, show_element_properties=True):
@@ -117,9 +118,14 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
 
         self.placeConnectedElements()
 
+        # Restore geometry from settings
         settings = QgsSettings()
         if settings.contains("QGISRed/ElementsExplorer/geometry"):
             self.restoreGeometry(settings.value("QGISRed/ElementsExplorer/geometry"))
+        
+        # Also restore the dock's state (floating or docked)
+        if settings.contains("QGISRed/ElementsExplorer/floating"):
+            self.setFloating(settings.value("QGISRed/ElementsExplorer/floating", type=bool))
     
     def setDockStyle(self):
         self.initElementsExplorerCustomTitleBar()
@@ -189,9 +195,11 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         canvas.refresh()
     
     def closeEvent(self, event):
+        self.dockVisibilityChanged.emit(False)
         settings = QgsSettings()
-        settings.setValue(f"QGISRed/ElementsExplorer/geometry", self.saveGeometry())
-        
+        settings.setValue("QGISRed/ElementsExplorer/geometry", self.saveGeometry())
+        settings.setValue("QGISRed/ElementsExplorer/floating", self.isFloating())
+
         #Disconnect signals if available
         root = QgsProject.instance().layerTreeRoot()
         inputs_group = root.findGroup("Inputs")
@@ -310,17 +318,18 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         layout.addWidget(self.titleLabel)
         layout.addStretch()
 
-        epButton = QToolButton(titleBar)
+        self.epButton = QToolButton(titleBar)
         icon_ep = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', 'iconElementsProperties.png'))
-        epButton.setIcon(icon_ep)
-        epButton.setToolTip("Element Properties")
-        epButton.clicked.connect(self.openElementPropertiesDock)
-        epButton.setCheckable(True)
-        epButton.setChecked(self.elementPropertiesDock.isVisible())
-        layout.addWidget(epButton)
+        self.epButton.setIcon(icon_ep)
+        self.epButton.setToolTip("Element Properties")
+        self.epButton.clicked.connect(self.openElementPropertiesDock)
+        self.epButton.setCheckable(True)
+        layout.addWidget(self.epButton)
 
         self.findElementsDock.setTitleBarWidget(titleBar)
 
+        self.epButton.setChecked(not self.elementPropertiesDock.isVisible())
+        
     def initElementPropertiesCustomTitleBar(self):
         titleBar = QWidget(self)
         layout = QHBoxLayout(titleBar)
@@ -332,16 +341,17 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         layout.addWidget(self.titleLabel)
         layout.addStretch()
 
-        findButton = QToolButton(titleBar)
+        self.findButton = QToolButton(titleBar)
         icon_find = QIcon(os.path.join(os.path.dirname(__file__), '..', 'images', 'iconFindElements.png'))
-        findButton.setIcon(icon_find)
-        findButton.setToolTip("Find Elements by ID")
-        findButton.clicked.connect(self.openFindElementsDock)
-        findButton.setCheckable(True)
-        findButton.setChecked(self.findElementsDock.isVisible())
-        layout.addWidget(findButton)
-
+        self.findButton.setIcon(icon_find)
+        self.findButton.setToolTip("Find Elements by ID")
+        self.findButton.clicked.connect(self.openFindElementsDock)
+        self.findButton.setCheckable(True)
+        layout.addWidget(self.findButton)
+        
         self.elementPropertiesDock.setTitleBarWidget(titleBar)
+
+        self.findButton.setChecked(not self.findElementsDock.isVisible())
 
     @pyqtSlot()
     def openElementPropertiesDock(self):
@@ -469,6 +479,13 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
     def setComponentVisibility(self, show_find_elements, show_element_properties):
         self.find_elements_visible = show_find_elements
         self.element_properties_visible = show_element_properties
+        
+        print(" changed for FE ", show_find_elements, " and for EP : ", show_element_properties)
+        self.findElementsDockVisibilityChanged.emit(show_find_elements)
+        self.elementPropertiesDockVisibilityChanged.emit(show_element_properties)
+
+        self.findButton.setChecked(show_find_elements)
+        self.epButton.setChecked(show_element_properties)
         
         self.findElementsDock.setVisible(show_find_elements)
         self.elementPropertiesDock.setVisible(show_element_properties)

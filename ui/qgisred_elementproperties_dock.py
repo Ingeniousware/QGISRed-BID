@@ -87,8 +87,6 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         layout.setContentsMargins(5, 0, 5, 0)
 
         self.titleLabel = QLabel(self.windowTitle(), titleBar)
-        #self.titleLabel.setStyleSheet("font-weight: bold; font-size: 12pt;")
-        #self.titleLabel.setStyleSheet("font-size: 12pt;")
         self.titleLabel.setStyleSheet("font-weight: normal")
         self.titleLabel.setText("Element Properties")
         layout.addWidget(self.titleLabel)
@@ -180,7 +178,6 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
             self.dataTableWidget.setItem(row, 0, field_item)
             self.dataTableWidget.setItem(row, 1, value_item)
 
-
     def setDockStyle(self):
         icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconElementsProperties.png')
         self.setWindowIcon(QIcon(icon_path))
@@ -189,21 +186,23 @@ class QGISRedElementsPropertyDock(QDockWidget, FORM_CLASS):
         pass
 
     def setupTabs(self, visible_tabs):
-        tabs_info = {
-            "tabData": self.tabData,
-            "tabResults": self.tabResults,
-            "tabCurves": self.tabCurves,
-            "tabPatterns": self.tabPatterns,
-            "tabControls": self.tabControls
-        }
-        for tab_name, tab_widget in tabs_info.items():
-            if tab_widget is None:
-                continue
-            tab_index = self.tabWidget.indexOf(tab_widget)
-            if tab_index == -1:
-                continue
-            else:
-                self.tabWidget.setTabVisible(tab_index, tab_name in visible_tabs)
+        ...
+        #TODO Only data tab for now, rest is hidden
+        # tabs_info = {
+        #     "tabData": self.tabData,
+        #     "tabResults": self.tabResults,
+        #     "tabCurves": self.tabCurves,
+        #     "tabPatterns": self.tabPatterns,
+        #     "tabControls": self.tabControls
+        # }
+        # for tab_name, tab_widget in tabs_info.items():
+        #     if tab_widget is None:
+        #         continue
+        #     tab_index = self.tabWidget.indexOf(tab_widget)
+        #     if tab_index == -1:
+        #         continue
+        #     else:
+        #         self.tabWidget.setTabVisible(tab_index, tab_name in visible_tabs)
 
     @pyqtSlot()
     def toggleFloating(self):
