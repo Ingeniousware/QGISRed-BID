@@ -30,6 +30,29 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         self.btAccept.clicked.connect(self.accept)
         self.btCancel.clicked.connect(self.reject)
         self.updateCheckboxStates()
+        self.tempElementsHide()
+
+    def tempElementsHide(self):
+        self.gbJunctions.hide()
+        self.gbValves.hide()
+        self.gbPumps.hide()
+        self.gbTanks.hide()
+        self.gbReservoirs.hide()
+
+        self.cbPipesRoughness.hide()
+        self.cbPipesAge.hide()
+        self.cbPipesLossCoeff.hide()
+        self.cbPipesInitStatus.hide()
+        self.cbPipesInstallationDate.hide()
+        self.cbPipesBulkCoeff.hide()
+        self.cbPipesWallCoeff.hide()
+        self.cbPipesTag.hide()
+        
+        self.tabWidget.setTabVisible(1, False)
+        
+        current_width = self.width()
+        self.adjustSize()
+        self.resize(current_width, self.height())
 
     def setDialogStyle(self):
         icon_path = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconThematicMaps.png')
