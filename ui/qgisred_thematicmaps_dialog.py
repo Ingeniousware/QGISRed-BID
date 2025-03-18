@@ -80,38 +80,46 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
 
     def accept(self):
         root_group = self.get_root_group()
-
         inputs_group = self.find_group_by_name(root_group, 'Inputs')
         if inputs_group is None:
             QMessageBox.critical(self, 'Error', 'Inputs group not found.')
             return
 
-        queries_group = self.get_or_create_queries_group(root_group, inputs_group)
-
-        pipes_layer = self.find_layer_in_group(inputs_group, 'Pipes')
-        if pipes_layer is None:
-            return
-
         selected_queries = self.get_selected_queries()
-
         current_valid_identifiers = set(
             f"qgisred_query_{query['field'].lower()}_{query['tooltip_prefix'].lower()}"
             for query in selected_queries
         )
-
         to_remove_identifiers = self.initial_valid_identifiers - current_valid_identifiers
+
+        if not selected_queries and not to_remove_identifiers:
+            super().accept()
+            return
+
         self.remove_query_layers_by_identifiers(to_remove_identifiers)
 
-        new_queries = [
-            query for query in selected_queries
-            if f"qgisred_query_{query['field'].lower()}_{query['tooltip_prefix'].lower()}" 
-            in (current_valid_identifiers - self.initial_valid_identifiers)
-        ]
+        queries_group = self.find_group_by_name(root_group, 'Queries')
+        if queries_group and not queries_group.children():
+            parent = queries_group.parent()
+            if parent:
+                parent.removeChildNode(queries_group)
 
-        for query in reversed(new_queries):
-            self.process_query(query, pipes_layer, queries_group)
+        if selected_queries:
+            queries_group = self.get_or_create_queries_group(root_group, inputs_group)
+            pipes_layer = self.find_layer_in_group(inputs_group, 'Pipes')
+            if pipes_layer is None:
+                return
 
-        super(QGISRedThematicMapsDialog, self).accept()
+            new_queries = [
+                query for query in selected_queries
+                if f"qgisred_query_{query['field'].lower()}_{query['tooltip_prefix'].lower()}" 
+                in (current_valid_identifiers - self.initial_valid_identifiers)
+            ]
+
+            for query in reversed(new_queries):
+                self.process_query(query, pipes_layer, queries_group)
+
+        super().accept()
 
     def remove_query_layers_by_identifiers(self, identifiers_to_remove):
         if not identifiers_to_remove:
@@ -333,13 +341,13 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
     
     def updateCheckboxStates(self):
         root = QgsProject.instance().layerTreeRoot()
-        inputs_group = self.find_group_by_name(root, 'Inputs')
-        queries_group = self.get_or_create_queries_group(root, inputs_group)
+        queries_group = self.find_group_by_name(root, 'Queries')
 
         checkbox_mapping = self.create_identifier_checkbox_mapping()
-        self.check_layers_recursive_by_identifier(queries_group, checkbox_mapping)
+        if queries_group:
+            self.check_layers_recursive_by_identifier(queries_group, checkbox_mapping)
         
-        self.initial_valid_identifiers = self.collect_existing_identifiers(queries_group)
+        self.initial_valid_identifiers = self.collect_existing_identifiers(queries_group) if queries_group else set()
 
     def collect_existing_identifiers(self, group):
         identifiers = set()
