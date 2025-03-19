@@ -151,7 +151,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         if event.type() == QEvent.FocusIn:
             if obj != self and self.isAncestorOf(obj):
                 self.reestablishIdentifyTool()
-                self.onLayerTreeChanged()
+                #self.onLayerTreeChanged()
         return super(QGISRedElementsExplorerDock, self).eventFilter(obj, event)
     
     def reestablishIdentifyTool(self):
