@@ -4413,9 +4413,9 @@ class QGISRed:
             self.openFindElementsDialog.setChecked(False)
 
             if existing_dock:
-                print("runFindElements: Existing dock found; closing findElementsDock")
-                existing_dock.findElementsDock.close()
-                elementPropertiesOpened = existing_dock.elementPropertiesDock.isVisible()
+                print("runFindElements: Existing dock found; closing frameFindElements")
+                existing_dock.frameFindElements.close()
+                elementPropertiesOpened = existing_dock.frameElementProperties.isVisible()
                 print("runFindElements: elementPropertiesOpened =", elementPropertiesOpened)
             else:
                 print("runFindElements: No existing dock found")
@@ -4496,9 +4496,9 @@ class QGISRed:
             self.openElementsPropertyDialog.setChecked(False)
 
             if existing_dock:
-                print("runElementsProperty: Existing dock found; closing elementPropertiesDock")
-                existing_dock.elementPropertiesDock.close()
-                find_elements_open = existing_dock.findElementsDock.isVisible()
+                print("runElementsProperty: Existing dock found; closing frameElementProperties")
+                existing_dock.frameElementProperties.close()
+                find_elements_open = existing_dock.frameFindElements.isVisible()
                 print("runElementsProperty: find_elements_open =", find_elements_open)
             else:
                 print("runElementsProperty: No existing dock found")
@@ -4519,6 +4519,8 @@ class QGISRed:
             self.iface.mapCanvas(), 
             use_element_properties_dock=True
         )
+
+        self.connectExplorerSignals(self.identifyTool)
 
         print("runElementsProperty: Setting map tool to identifyTool")
         self.iface.mapCanvas().setMapTool(self.identifyTool)

@@ -23,12 +23,12 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         if cls._instance is None:
             cls._instance = cls(canvas, parent, show_find_elements, show_element_properties)
         else:
-            if hasattr(cls._instance, 'elementPropertiesDock') and cls._instance.elementPropertiesDock is not None:
-                if cls._instance.elementPropertiesDock.isVisible() != show_element_properties:
-                    cls._instance.elementPropertiesDock.setVisible(show_element_properties)
-            if hasattr(cls._instance, 'findElementsDock') and cls._instance.findElementsDock is not None:
-                if show_find_elements and not cls._instance.findElementsDock.isVisible():
-                    cls._instance.findElementsDock.setVisible(True)
+            if hasattr(cls._instance, 'frameElementProperties') and cls._instance.frameElementProperties is not None:
+                if cls._instance.frameElementProperties.isVisible() != show_element_properties:
+                    cls._instance.frameElementProperties.setVisible(show_element_properties)
+            if hasattr(cls._instance, 'frameFindElements') and cls._instance.frameFindElements is not None:
+                if show_find_elements and not cls._instance.frameFindElements.isVisible():
+                    cls._instance.frameFindElements.setVisible(True)
         return cls._instance
 
 
@@ -114,8 +114,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             self.labelFoundElement.setWordWrap(True)
             self.labelFoundElement.setText("")
         
-        self.findElementsDock.setVisible(show_find_elements)
-        self.elementPropertiesDock.setVisible(show_element_properties)
+        self.frameFindElements.setVisible(show_find_elements)
+        self.frameElementProperties.setVisible(show_element_properties)
 
         self.setDockStyle()
         self.setupConnections()
@@ -378,7 +378,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
 
         self.findElementsDock.setTitleBarWidget(titleBar)
 
-        self.epButton.setChecked(not self.elementPropertiesDock.isVisible())
+        self.epButton.setChecked(not self.frameElementProperties.isVisible())
         
     def initElementPropertiesCustomTitleBar(self):
         titleBar = QWidget(self)
@@ -402,22 +402,22 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         
         self.elementPropertiesDock.setTitleBarWidget(titleBar)
 
-        self.findButton.setChecked(not self.findElementsDock.isVisible())
+        self.findButton.setChecked(not self.frameFindElements.isVisible())
 
     @pyqtSlot()
     def toggleElementPropertiesDock(self):
-        visibility = not self.elementPropertiesDock.isVisible()
-        self.elementPropertiesDock.setVisible(visibility)
+        visibility = not self.frameElementProperties.isVisible()
+        self.frameElementProperties.setVisible(visibility)
         self.elementPropertiesDockVisibilityChanged.emit(visibility)
 
     @pyqtSlot()
     def toggleFindElementsDock(self):
-        current_visibility = self.findElementsDock.isVisible()
+        current_visibility = self.frameFindElements.isVisible()
         self.findElementsDockVisibilityChanged.emit(current_visibility)
 
     @pyqtSlot()
     def toggleElementPropertiesDock(self):
-        current_visibility = self.elementPropertiesDock.isVisible()
+        current_visibility = self.frameElementProperties.isVisible()
         self.elementPropertiesDockVisibilityChanged.emit(current_visibility)
 
 
@@ -446,9 +446,9 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
     def toggleFindElementsDockVisibility(self):
         self.find_elements_visible = not self.find_elements_visible
         if self.find_elements_visible:
-            self.findElementsDock.show()
+            self.frameFindElements.show()
         else:
-            self.findElementsDock.hide()
+            self.frameFindElements.hide()
         
         if not self.find_elements_visible and not self.element_properties_visible:
             self.close()
@@ -458,9 +458,9 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
     def toggleElementPropertiesVisibility(self):
         self.element_properties_visible = not self.element_properties_visible
         if self.element_properties_visible:
-            self.elementPropertiesDock.show()
+            self.frameElementProperties.show()
         else:
-            self.elementPropertiesDock.hide()
+            self.frameElementProperties.hide()
         
         if not self.find_elements_visible and not self.element_properties_visible:
             self.close()
@@ -530,8 +530,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.findButton.setChecked(show_find_elements)
         self.epButton.setChecked(show_element_properties)
         
-        self.findElementsDock.setVisible(show_find_elements)
-        self.elementPropertiesDock.setVisible(show_element_properties)
+        self.frameFindElements.setVisible(show_find_elements)
+        self.frameElementProperties.setVisible(show_element_properties)
         
         self.placeConnectedElements()
         self.resizeToMinimumHeight() 
@@ -578,8 +578,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
 #------- Common Functions -----------------
     @pyqtSlot(bool)
     def onDockVisibilityChanged(self, visible):
-        find_dock_visible = self.findElementsDock.isVisible() 
-        element_properties_visible = self.elementPropertiesDock.isVisible()
+        find_dock_visible = self.frameFindElements.isVisible() 
+        element_properties_visible = self.frameElementProperties.isVisible()
 
         if not find_dock_visible and not element_properties_visible:
             self.close()
