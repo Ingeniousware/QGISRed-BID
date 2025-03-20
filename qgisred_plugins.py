@@ -4436,7 +4436,7 @@ class QGISRed:
                 dock.onLayerTreeChanged()
                 dock.setDefaultValue()
 
-            self.myMapTools[tool] = QGISRedIdentifyFeature( self.iface.mapCanvas(), self.openFindElementsDialog, use_element_properties_dock=useElementProperties, isPaired = True )
+            self.myMapTools[tool] = QGISRedIdentifyFeature( self.iface.mapCanvas(), self.openFindElementsDialog, use_element_properties_dock=useElementProperties )
             self.iface.mapCanvas().setMapTool(self.myMapTools[tool])
             
 
@@ -4484,7 +4484,7 @@ class QGISRed:
                 # dock.onLayerTreeChanged()
                 # dock.setDefaultValue()
 
-            self.myMapTools[tool] = QGISRedIdentifyFeature( self.iface.mapCanvas(), self.openElementsPropertyDialog, use_element_properties_dock=True, isPaired = True )
+            self.myMapTools[tool] = QGISRedIdentifyFeature( self.iface.mapCanvas(), self.openElementsPropertyDialog, use_element_properties_dock=True )
             self.iface.mapCanvas().setMapTool(self.myMapTools[tool])
 
         # tool = "identifyFeature"
