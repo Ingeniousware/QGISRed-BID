@@ -1475,7 +1475,7 @@ class QGISRed:
         self.openFindElementsDialog = self.add_action(
             icon_path,
             text=self.tr("Find Elements by ID..."),
-            callback=self.runFindElements,
+            callback=self.tempRunEE,
             menubar=self.queriesMenu,
             toolbar=self.queriesToolbar,
             actionBase=queriesDropButton,
@@ -4392,6 +4392,25 @@ class QGISRed:
     #                        START: QUERIES FIND ELEMENTS
     # --------------------------------------------------------------
 
+    def tempRunEE(self):
+        if not self.checkDependencies():
+            self.openFindElementsDialog.setChecked(False)
+            return
+
+        self.defineCurrentProject()
+        
+        if not self.isValidProject() or self.isLayerOnEdition():
+            self.openFindElementsDialog.setChecked(False)
+            return
+        
+        tool = "identifyFeature"
+        if tool in self.myMapTools.keys() and self.iface.mapCanvas().mapTool() is self.myMapTools[tool]:
+            self.iface.mapCanvas().unsetMapTool(self.myMapTools[tool])
+            self.openFindElementsDialog.setChecked(False)
+        else:
+            self.myMapTools[tool] = QGISRedIdentifyFeature( self.iface.mapCanvas(), self.openFindElementsDialog, use_element_properties_dock=True )
+            self.iface.mapCanvas().setMapTool(self.myMapTools[tool])
+    
     def runFindElements(self): 
         if not self.checkDependencies():
             self.openFindElementsDialog.setChecked(False)
@@ -4442,6 +4461,9 @@ class QGISRed:
             
 
     def runElementsProperty(self): 
+        ...
+        return
+    
         if not self.checkDependencies():
             self.openElementsPropertyDialog.setChecked(False)
             return

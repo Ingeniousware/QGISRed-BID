@@ -15,7 +15,7 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         print("QGISRedIdentifyFeature.__init__: Initializing")
         super().__init__(canvas)
         self.canvas = canvas
-        #self.setAction(button)
+        self.setAction(button)
         self.toggle_action = toggle_action
         self.use_element_properties_dock = use_element_properties_dock
         self.currentHighlight = None
@@ -60,12 +60,11 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         self.dock = QGISRedElementsExplorerDock.getInstance(
             self.canvas, 
             iface.mainWindow(),
-            show_find_elements=False,
-            show_element_properties=self.use_element_properties_dock
+            show_find_elements=True,
+            show_element_properties=True
         )
 
 
-        
         if self.dock is None:
             print("showFeatureInDock: No dock available")
             return
