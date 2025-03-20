@@ -11,7 +11,7 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
     elementPropertiesDockVisibilityChanged = pyqtSignal(bool)
     dockFocusChanged = pyqtSignal(bool)
 
-    def __init__(self, canvas, button, toggle_action=None, use_element_properties_dock=False):
+    def __init__(self, canvas, button, toggle_action=None, use_element_properties_dock=True):
         print("QGISRedIdentifyFeature.__init__: Initializing")
         super().__init__(canvas)
         self.canvas = canvas
