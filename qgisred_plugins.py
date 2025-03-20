@@ -4436,7 +4436,7 @@ class QGISRed:
                 dock.onLayerTreeChanged()
                 dock.setDefaultValue()
 
-            self.myMapTools[tool] = QGISRedIdentifyFeature( self.iface.mapCanvas(), self.openFindElementsDialog, use_element_properties_dock=useElementProperties )
+            self.myMapTools[tool] = QGISRedIdentifyFeature( self.iface.mapCanvas(), self.openFindElementsDialog, use_element_properties_dock=useElementProperties, isPaired = True )
             self.iface.mapCanvas().setMapTool(self.myMapTools[tool])
             
 
@@ -4451,6 +4451,42 @@ class QGISRed:
             self.openElementsPropertyDialog.setChecked(False)
             return
         
+        existingDock = QGISRedElementsExplorerDock._instance
+
+        tool = "identifyFeatureElementProperties"
+        if tool in self.myMapTools.keys() and self.iface.mapCanvas().mapTool() is self.myMapTools[tool]:
+            self.iface.mapCanvas().unsetMapTool(self.myMapTools[tool])
+            self.openElementsPropertyDialog.setChecked(False)
+
+            if existingDock:
+                if not existingDock.frameFindElements.isVisible():
+                    existingDock.close()
+                else:
+                    existingDock.frameElementProperties.setVisible(False)
+        else:
+            #useElementProperties = self.openElementsPropertyDialog.isChecked()
+            #print(useElementProperties)
+            if existingDock:
+                if not existingDock.frameElementProperties.isVisible():
+                    existingDock.frameElementProperties.show()
+            #else:
+                # dock = QGISRedElementsExplorerDock.getInstance(
+                #     self.iface.mapCanvas(),
+                #     self.iface.mainWindow(),
+                #     show_find_elements=True,
+                #     show_element_properties=True
+                # )
+
+                # self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)
+                # dock.show()
+                # dock.raise_()
+                # dock.activateWindow()
+                # dock.onLayerTreeChanged()
+                # dock.setDefaultValue()
+
+            self.myMapTools[tool] = QGISRedIdentifyFeature( self.iface.mapCanvas(), self.openElementsPropertyDialog, use_element_properties_dock=True, isPaired = True )
+            self.iface.mapCanvas().setMapTool(self.myMapTools[tool])
+
         # tool = "identifyFeature"
         # if tool in self.myMapTools.keys() and self.iface.mapCanvas().mapTool() is self.myMapTools[tool]:
         #     self.iface.mapCanvas().unsetMapTool(self.myMapTools[tool])
