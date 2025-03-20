@@ -124,25 +124,21 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
     def remove_query_layers_by_identifiers(self, identifiers_to_remove):
         if not identifiers_to_remove:
             return
-
         root = QgsProject.instance().layerTreeRoot()
         queries_group = self.find_group_by_name(root, 'Queries')
         if queries_group:
-            self._recursive_remove_by_identifiers(queries_group, identifiers_to_remove)
+            self.recursiveremove_by_identifiers(queries_group, identifiers_to_remove)
 
-    def _recursive_remove_by_identifiers(self, group, identifiers):
-        for child in group.children():
+    def recursiveremove_by_identifiers(self, group, identifiers):
+        for child in list(group.children()):
             if isinstance(child, QgsLayerTreeLayer):
                 layer = child.layer()
                 if layer:
                     layer_id = layer.customProperty("qgisred_identifier")
                     if layer_id in identifiers:
                         QgsProject.instance().removeMapLayer(layer.id())
-                        parent = child.parent()
-                        if parent and not sip.isdeleted(parent):
-                            parent.removeChildNode(child)
             elif isinstance(child, QgsLayerTreeGroup):
-                self._recursive_remove_by_identifiers(child, identifiers)
+                self.recursiveremove_by_identifiers(child, identifiers)
 
     def get_root_group(self):
         project = QgsProject.instance()
