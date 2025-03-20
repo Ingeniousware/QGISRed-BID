@@ -221,6 +221,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             self.listWidget.clear()
         if hasattr(self, 'dataTableWidget'):
             self.dataTableWidget.clear()
+            self.setDataTableWidgetColumns()
         print("Exiting clearAll")
 
     def clearAllLayerSelections(self):
@@ -658,9 +659,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         attributes = self.currentFeature.attributes()
         num_fields = len(fields)
         self.dataTableWidget.setRowCount(num_fields)
-        self.dataTableWidget.setColumnCount(2)
-        self.dataTableWidget.setHorizontalHeaderLabels(["Property", "Value"])
-        
+        self.setDataTableWidgetColumns()
+
         header = self.dataTableWidget.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Interactive)
         header.setStyleSheet("QHeaderView::section { font-weight: bold; }")
@@ -680,6 +680,10 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             self.dataTableWidget.setItem(row, 1, value_item)
         print("Exiting populatedataTableWidget")
 
+    def setDataTableWidgetColumns(self):
+        self.dataTableWidget.setColumnCount(2)
+        self.dataTableWidget.setHorizontalHeaderLabels(["Property", "Value"])
+        
     def setupTabs(self, visible_tabs):
         print("Entering setupTabs")
         # The code for actually handling tabs is replaced with ...
@@ -853,6 +857,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.labelFoundElement.setText("")
         self.listWidget.clear()
         self.dataTableWidget.clear()
+        self.setDataTableWidgetColumns()
         print("Exiting onElementIdChanged")
 
     @pyqtSlot()
