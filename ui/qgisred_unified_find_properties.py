@@ -155,7 +155,6 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         print("Exiting installEventFilterRecursive")
 
     def eventFilter(self, obj, event):
-        # No prints inside the if-statement to avoid spam on every FocusIn
         if event.type() == QEvent.FocusIn:
             if obj != self and self.isAncestorOf(obj):
                 self.reestablishIdentifyTool()
