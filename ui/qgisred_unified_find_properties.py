@@ -130,11 +130,11 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
 
         settings = QgsSettings()
         
-        # if settings.contains("QGISRed/ElementsExplorer/geometry"):
-        #     self.restoreGeometry(settings.value("QGISRed/ElementsExplorer/geometry"))
+        if settings.contains("QGISRed/ElementsExplorer/geometry"):
+            self.restoreGeometry(settings.value("QGISRed/ElementsExplorer/geometry"))
         
-        # if settings.contains("QGISRed/ElementsExplorer/floating"):
-        #     self.setFloating(settings.value("QGISRed/ElementsExplorer/floating", type=bool))
+        if settings.contains("QGISRed/ElementsExplorer/floating"):
+            self.setFloating(settings.value("QGISRed/ElementsExplorer/floating", type=bool))
 
     def setupEventFilters(self):
         main_widget = self.widget()
@@ -246,8 +246,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
     def closeEvent(self, event):
         self.dockVisibilityChanged.emit(False)
         settings = QgsSettings()
-        # settings.setValue("QGISRed/ElementsExplorer/geometry", self.saveGeometry())
-        # settings.setValue("QGISRed/ElementsExplorer/floating", self.isFloating())
+        settings.setValue("QGISRed/ElementsExplorer/geometry", self.saveGeometry())
+        settings.setValue("QGISRed/ElementsExplorer/floating", self.isFloating())
 
         #Disconnect signals if available
         root = QgsProject.instance().layerTreeRoot()
@@ -264,7 +264,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         
         self.clearHighlights()
         self.clearAllLayerSelections()
-        self.__class__._instance = None
+        #self.__class__._instance = None
+        
         super(self.__class__, self).closeEvent(event)
 
     def getCheckedInputGroupLayers(self):
@@ -536,7 +537,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.placeConnectedElements()
         self.resizeToMinimumHeight() 
 
-        if not show_find_elements and not show_element_properties:
+        # Close the dock only if both components are hidden and the dock is not floating
+        if not show_find_elements and not show_element_properties and not self.isFloating():
             self.close()
 
     def openIdentifyForFindDock(self):
