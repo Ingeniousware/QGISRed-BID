@@ -95,7 +95,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.adjacent_highlights = []
         self.main_highlight = None
         self.current_selected_highlight = None
-        
+        self.dictOfElementIDs = {}
         self.currentLayer = None
         self.currentFeature = None
         
@@ -830,11 +830,41 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         print("Exiting initializeCustomLayerProperties")
 
     def initializeElementTypes(self):
+        """
+        Clears the element type combobox, adds the available element types,
+        and builds the cache of element IDs for each type.
+        """
         print("Entering initializeElementTypes")
         self.cbElementType.clear()
         available_types = self.getAvailableElementTypes()
         self.cbElementType.addItems(available_types)
+        # Build (or rebuild) the cache of element IDs for each available type.
+        self.initializeElementIdsCache()
         print("Exiting initializeElementTypes")
+
+
+    def initializeElementIdsCache(self):
+        """
+        Precompute and cache the list of IDs for each available element type.
+        This method creates a dictionary mapping each element type (as shown
+        in the combobox) to a sorted list of unique IDs from its associated layer.
+        """
+        print("Entering initializeElementIdsCache")
+        # self.dictOfElementIDs = {}
+        # Use the available element types from the project
+        available_types = self.getAvailableElementTypes()
+        for element_type in available_types:
+            layer = self.getLayerForElementType(element_type)
+            ids = []
+            if layer:
+                for feature in layer.getFeatures():
+                    id_val = self.getFeatureIdValue(feature, layer, True)
+                    if id_val:
+                        ids.append(id_val)
+                self.dictOfElementIDs[element_type] = sorted(set(ids))
+            else:
+                self.dictOfElementIDs[element_type] = []
+        print("Exiting initializeElementIdsCache")
 
     def setDefaultValue(self):
         print("Entering setDefaultValue")
@@ -931,36 +961,48 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
 
     @pyqtSlot()
     def updateElementIds(self):
+        """
+        Updates the element ID combobox based on the currently selected element type.
+        Instead of iterating over the layer's features each time, it retrieves the IDs
+        from the precomputed cache.
+        """
         print("Entering updateElementIds")
         self.cbElementId.clear()
-        self.original_ids.clear()
         self.labelFoundElement.setText("")
-
-        layer = self.getLayerForElementType(self.cbElementType.currentText())
-        if layer:
-            for f in layer.getFeatures():
-                id_val = self.getFeatureIdValue(f, layer, True)
-                if id_val:
-                    self.original_ids.append(id_val)
-            self.original_ids = sorted(set(self.original_ids))
-
-        if self.leElementMask.text():
-            self.filterElementIds()
+        
+        selected_type = self.cbElementType.currentText()
+        # Retrieve the cached list of IDs for the selected element type.
+        ids = self.dictOfElementIDs.get(selected_type, [])
+        
+        # Check if a filter mask is applied.
+        mask = self.leElementMask.text().strip()
+        if mask:
+            filtered_ids = [id for id in ids if mask.lower() in id.lower()]
+            self.cbElementId.addItems(filtered_ids)
         else:
-            self.cbElementId.addItems(self.original_ids)
+            self.cbElementId.addItems(ids)
         print("Exiting updateElementIds")
+
 
     @pyqtSlot()
     def filterElementIds(self):
+        """
+        Filters the element IDs shown in the combobox based on the text entered in the mask.
+        The filtering is done on the cached list of IDs for the current element type.
+        """
         print("Entering filterElementIds")
         mask = self.leElementMask.text().strip()
         self.cbElementId.clear()
+        selected_type = self.cbElementType.currentText()
+        # Retrieve the cached list of IDs for filtering.
+        ids = self.dictOfElementIDs.get(selected_type, [])
         if mask:
-            filtered_items = [self.tr(item) for item in self.original_ids if mask.lower() in item.lower()]
+            filtered_ids = [id for id in ids if mask.lower() in id.lower()]
         else:
-            filtered_items = self.original_ids
-        self.cbElementId.addItems(filtered_items)
+            filtered_ids = ids
+        self.cbElementId.addItems(filtered_ids)
         print("Exiting filterElementIds")
+
 
     def onListItemSingleClicked(self, item):
         print("Entering onListItemSingleClicked")
