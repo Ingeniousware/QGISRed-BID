@@ -768,7 +768,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         print("Exiting findOverlappingFeatures")
         return overlapping_features
     
-    def loadFeature(self, layer, feature):
+    def loadFeature(self, layer, feature, feature_id_text = ""):
         print("Entering loadFeature")
         if not layer or not feature:
             print("Exiting loadFeature")
@@ -779,25 +779,27 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         layer.selectByIds([feature.id()])
         self.populatedataTableWidget()
 
-        base_title = f"{self.singular_forms.get(layer.name(), layer.name())} {feature.attribute('Id')}"
-        suffix_source = ""
-        suffix_demand = ""
+        #base_title = feature_id_text #f"{self.singular_forms.get(layer.name(), layer.name())} {feature.attribute('Id')}"
+        # suffix_source = ""
+        # suffix_demand = ""
 
-        id_property = layer.customProperty("qgisred_identifier")
-        if id_property in ["qgisred_junctions", "qgisred_reservoirs", "qgisred_tanks"]:
-            source_features = self.findOverlappingFeatures(feature, "qgisred_sources")
-            if source_features:
-                suffix_source = "(Source)"
-                for src_feat in source_features:
-                    self.appendFeatureProperties(src_feat, "Source")
-            if id_property == "qgisred_junctions":
-                demand_features = self.findOverlappingFeatures(feature, "qgisred_demands")
-                if demand_features:
-                    suffix_demand = "(Mult.Dem)"
-                    for dem_feat in demand_features:
-                        self.appendFeatureProperties(dem_feat, "Mult.Dem")
+        # id_property = layer.customProperty("qgisred_identifier")
+        # if id_property in ["qgisred_junctions", "qgisred_reservoirs", "qgisred_tanks"]:
+        #     source_features = self.findOverlappingFeatures(feature, "qgisred_sources")
+        #     if source_features:
+        #         suffix_source = "(Source)"
+        #         for src_feat in source_features:
+        #             self.appendFeatureProperties(src_feat, "Source")
+        #     if id_property == "qgisred_junctions":
+        #         demand_features = self.findOverlappingFeatures(feature, "qgisred_demands")
+        #         if demand_features:
+        #             suffix_demand = "(Mult.Dem)"
+        #             for dem_feat in demand_features:
+        #                 self.appendFeatureProperties(dem_feat, "Mult.Dem")
 
-        self.labelFoundElement.setText(f"{base_title} {suffix_source}{suffix_demand}")
+        #self.labelFoundElement.setText(f"{base_title} {suffix_source}{suffix_demand}")
+        self.labelFoundElement.setText(f"{feature_id_text}")
+        
         self.labelFoundElement.setStyleSheet("font-weight: bold; font-size: 12pt;")
         print("Exiting loadFeature")
 
@@ -947,7 +949,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.currentLayer = found_feature_layer
         self.currentFeature = found_feature
 
-        self.updateFoundElementLabel(selected_id, found_feature_layer)
+        finalTitleText = self.updateFoundElementLabel(selected_id, found_feature_layer)
         highlight = QgsHighlight(iface.mapCanvas(), found_feature.geometry(), layer)
         highlight.setColor(QColor("red"))
         highlight.setWidth(5)
@@ -967,7 +969,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         else:
             self.findAdjacentLinksByGeometry(found_feature, layer)
         self.sortListWidgetItems()
-        self.loadFeature(layer, found_feature)
+        self.loadFeature(layer, found_feature, finalTitleText)
         print("Exiting findElement")
 
     @pyqtSlot()
@@ -1263,6 +1265,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
 
     def updateFoundElementLabel(self, selected_id, layer=None):
         print("Entering updateFoundElementLabel")
+        
         if not selected_id:
             self.labelFoundElement.setText("")
             print("Exiting updateFoundElementLabel")
@@ -1301,11 +1304,15 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
                             break
             singular_node_type = self.singular_forms.get(node_layer.name(), node_layer.name())
             suffix_str = " ".join(suffixes)
-            self.labelFoundElement.setText(self.tr(f"{singular_node_type} {selected_id} {suffix_str}".strip()))
+            finalText = self.tr(f"{singular_node_type} {selected_id} {suffix_str}".strip())
+            self.labelFoundElement.setText(finalText)
         else:
             element_type = self.cbElementType.currentText()
             singular_element_type = self.singular_forms.get(element_type, element_type)
-            self.labelFoundElement.setText(self.tr(f"{singular_element_type} {selected_id}"))
+            finalText = self.tr(f"{singular_element_type} {selected_id}")
+            self.labelFoundElement.setText(finalText)
+
+        return finalText
         print("Exiting updateFoundElementLabel")
 
     def findNodeLayer(self, node_id):
@@ -1692,7 +1699,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.clearAllLayerSelections()
         self.listWidget.clear()
 
-        self.updateFoundElementLabel(feature_id_text, layer)
+        finalTitleText = self.updateFoundElementLabel(feature_id_text, layer)
 
         highlight = QgsHighlight(iface.mapCanvas(), feature.geometry(), layer)
         highlight.setColor(QColor("red"))
@@ -1716,5 +1723,5 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         
         self.sortListWidgetItems()
 
-        self.loadFeature(layer, feature)
+        self.loadFeature(layer, feature, finalTitleText)
         print("Exiting findFeature")
