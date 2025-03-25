@@ -154,12 +154,22 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
                     self.installEventFilterRecursive(child)
         print("Exiting installEventFilterRecursive")
 
+    # def eventFilter(self, obj, event):
+    #     if event.type() == QEvent.FocusIn:
+    #         if obj != self and self.isAncestorOf(obj):
+    #             self.reestablishIdentifyTool()
+    #             self.onLayerTreeChanged()
+    #     return super(QGISRedElementsExplorerDock, self).eventFilter(obj, event)
+    
     def eventFilter(self, obj, event):
         if event.type() == QEvent.FocusIn:
+            # Only process focus events from non-listWidget children
             if obj != self and self.isAncestorOf(obj):
                 self.reestablishIdentifyTool()
+                # if obj != self.listWidget:
+                #     self.initializeElementTypes()  # Update element types
         return super(QGISRedElementsExplorerDock, self).eventFilter(obj, event)
-    
+
     def reestablishIdentifyTool(self):
         print("Entering reestablishIdentifyTool")
         from ..tools.qgisred_identifyFeature import QGISRedIdentifyFeature
@@ -601,7 +611,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.listWidget.itemClicked.connect(self.onListItemSingleClicked)
         self.listWidget.itemDoubleClicked.connect(self.onListItemDoubleClicked)
         self.btClear.clicked.connect(self.clearAll)
-        self.cbElementId.currentIndexChanged.connect(self.onElementIdChanged)
+        self.cbElementId.currentIndexChanged.connect(self.onElementIdChanged)           
+        self.btReload.clicked.connect(self.initializeElementTypes)
 
         project = QgsProject.instance()
         project.layersAdded.connect(self.onLayerTreeChanged)
