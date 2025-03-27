@@ -11,9 +11,8 @@ from qgis.core import (QgsProject, QgsVectorLayer, QgsSettings, QgsGeometry, Qgs
 from qgis.utils import iface
 from qgis.gui import QgsHighlight
 
-# In your Spoiler class, add a new signal and a slot to emit the current state:
 class Spoiler(QWidget):
-    toggledState = pyqtSignal(bool)  # True: expanded, False: collapsed
+    toggledState = pyqtSignal(bool)
 
     def __init__(self, parent=None, title='', animationDuration=10):
         super(Spoiler, self).__init__(parent)
@@ -27,7 +26,8 @@ class Spoiler(QWidget):
         self.mainLayout = QGridLayout()
 
         # Setup toggle button
-        self.toggleButton.setStyleSheet("QToolButton { border: none; }")
+        #self.toggleButton.setStyleSheet("QToolButton { border: none; }")
+        self.toggleButton.setStyleSheet("QToolButton { border: none; font-weight: bold; font-size: 9pt; }")
         self.toggleButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.toggleButton.setArrowType(Qt.RightArrow)
         self.toggleButton.setText(title)
@@ -90,10 +90,12 @@ class Spoiler(QWidget):
         contentAnimation.setStartValue(0)
         contentAnimation.setEndValue(contentHeight)
 
+    def isExpanded(self):
+        return self.toggleButton.isChecked()
+    
     def setExpanded(self, expanded):
-        """Programmatically expand or collapse the spoiler."""
         if self.toggleButton.isChecked() == expanded:
-            return  # Already in desired state.
+            return
         self.toggleButton.setChecked(expanded)
         self.startAnimation(expanded)
 
@@ -187,7 +189,10 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.dictOfElementIDs = {}
         self.currentLayer = None
         self.currentFeature = None
-        
+
+        self.spoilerElementProperties = None 
+        self.spoilerFindElements = None
+
         self.link_layers = ["qgisred_pipes", "qgisred_pumps", "qgisred_valves"]
         self.node_layers = ["qgisred_reservoirs", "qgisred_tanks", "qgisred_junctions", 
                             "qgisred_sources", "qgisred_demands", "qgisred_meters", "qgisred_isolationvalves"]
@@ -274,6 +279,18 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         # If Element Properties is not expanded, ensure widgets are in the Find Elements layout.
         if not self.spoilerElementProperties.toggleButton.isChecked():
             self.moveWidgetsToFindElements()
+
+    def collapseFindElements(self):
+        self.spoilerElementProperties.setExpanded(False)
+
+    def collapseElementProperties(self):
+        self.spoilerElementProperties.setExpanded(False)
+
+    def expandElementProperties(self):
+        self.spoilerFindElements.setExpanded(True)
+    
+    def expandFindElements(self):
+        self.spoilerElementProperties.setExpanded(True)
 
     def setupEventFilters(self):
         print("Entering setupEventFilters")
@@ -516,6 +533,9 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         
         self.clearHighlights()
         self.clearAllLayerSelections()
+        self.spoilerFindElements.setExpanded(False)
+        self.spoilerElementProperties.setExpanded(False)
+        
         super(self.__class__, self).closeEvent(event)
         print("Exiting closeEvent")
 
