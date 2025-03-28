@@ -132,8 +132,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.setupEventFilters() 
         self.setObjectName(self.__class__.__name__)
         self.setFloating(False)
-        if parent:
-            parent.addDockWidget(Qt.LeftDockWidgetArea, self)
+        iface.addDockWidget(Qt.LeftDockWidgetArea, self)
 
         self.canvas = canvas
         self.find_elements_visible = show_find_elements
@@ -251,10 +250,10 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.placeConnectedElements()
 
         settings = QgsSettings()
-        if settings.contains("QGISRed/ElementsExplorer/geometry"):
-            self.restoreGeometry(settings.value("QGISRed/ElementsExplorer/geometry"))
-        if settings.contains("QGISRed/ElementsExplorer/floating"):
-            self.setFloating(settings.value("QGISRed/ElementsExplorer/floating", type=bool))
+        # if settings.contains("QGISRed/ElementsExplorer/geometry"):
+        #     self.restoreGeometry(settings.value("QGISRed/ElementsExplorer/geometry"))
+        # if settings.contains("QGISRed/ElementsExplorer/floating"):
+        #     self.setFloating(settings.value("QGISRed/ElementsExplorer/floating", type=bool))
         print("Exiting __init__")
 
     def trackSpoilerEvents(self):

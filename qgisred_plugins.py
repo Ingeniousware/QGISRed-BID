@@ -4448,7 +4448,7 @@ class QGISRed:
                 if not existingDock.spoilerFindElements.isExpanded():
                     existingDock.spoilerFindElements.setExpanded(True)
 
-                    #existingDock.spoilerElementProperties.setExpanded(True)
+                existingDock.initializeElementTypes()
             else:
                 try:
                     dock = QGISRedElementsExplorerDock.getInstance(
@@ -4496,17 +4496,14 @@ class QGISRed:
 
         tool = "identifyFeatureElementProperties"
         if tool in self.myMapTools.keys() and self.iface.mapCanvas().mapTool() is self.myMapTools[tool]:
-            # Safely clear highlights before unset map tool
             if self.myMapTools[tool]:
                 try:
                     self.myMapTools[tool].clearHighlights()
                 except Exception:
                     pass
                     
-            # Unset map tool first
             self.iface.mapCanvas().unsetMapTool(self.myMapTools[tool])
             
-            # Then handle dock
             if existingDock:
                 try:
                     existingDock.clearHighlights()
@@ -4518,7 +4515,7 @@ class QGISRed:
             if existingDock:
                 if not existingDock.spoilerElementProperties.isExpanded():
                     existingDock.spoilerElementProperties.setExpanded(True)
-            
+                existingDock.initializeElementTypes()
             try:
                 self.myMapTools[tool] = QGISRedIdentifyFeature(
                     self.iface.mapCanvas(), 
@@ -4529,7 +4526,7 @@ class QGISRed:
             except Exception as e:
                 print(f"Error creating map tool: {str(e)}")
                 self.openElementsPropertyDialog.setChecked(False)
-
+                
 # ==============================================================
 #                        END: QUERIES FIND ELEMENTS
 # --------------------------------------------------------------
