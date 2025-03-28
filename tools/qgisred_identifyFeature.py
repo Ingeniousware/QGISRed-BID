@@ -173,7 +173,7 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         canvas.refresh()
         print("Exiting clearHighlights")
         self.clearSelections()
-        
+
     def closeDock(self):
         if self.dock:
             print("closeDock: Closing dock")

@@ -4426,17 +4426,14 @@ class QGISRed:
         
         tool = "identifyFeature"
         if tool in self.myMapTools.keys() and self.iface.mapCanvas().mapTool() is self.myMapTools[tool]:
-            # Safely clear highlights before unset map tool
             if self.myMapTools[tool]:
                 try:
                     self.myMapTools[tool].clearHighlights()
                 except Exception:
                     pass
                 
-            # Unset map tool first
             self.iface.mapCanvas().unsetMapTool(self.myMapTools[tool])
             
-            # Then handle dock
             if existingDock:
                 try:
                     existingDock.clearHighlights()
@@ -4448,8 +4445,10 @@ class QGISRed:
             useElementProperties = False
             if existingDock:
                 useElementProperties = existingDock.spoilerElementProperties.isExpanded()
-                if not existingDock.spoilerFindElements.isExpanded() and useElementProperties:
-                    existingDock.spoilerElementProperties.setExpanded(True)
+                if not existingDock.spoilerFindElements.isExpanded():
+                    existingDock.spoilerFindElements.setExpanded(True)
+
+                    #existingDock.spoilerElementProperties.setExpanded(True)
             else:
                 try:
                     dock = QGISRedElementsExplorerDock.getInstance(
