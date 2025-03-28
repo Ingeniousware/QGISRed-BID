@@ -536,6 +536,10 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.spoilerFindElements.setExpanded(False)
         self.spoilerElementProperties.setExpanded(False)
         
+        # Reset the singleton instance
+        if hasattr(self.__class__, '_instance') and self.__class__._instance == self:
+            self.__class__._instance = None
+
         super(self.__class__, self).closeEvent(event)
         print("Exiting closeEvent")
 
