@@ -132,7 +132,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         self.setupEventFilters() 
         self.setObjectName(self.__class__.__name__)
         self.setFloating(False)
-        iface.addDockWidget(Qt.LeftDockWidgetArea, self)
+        iface.addDockWidget(Qt.RightDockWidgetArea, self)
 
         self.canvas = canvas
         self.find_elements_visible = show_find_elements
@@ -372,7 +372,9 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         epLayout.insertWidget(index, self.labelAdjacentNodeLinks)
         epLayout.insertWidget(index, self.labelFoundElement)
         print("Moved widgets into Element Properties layout.")
-    
+
+        epLayout.parentWidget().adjustSize()
+        findLayout.parentWidget().adjustSize()
 
     def moveWidgetsToFindElements(self):
         """
@@ -401,6 +403,9 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         findLayout.insertWidget(index + 2, self.labelAdjacentNodeLinks)
         findLayout.insertWidget(index + 3, self.listWidget)
         print("Moved widgets back into Find Elements layout.")
+
+        self.frameFindElements.parentWidget().adjustSize()
+        findLayout.parentWidget().adjustSize()
 
     # def eventFilter(self, obj, event):
     #     if event.type() == QEvent.FocusIn:
