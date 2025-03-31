@@ -236,6 +236,22 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
                 parentLayout.addWidget(self.spoilerElementProperties)
             self.frameElementProperties = self.spoilerElementProperties
 
+        # --- For Connected Elements ---
+        if hasattr(self, 'frameConnectedElements'):
+            print("HAS")
+            parentLayout = self.frameConnectedElements.parentWidget().layout()
+            if parentLayout:
+                parentLayout.removeWidget(self.frameConnectedElements)
+            # Create a spoiler widget with the title "Find Elements"
+            self.spoilerConnectedElements = Spoiler(title="Connected Elements")
+            # Transfer the existing layout from the original frame to the spoiler
+            self.spoilerConnectedElements.setContentLayout(self.frameConnectedElements.layout())
+            # Add the spoiler widget to the same parent layout
+            if parentLayout:
+                parentLayout.addWidget(self.spoilerConnectedElements)
+            # Replace the reference withs the spoiler widget
+            self.frameConnectedElements = self.spoilerConnectedElements
+
         self.trackSpoilerEvents()
 
         self.setDockStyle()
@@ -263,12 +279,12 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
     def onSpoilerElementPropertiesToggled(self, expanded):
         if expanded:
             print("spoilerElementProperties expanded")
-            self.moveWidgetsToElementProperties()
+            self.moveConnectedElementsToElementProperties()
         else:
             print("spoilerElementProperties collapsed")
             # If the Find Elements spoiler is still expanded, move the widgets back there.
             if self.spoilerFindElements.toggleButton.isChecked():
-                self.moveWidgetsToFindElements()
+                self.moveConnectedElementsToFindElements()
 
     def onSpoilerFindElementsToggled(self, expanded):
         if expanded:
@@ -277,7 +293,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             print("spoilerFindElements collapsed")
         # If Element Properties is not expanded, ensure widgets are in the Find Elements layout.
         if not self.spoilerElementProperties.toggleButton.isChecked():
-            self.moveWidgetsToFindElements()
+            self.moveConnectedElementsToFindElements()
 
     def collapseFindElements(self):
         self.spoilerElementProperties.setExpanded(False)
@@ -330,82 +346,27 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
                 if layout.indexOf(widget) != -1:
                     layout.removeWidget(widget)
 
-    def moveWidgetsToElementProperties(self):
-        """
-        Moves self.labelFoundElement, self.labelAdjacentNodeLinks, and self.listWidget
-        into the Element Properties spoiler above a horizontal line (self.lineEp).
-        """
+    def moveConnectedElementsToFindElements(self):
         findLayout = self.getFindElementsLayout()
         epLayout = self.getElementPropertiesLayout()
+        # Remove from both layouts if it exists.
+        for layout in (findLayout, epLayout):
+            if layout.indexOf(self.spoilerConnectedElements) != -1:
+                layout.removeWidget(self.spoilerConnectedElements)
+        # Add to the Find Elements layout.
+        findLayout.addWidget(self.spoilerConnectedElements)
+        findLayout.parentWidget().adjustSize()
 
-        # Remove the widgets from both layouts
-        self.removeWidgetsFromLayouts(
-            [self.labelFoundElement, self.labelAdjacentNodeLinks, self.listWidget],
-            [findLayout, epLayout]
-        )
-
-        # Ensure self.lineEp exists in epLayout
-        if not hasattr(self, 'lineEp'):
-            self.lineEp = QFrame()
-            self.lineEp.setFrameShape(QFrame.HLine)
-            self.lineEp.setFrameShadow(QFrame.Sunken)
-        # If self.lineEp isn’t already added, add it at the bottom.
-        found = False
-        for i in range(epLayout.count()):
-            if epLayout.itemAt(i).widget() == self.lineEp:
-                found = True
-                break
-        if not found:
-            epLayout.addWidget(self.lineEp)
-
-        # Find the index of self.lineEp in epLayout
-        index = -1
-        for i in range(epLayout.count()):
-            if epLayout.itemAt(i).widget() == self.lineEp:
-                index = i
-                break
-        if index == -1:
-            index = epLayout.count()
-
-        # Insert the three widgets above self.lineEp.
-        epLayout.insertWidget(index, self.listWidget)
-        epLayout.insertWidget(index, self.labelAdjacentNodeLinks)
-        epLayout.insertWidget(index, self.labelFoundElement)
-        print("Moved widgets into Element Properties layout.")
-
+    def moveConnectedElementsToElementProperties(self):
+        findLayout = self.getFindElementsLayout()
+        epLayout = self.getElementPropertiesLayout()
+        # Remove from both layouts if it exists.
+        for layout in (findLayout, epLayout):
+            if layout.indexOf(self.spoilerConnectedElements) != -1:
+                layout.removeWidget(self.spoilerConnectedElements)
+        # Add to the Element Properties layout.
+        epLayout.addWidget(self.spoilerConnectedElements)
         epLayout.parentWidget().adjustSize()
-        findLayout.parentWidget().adjustSize()
-
-    def moveWidgetsToFindElements(self):
-        """
-        Moves self.labelFoundElement, self.labelAdjacentNodeLinks, and self.listWidget
-        back into the Find Elements spoiler below self.line.
-        """
-        findLayout = self.getFindElementsLayout()
-        epLayout = self.getElementPropertiesLayout()
-
-        self.removeWidgetsFromLayouts(
-            [self.labelFoundElement, self.labelAdjacentNodeLinks, self.listWidget],
-            [findLayout, epLayout]
-        )
-
-        # Find the index of self.line in the find elements layout.
-        index = -1
-        for i in range(findLayout.count()):
-            if findLayout.itemAt(i).widget() == self.line:
-                index = i
-                break
-        if index == -1:
-            index = findLayout.count()
-
-        # Insert widgets after self.line.
-        findLayout.insertWidget(index + 1, self.labelFoundElement)
-        findLayout.insertWidget(index + 2, self.labelAdjacentNodeLinks)
-        findLayout.insertWidget(index + 3, self.listWidget)
-        print("Moved widgets back into Find Elements layout.")
-
-        self.frameFindElements.parentWidget().adjustSize()
-        findLayout.parentWidget().adjustSize()
 
     # def eventFilter(self, obj, event):
     #     if event.type() == QEvent.FocusIn:
