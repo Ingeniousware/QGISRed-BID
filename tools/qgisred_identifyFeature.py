@@ -5,6 +5,13 @@ from qgis.core import QgsProject, QgsVectorLayer
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QCursor
 
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QCursor, QPixmap
+from qgis.core import QgsPointXY, QgsProject, QgsSnappingConfig, QgsTolerance
+from qgis.gui import QgsMapTool, QgsVertexMarker, QgsMapCanvasSnappingUtils
+
+
+
 class QGISRedIdentifyFeature(QgsMapToolIdentify):
     _instance = None
     dockVisibilityChanged = pyqtSignal(bool)
@@ -12,7 +19,7 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
     elementPropertiesDockVisibilityChanged = pyqtSignal(bool)
     dockFocusChanged = pyqtSignal(bool)
 
-    def __init__(self, canvas, button, toggle_action=None, useElementPropertiesDock=True):
+    def __init__(self, canvas, button, toggle_action=None, useElementPropertiesDock=True, type=2):
         print("QGISRedIdentifyFeature.__init__: Initializing")
         super().__init__(canvas)
         self.canvas = canvas
@@ -22,7 +29,41 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         self.currentHighlight = None
         self.dock = None
         self.ignoreNextRelease = False
+        self.type = type
         self.setupConnections()
+
+        self.startMarker = QgsVertexMarker(self.canvas)
+        self.startMarker.setColor(QColor(255, 87, 51))
+        if self.type == 3 or self.type == 4 or self.type == 5:
+            self.startMarker.setColor(QColor(139, 0, 0))
+        self.startMarker.setIconSize(15)
+        self.startMarker.setIconType(QgsVertexMarker.ICON_BOX)  # or ICON_CROSS, ICON_X
+        if self.type == 2 or self.type == 4:
+            try:
+                self.startMarker.setIconType(QgsVertexMarker.ICON_TRIANGLE)  # or ICON_CROSS, ICON_X
+            except:
+                self.startMarker.setIconType(QgsVertexMarker.ICON_X)  # or ICON_CROSS, ICON_X
+        self.startMarker.setPenWidth(3)
+        self.startMarker.hide()
+
+        self.endMarker = QgsVertexMarker(self.canvas)
+        self.endMarker.setColor(QColor(0, 128, 0))
+        self.endMarker.setIconSize(15)
+        self.endMarker.setIconType(QgsVertexMarker.ICON_BOX)  # or ICON_CROSS, ICON_X
+        if self.type == 4 or self.type == 5:
+            self.endMarker.setIconType(QgsVertexMarker.ICON_X)  # or ICON_CROSS, ICON_X
+        self.endMarker.setPenWidth(3)
+        self.endMarker.hide()
+        self.firstPoint = None
+
+        self.snapper = None
+        self.resetProperties()
+
+    def resetProperties(self):
+        self.firstPoint = None
+        self.startMarker.hide()
+        self.endMarker.hide()
+        self.objectSnapped = None
 
     # -----------------------
     # Helper Methods
@@ -97,6 +138,10 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         # if hasattr(self.dock, 'dockFocusChanged'):
         #     print("showFeatureInDock: Connecting dockVisibilityChanged signal")
         #     self.dock.dockFocusChanged.connect(self.deactivate)
+
+    def activate(self):
+        QgsMapTool.activate(self)
+        self.configSnapper(2)
 
     def setIdentifyFeatureAsMapTool(self):
         self.canvas.setMapTool(self)
@@ -278,3 +323,29 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
     def setElementPropertiesVisibility(self, value):
         self.elementPropertiesDockVisibilityChanged.emit(value)
     
+    def canvasMoveEvent(self, event):
+        match = self.snapper.snapToMap(self.toMapCoordinates(event.pos()))
+        if match.isValid():
+            self.objectSnapped = match
+            if self.firstPoint is None:
+                self.startMarker.setCenter(QgsPointXY(match.point().x(), match.point().y()))
+                self.startMarker.show()
+            else:
+                self.endMarker.setCenter(QgsPointXY(match.point().x(), match.point().y()))
+                self.endMarker.show()
+        else:
+            self.startMarker.hide()
+            self.endMarker.hide()
+            self.objectSnapped = None
+
+    def configSnapper(self, type):
+        # Snapping
+        self.snapper = QgsMapCanvasSnappingUtils(self.canvas)
+        self.snapper.setMapSettings(self.canvas.mapSettings())
+        config = QgsSnappingConfig(QgsProject.instance())
+        config.setType(type)  # 1: Vertex; 2:Segment
+        config.setMode(QgsSnappingConfig.SnappingMode.AllLayers)  # All layers
+        config.setTolerance(10)
+        config.setUnits(QgsTolerance.UnitType.Pixels)
+        config.setEnabled(True)
+        self.snapper.setConfig(config)
