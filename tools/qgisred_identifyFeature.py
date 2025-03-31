@@ -22,7 +22,6 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         self.currentHighlight = None
         self.dock = None
         self.ignoreNextRelease = False
-        self.setCursor(QCursor(Qt.CrossCursor))
         self.setupConnections()
 
     # -----------------------
