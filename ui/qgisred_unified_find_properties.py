@@ -440,6 +440,10 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             self.cbElementId.setCurrentIndex(0)
         if hasattr(self, 'labelFoundElement'):
             self.labelFoundElement.setText("")
+        if hasattr(self, 'labelFoundElementTag'):
+            self.labelFoundElement.setText("")
+        if hasattr(self, 'labelFoundElementDescription'):
+            self.labelFoundElement.setText("")
         if hasattr(self, 'listWidget'):
             self.listWidget.clear()
         if hasattr(self, 'dataTableWidget'):
@@ -937,7 +941,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         print("Exiting findOverlappingFeatures")
         return overlapping_features
     
-    def loadFeature(self, layer, feature, feature_id_text = ""):
+    def loadFeature(self, layer, feature, feature_id_text=""):
         print("Entering loadFeature")
         if not layer or not feature:
             print("Exiting loadFeature")
@@ -948,29 +952,25 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         layer.selectByIds([feature.id()])
         self.populatedataTableWidget()
 
-        #base_title = feature_id_text #f"{self.singular_forms.get(layer.name(), layer.name())} {feature.attribute('Id')}"
-        # suffix_source = ""
-        # suffix_demand = ""
+        # Check if the "Tag" field exists and is not null.
+        if feature.fields().indexFromName("Tag") != -1:
+            feature_tag = feature.attribute("Tag")
+        else:
+            feature_tag = ""  # or a default string like "N/A"
 
-        # id_property = layer.customProperty("qgisred_identifier")
-        # if id_property in ["qgisred_junctions", "qgisred_reservoirs", "qgisred_tanks"]:
-        #     source_features = self.findOverlappingFeatures(feature, "qgisred_sources")
-        #     if source_features:
-        #         suffix_source = "(Source)"
-        #         for src_feat in source_features:
-        #             self.appendFeatureProperties(src_feat, "Source")
-        #     if id_property == "qgisred_junctions":
-        #         demand_features = self.findOverlappingFeatures(feature, "qgisred_demands")
-        #         if demand_features:
-        #             suffix_demand = "(Mult.Dem)"
-        #             for dem_feat in demand_features:
-        #                 self.appendFeatureProperties(dem_feat, "Mult.Dem")
+        # Check if the "Descrip" field exists and is not null.
+        if feature.fields().indexFromName("Descrip") != -1:
+            feature_description = feature.attribute("Descrip")
+        else:
+            feature_description = ""  # or a default string like "N/A"
 
-        #self.labelFoundElement.setText(f"{base_title} {suffix_source}{suffix_demand}")
         self.labelFoundElement.setText(f"{feature_id_text}")
-        
         self.labelFoundElement.setStyleSheet("font-weight: bold; font-size: 12pt;")
+        self.labelFoundElementTag.setText(f"{feature_tag}")
+        self.labelFoundElementDescription.setText(f"{feature_description}")
+
         print("Exiting loadFeature")
+
 
     def appendFeatureProperties(self, feature, label_suffix=""):
         print("Entering appendFeatureProperties")
