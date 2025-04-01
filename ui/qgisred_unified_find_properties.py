@@ -107,15 +107,15 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             font.setBold(True)
             self.labelFoundElement.setFont(font)
             self.labelFoundElement.setWordWrap(True)
-            self.labelFoundElement.setText("AA")
+            self.labelFoundElement.setText("")
 
         if hasattr(self, 'labelFoundElementTag'):
             self.labelFoundElementTag.setWordWrap(True)
-            self.labelFoundElementTag.setText("AA")
+            self.labelFoundElementTag.setText("")
 
         if hasattr(self, 'labelFoundElementDescription'):
             self.labelFoundElementDescription.setWordWrap(True)
-            self.labelFoundElementDescription.setText("AA")
+            self.labelFoundElementDescription.setText("")
 
         if hasattr(self, 'frameFindElements'):
             parentLayout = self.frameFindElements.parentWidget().layout()
@@ -172,21 +172,13 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
     
     def onSpoilerElementPropertiesToggled(self, expanded):
         if expanded:
-            print("spoilerElementProperties expanded")
             self.moveWidgetsToElementProperties()
         else:
-            print("spoilerElementProperties collapsed")
-            # If the Find Elements spoiler is still expanded, move the widgets back there.
-            if self.spoilerFindElements.toggleButton.isChecked():
+            if self.spoilerFindElements.isExpanded():
                 self.moveWidgetsToFindElements()
 
     def onSpoilerFindElementsToggled(self, expanded):
-        if expanded:
-            print("spoilerFindElements expanded")
-        else:
-            print("spoilerFindElements collapsed")
-        # If Element Properties is not expanded, ensure widgets are in the Find Elements layout.
-        if not self.spoilerElementProperties.toggleButton.isChecked():
+        if not self.spoilerElementProperties.isExpanded():
             self.moveWidgetsToFindElements()
 
     def collapseFindElements(self):
@@ -223,129 +215,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         if gridLayout.count() > 0:
             return gridLayout.itemAt(0).layout()
         return gridLayout
-
-
-    # def removeWidgetsFromLayouts(self, widgets, layouts):
-    #     for layout in layouts:
-    #         for widget in widgets:
-    #             if layout.indexOf(widget) != -1:
-    #                 layout.removeWidget(widget)
-
-    def removeWidgetsFromLayouts(self):
-        findLayout = self.getFindElementsLayout()
-        epLayout = self.getElementPropertiesLayout()
-        
-        # List of widgets to remove
-        widgets_to_remove = []
-        
-        # Add widgets if they exist
-        if hasattr(self, 'labelFoundElement'):
-            widgets_to_remove.append(self.labelFoundElement)
-        
-        if hasattr(self, 'labelFoundElementTag'):
-            widgets_to_remove.append(self.labelFoundElementTag)
-        
-        if hasattr(self, 'labelFoundElementDescription'):
-            widgets_to_remove.append(self.labelFoundElementDescription)
-        
-        # Remove the widgets from both layouts
-        for layout in [findLayout, epLayout]:
-            for widget in widgets_to_remove:
-                index = layout.indexOf(widget)
-                if index != -1:
-                    layout.removeWidget(widget)
-        
-        # Handle the spoiler specifically
-        if hasattr(self, 'spoiler') and self.spoiler:
-            if self.spoiler.parent():
-                parent_layout = self.spoiler.parent().layout()
-                if parent_layout:
-                    parent_layout.removeWidget(self.spoiler)
-                    self.spoiler.setParent(None)
-
-    # def removeWidgetsFromLayouts(self, widgets, layouts):
-    #     for layout in layouts:
-    #         for widget in widgets:
-    #             # Remove every instance of the widget from the layout
-    #             index = layout.indexOf(widget)
-    #             while index != -1:
-    #                 layout.removeWidget(widget)
-    #                 widget.setParent(None)  # detach widget from any parent
-    #                 widget.hide()           # optional: hide it if needed
-    #                 index = layout.indexOf(widget)
-
-    # def moveWidgetsToElementProperties(self):
-    #     findLayout = self.getFindElementsLayout()
-    #     epLayout = self.getElementPropertiesLayout()
-
-    #     #self.removeWidgetsFromLayouts()
-    #     # Remove the widgets from both layouts
-    #     self.removeWidgetsFromLayouts(
-    #         [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription, self.frameConnectedElements],
-    #         [findLayout, epLayout]
-    #     )
-
-    #     # Ensure self.lineEp exists in epLayout
-    #     if not hasattr(self, 'lineEp'):
-    #         self.lineEp = QFrame()
-    #         self.lineEp.setFrameShape(QFrame.HLine)
-    #         self.lineEp.setFrameShadow(QFrame.Sunken)
-    #     # If self.lineEp isn’t already added, add it at the bottom.
-    #     found = False
-    #     for i in range(epLayout.count()):
-    #         if epLayout.itemAt(i).widget() == self.lineEp:
-    #             found = True
-    #             break
-    #     if not found:
-    #         epLayout.addWidget(self.lineEp)
-
-    #     # Find the index of self.lineEp in epLayout
-    #     index = -1
-    #     for i in range(epLayout.count()):
-    #         if epLayout.itemAt(i).widget() == self.lineEp:
-    #             index = i
-    #             break
-    #     if index == -1:
-    #         index = epLayout.count()
-
-    #     # Insert the three widgets above self.lineEp.
-    #     #epLayout.insertWidget(index, self.frameConnectedElements)
-    #     epLayout.insertWidget(index, self.labelFoundElementDescription)
-    #     epLayout.insertWidget(index, self.labelFoundElementTag)
-    #     epLayout.insertWidget(index, self.labelFoundElement)
-
-    #     epLayout.parentWidget().adjustSize()
-    #     findLayout.parentWidget().adjustSize()
-
-    # def moveWidgetsToFindElements(self):
-    #     findLayout = self.getFindElementsLayout()
-    #     epLayout = self.getElementPropertiesLayout()
-
-    #     #self.removeWidgetsFromLayouts()
-
-    #     self.removeWidgetsFromLayouts(
-    #         [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription, self.frameConnectedElements],
-    #         [findLayout, epLayout]
-    #     )
-
-    #     index = -1
-    #     for i in range(findLayout.count()):
-    #         if findLayout.itemAt(i).widget() == self.line:
-    #             index = i
-    #             break
-    #     if index == -1:
-    #         index = findLayout.count()
-
-    #     findLayout.insertWidget(index + 1, self.labelFoundElement)
-    #     findLayout.insertWidget(index + 2, self.labelFoundElementTag)
-    #     findLayout.insertWidget(index + 3, self.labelFoundElementDescription)
-    #     #findLayout.insertWidget(index + 4, self.frameConnectedElements)
-
-    #     self.frameFindElements.parentWidget().adjustSize()
-    #     findLayout.parentWidget().adjustSize()
     
     def removeWidgetsFromLayouts(self, widgets, layouts):
-        """Remove each widget from the provided layouts if present."""
         for layout in layouts:
             for widget in widgets:
                 # If the widget exists in the layout, remove it.
@@ -353,16 +224,12 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
                     layout.removeWidget(widget)
 
     def moveWidgetsToElementProperties(self):
-        """
-        Moves self.labelFoundElement, self.labelAdjacentNodeLinks, and self.listWidget
-        into the Element Properties spoiler above a horizontal line (self.lineEp).
-        """
         findLayout = self.getFindElementsLayout()
         epLayout = self.getElementPropertiesLayout()
 
         # Remove the widgets from both layouts
         self.removeWidgetsFromLayouts(
-            [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription],
+            [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription, self.frameConnectedElements],
             [findLayout, epLayout]
         )
 
@@ -390,22 +257,17 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             index = epLayout.count()
 
         # Insert the three widgets above self.lineEp.
+        epLayout.insertWidget(index, self.frameConnectedElements)
         epLayout.insertWidget(index, self.labelFoundElementDescription)
         epLayout.insertWidget(index, self.labelFoundElementTag)
         epLayout.insertWidget(index, self.labelFoundElement)
-        print("Moved widgets into Element Properties layout.")
-    
 
     def moveWidgetsToFindElements(self):
-        """
-        Moves self.labelFoundElement, self.labelAdjacentNodeLinks, and self.listWidget
-        back into the Find Elements spoiler below self.line.
-        """
         findLayout = self.getFindElementsLayout()
         epLayout = self.getElementPropertiesLayout()
 
         self.removeWidgetsFromLayouts(
-            [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription],
+            [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription, self.frameConnectedElements],
             [findLayout, epLayout]
         )
 
@@ -422,7 +284,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         findLayout.insertWidget(index + 1, self.labelFoundElement)
         findLayout.insertWidget(index + 2, self.labelFoundElementTag)
         findLayout.insertWidget(index + 3, self.labelFoundElementDescription)
-        print("Moved widgets back into Find Elements layout.")
+        findLayout.insertWidget(index + 4, self.frameConnectedElements)
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.FocusIn:
