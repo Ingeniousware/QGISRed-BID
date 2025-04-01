@@ -4444,9 +4444,9 @@ class QGISRed:
         else:
             useElementProperties = False
             if existingDock:
-                useElementProperties = existingDock.spoilerElementProperties.isExpanded()
-                if not existingDock.spoilerFindElements.isExpanded():
-                    existingDock.spoilerFindElements.setExpanded(True)
+                useElementProperties = not existingDock.mElementPropertiesGroupBox.isCollapsed()
+                if existingDock.mFindElementsGroupBox.isCollapsed():
+                    existingDock.mFindElementsGroupBox.setCollapsed(False)
 
                 existingDock.initializeElementTypes()
             else:
@@ -4464,7 +4464,7 @@ class QGISRed:
                     dock.activateWindow()
                     dock.onLayerTreeChanged()
                     dock.setDefaultValue()
-                    dock.spoilerFindElements.setExpanded(True)
+                    dock.mFindElementsGroupBox.setCollapsed(False)
                 except Exception as e:
                     print(f"Error creating dock: {str(e)}")
                     self.openFindElementsDialog.setChecked(False)
@@ -4514,8 +4514,8 @@ class QGISRed:
             self.openElementsPropertyDialog.setChecked(False)
         else:
             if existingDock:
-                if not existingDock.spoilerElementProperties.isExpanded():
-                    existingDock.spoilerElementProperties.setExpanded(True)
+                if existingDock.mElementPropertiesGroupBox.isCollapsed():
+                    existingDock.mElementPropertiesGroupBox.setCollapsed(False)
                 existingDock.initializeElementTypes()
             try:
                 self.myMapTools[tool] = QGISRedIdentifyFeature(

@@ -8,6 +8,7 @@ from qgis.PyQt import uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsSettings, QgsGeometry, QgsPointXY,QgsRectangle, QgsFeature, QgsLayerMetadata
 from qgis.utils import iface
 from qgis.gui import QgsHighlight
+from qgis.gui import QgsScrollArea, QgsCollapsibleGroupBox
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_unified_find_properties.ui"))
 
@@ -117,37 +118,37 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             self.labelFoundElementDescription.setWordWrap(True)
             self.labelFoundElementDescription.setText("")
 
-        if hasattr(self, 'frameFindElements'):
-            parentLayout = self.frameFindElements.parentWidget().layout()
-            if parentLayout:
-                parentLayout.removeWidget(self.frameFindElements)
-            self.spoilerFindElements = Spoiler(title="Find Elements by Id")
-            self.spoilerFindElements.setContentLayout(self.frameFindElements.layout())
-            if parentLayout:
-                parentLayout.addWidget(self.spoilerFindElements)
-            self.frameFindElements = self.spoilerFindElements
+        # if hasattr(self, 'frameFindElements'):
+        #     parentLayout = self.frameFindElements.parentWidget().layout()
+        #     if parentLayout:
+        #         parentLayout.removeWidget(self.frameFindElements)
+        #     self.spoilerFindElements = Spoiler(title="Find Elements by Id")
+        #     self.spoilerFindElements.setContentLayout(self.frameFindElements.layout())
+        #     if parentLayout:
+        #         parentLayout.addWidget(self.spoilerFindElements)
+        #     self.frameFindElements = self.spoilerFindElements
 
-        if hasattr(self, 'frameElementProperties'):
-            parentLayout = self.frameElementProperties.parentWidget().layout()
-            if parentLayout:
-                parentLayout.removeWidget(self.frameElementProperties)
-            self.spoilerElementProperties = Spoiler(title="Element Properties")
-            self.spoilerElementProperties.setContentLayout(self.frameElementProperties.layout())
-            if parentLayout:
-                parentLayout.addWidget(self.spoilerElementProperties)
-            self.frameElementProperties = self.spoilerElementProperties
+        # if hasattr(self, 'frameElementProperties'):
+        #     parentLayout = self.frameElementProperties.parentWidget().layout()
+        #     if parentLayout:
+        #         parentLayout.removeWidget(self.frameElementProperties)
+        #     self.spoilerElementProperties = Spoiler(title="Element Properties")
+        #     self.spoilerElementProperties.setContentLayout(self.frameElementProperties.layout())
+        #     if parentLayout:
+        #         parentLayout.addWidget(self.spoilerElementProperties)
+        #     self.frameElementProperties = self.spoilerElementProperties
 
-        if hasattr(self, 'frameConnectedElements'):
-            parentLayout = self.frameConnectedElements.parentWidget().layout()
-            if parentLayout:
-                parentLayout.removeWidget(self.frameConnectedElements)
-            self.spoilerConnectedElements = Spoiler(title="Connected Elements")
-            self.spoilerConnectedElements.setContentLayout(self.frameConnectedElements.layout())
-            if parentLayout:
-                parentLayout.addWidget(self.spoilerConnectedElements)
-            self.frameConnectedElements = self.spoilerConnectedElements
+        # if hasattr(self, 'frameConnectedElements'):
+        #     parentLayout = self.frameConnectedElements.parentWidget().layout()
+        #     if parentLayout:
+        #         parentLayout.removeWidget(self.frameConnectedElements)
+        #     self.spoilerConnectedElements = Spoiler(title="Connected Elements")
+        #     self.spoilerConnectedElements.setContentLayout(self.frameConnectedElements.layout())
+        #     if parentLayout:
+        #         parentLayout.addWidget(self.spoilerConnectedElements)
+        #     self.frameConnectedElements = self.spoilerConnectedElements
 
-        self.trackSpoilerEvents()
+        #self.trackSpoilerEvents()
 
         self.setDockStyle()
         self.setupConnections()
@@ -205,16 +206,28 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
                     self.installEventFilterRecursive(child)
 
     def getFindElementsLayout(self):
-        gridLayout = self.frameFindElements.contentArea.layout()
-        if gridLayout.count() > 0:
-            return gridLayout.itemAt(0).layout()
-        return gridLayout
+        # Get the outer layout from the mFindElementsGroupBox's content area.
+        content_area = self.mFindElementsGroupBox.contentArea
+        outer_layout = content_area.layout()
+        # If there is exactly one item and it has its own layout, return that nested layout.
+        if outer_layout and outer_layout.count() == 1:
+            inner_layout = outer_layout.itemAt(0).layout()
+            if inner_layout is not None:
+                return inner_layout
+        # Otherwise, return the outer layout.
+        return outer_layout
 
     def getElementPropertiesLayout(self):
-        gridLayout = self.frameElementProperties.contentArea.layout()
-        if gridLayout.count() > 0:
-            return gridLayout.itemAt(0).layout()
-        return gridLayout
+        # Get the outer layout from the mElementPropertiesGroupBox's content area.
+        content_area = self.mElementPropertiesGroupBox.contentArea
+        outer_layout = content_area.layout()
+        # If there is exactly one item and it has its own layout, return that nested layout.
+        if outer_layout and outer_layout.count() == 1:
+            inner_layout = outer_layout.itemAt(0).layout()
+            if inner_layout is not None:
+                return inner_layout
+        # Otherwise, return the outer layout.
+        return outer_layout
     
     def removeWidgetsFromLayouts(self, widgets, layouts):
         for layout in layouts:
@@ -229,7 +242,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
 
         # Remove the widgets from both layouts
         self.removeWidgetsFromLayouts(
-            [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription, self.frameConnectedElements],
+            [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription, self.mConnectedElementsGroupBox],
             [findLayout, epLayout]
         )
 
@@ -257,7 +270,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             index = epLayout.count()
 
         # Insert the three widgets above self.lineEp.
-        epLayout.insertWidget(index, self.frameConnectedElements)
+        epLayout.insertWidget(index, self.mConnectedElementsGroupBox)
         epLayout.insertWidget(index, self.labelFoundElementDescription)
         epLayout.insertWidget(index, self.labelFoundElementTag)
         epLayout.insertWidget(index, self.labelFoundElement)
@@ -267,7 +280,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         epLayout = self.getElementPropertiesLayout()
 
         self.removeWidgetsFromLayouts(
-            [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription, self.frameConnectedElements],
+            [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription, self.mConnectedElementsGroupBox],
             [findLayout, epLayout]
         )
 
@@ -284,7 +297,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         findLayout.insertWidget(index + 1, self.labelFoundElement)
         findLayout.insertWidget(index + 2, self.labelFoundElementTag)
         findLayout.insertWidget(index + 3, self.labelFoundElementDescription)
-        findLayout.insertWidget(index + 4, self.frameConnectedElements)
+        findLayout.insertWidget(index + 4, self.mConnectedElementsGroupBox)
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.FocusIn:
@@ -404,8 +417,8 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         
         self.clearHighlights()
         self.clearAllLayerSelections()
-        self.spoilerFindElements.setExpanded(False)
-        self.spoilerElementProperties.setExpanded(False)
+        self.spoilerFindElements.setCollapsed(True)
+        self.spoilerElementProperties.setCollapsed(True)
         
         # Reset the singleton instance
         if hasattr(self.__class__, '_instance') and self.__class__._instance == self:
