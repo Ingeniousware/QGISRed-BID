@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>313</width>
-    <height>553</height>
+    <width>315</width>
+    <height>400</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>315</width>
+    <height>400</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>QGISRed Element Explorer</string>
@@ -31,8 +37,8 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>295</width>
-         <height>513</height>
+         <width>280</width>
+         <height>511</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout">
@@ -177,6 +183,19 @@
               <widget class="QLabel" name="labelFoundElementDescription">
                <property name="text">
                 <string>-</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="Line" name="line_2">
+               <property name="enabled">
+                <bool>true</bool>
+               </property>
+               <property name="lineWidth">
+                <number>0</number>
+               </property>
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
                </property>
               </widget>
              </item>
