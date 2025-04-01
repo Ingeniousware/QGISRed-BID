@@ -169,17 +169,25 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
     def trackSpoilerEvents(self):
         self.spoilerFindElements.toggledState.connect(self.onSpoilerFindElementsToggled)
         self.spoilerElementProperties.toggledState.connect(self.onSpoilerElementPropertiesToggled)
+    
+    def onSpoilerElementPropertiesToggled(self, expanded):
+        if expanded:
+            print("spoilerElementProperties expanded")
+            self.moveWidgetsToElementProperties()
+        else:
+            print("spoilerElementProperties collapsed")
+            # If the Find Elements spoiler is still expanded, move the widgets back there.
+            if self.spoilerFindElements.toggleButton.isChecked():
+                self.moveWidgetsToFindElements()
 
     def onSpoilerFindElementsToggled(self, expanded):
+        if expanded:
+            print("spoilerFindElements expanded")
+        else:
+            print("spoilerFindElements collapsed")
+        # If Element Properties is not expanded, ensure widgets are in the Find Elements layout.
         if not self.spoilerElementProperties.toggleButton.isChecked():
-            print("Not 2")
             self.moveWidgetsToFindElements()
-
-    def onSpoilerElementPropertiesToggled(self, expanded):
-        if self.spoilerFindElements.toggleButton.isChecked():
-            print("Not")
-            self.moveWidgetsToElementProperties()
-
 
     def collapseFindElements(self):
         self.spoilerElementProperties.setExpanded(False)
@@ -382,14 +390,11 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             index = epLayout.count()
 
         # Insert the three widgets above self.lineEp.
-        #epLayout.insertWidget(index, self.listWidget)
         epLayout.insertWidget(index, self.labelFoundElementDescription)
         epLayout.insertWidget(index, self.labelFoundElementTag)
         epLayout.insertWidget(index, self.labelFoundElement)
         print("Moved widgets into Element Properties layout.")
-
-        epLayout.parentWidget().adjustSize()
-        findLayout.parentWidget().adjustSize()
+    
 
     def moveWidgetsToFindElements(self):
         """
@@ -417,11 +422,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         findLayout.insertWidget(index + 1, self.labelFoundElement)
         findLayout.insertWidget(index + 2, self.labelFoundElementTag)
         findLayout.insertWidget(index + 3, self.labelFoundElementDescription)
-        #findLayout.insertWidget(index + 3, self.listWidget)
         print("Moved widgets back into Find Elements layout.")
-
-        self.frameFindElements.parentWidget().adjustSize()
-        findLayout.parentWidget().adjustSize()
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.FocusIn:
