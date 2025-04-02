@@ -434,8 +434,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         self.clearHighlights()
         self.clearAllLayerSelections()
 
-        if hasattr(self.__class__, '_instance') and self.__class__._instance == self:
-            self.__class__._instance = None
+        self.__class__._instance = None
 
         self.dockClosed.emit(True)
         super(self.__class__, self).closeEvent(event)

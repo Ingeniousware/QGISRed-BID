@@ -13,7 +13,7 @@
   <property name="minimumSize">
    <size>
     <width>315</width>
-    <height>400</height>
+    <height>390</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -564,7 +564,7 @@
   <customwidget>
    <class>QgsCollapsibleGroupBox</class>
    <extends>QGroupBox</extends>
-   <header>qgis.gui</header>
+   <header>qgscollapsiblegroupbox.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
