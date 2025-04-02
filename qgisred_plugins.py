@@ -4403,6 +4403,16 @@ class QGISRed:
         
         existingDock = QGISRedElementExplorerDock._instance
         
+        # Check if the current tool is the element properties tool and deactivate it first
+        if 'identifyFeatureElementProperties' in self.myMapTools.keys() and self.iface.mapCanvas().mapTool() is self.myMapTools['identifyFeatureElementProperties']:
+            if self.myMapTools['identifyFeatureElementProperties']:
+                try:
+                    self.myMapTools['identifyFeatureElementProperties'].clearHighlights()
+                except Exception:
+                    pass
+            self.iface.mapCanvas().unsetMapTool(self.myMapTools['identifyFeatureElementProperties'])
+            self.openElementsPropertyDialog.setChecked(False)
+
         tool = "identifyFeature"
         if tool in self.myMapTools.keys() and self.iface.mapCanvas().mapTool() is self.myMapTools[tool]:
             if self.myMapTools[tool]:
@@ -4474,6 +4484,16 @@ class QGISRed:
         
         existingDock = QGISRedElementExplorerDock._instance
 
+        # Check if the current tool is the find elements tool and deactivate it first
+        if 'identifyFeature' in self.myMapTools.keys() and self.iface.mapCanvas().mapTool() is self.myMapTools['identifyFeature']:
+            if self.myMapTools['identifyFeature']:
+                try:
+                    self.myMapTools['identifyFeature'].clearHighlights()
+                except Exception:
+                    pass
+            self.iface.mapCanvas().unsetMapTool(self.myMapTools['identifyFeature'])
+            self.openFindElementsDialog.setChecked(False)
+
         tool = "identifyFeatureElementProperties"
         if tool in self.myMapTools.keys() and self.iface.mapCanvas().mapTool() is self.myMapTools[tool]:
             if self.myMapTools[tool]:
@@ -4496,11 +4516,32 @@ class QGISRed:
                 existingDock.updateCollapsibleWidgetsState(collapseElementProperties=False)
                 existingDock.moveWidgetsToElementProperties()
                 existingDock.initializeElementTypes()
+            else:
+                try:
+                    dock = QGISRedElementExplorerDock.getInstance(
+                        self.iface.mapCanvas(),
+                        self.iface.mainWindow(),
+                        showFindElements=False,
+                        showElementProperties=True
+                    )
+                    self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)
+                    dock.show()
+                    dock.raise_()
+                    dock.activateWindow()
+                    dock.onLayerTreeChanged()
+                    dock.initializeElementTypes()
+                    dock.updateCollapsibleWidgetsState(collapseElementProperties=False)
+                except Exception as e:
+                    print(f"Error creating dock: {str(e)}")
+                    self.openElementsPropertyDialog.setChecked(False)
+                    return
+                    
             try:
                 self.myMapTools[tool] = QGISRedIdentifyFeature(
                     self.iface.mapCanvas(), 
                     self.openElementsPropertyDialog, 
-                    useElementPropertiesDock=True
+                    useElementPropertiesDock=True,
+                    dock=existingDock if existingDock else dock
                 )
                 self.myMapTools[tool].setCursor(Qt.WhatsThisCursor)
                 self.iface.mapCanvas().setMapTool(self.myMapTools[tool])
