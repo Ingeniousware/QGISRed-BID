@@ -189,6 +189,7 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
             self.dock.activateWindow()
 
         if self.useElementPropertiesDock:
+            #self.dock.moveWidgetsToElementProperties()
             self.dock.updateCollapsibleWidgetsState(collapseElementProperties=False)
             
         self.dock.findFeature(layer, feature)
@@ -287,6 +288,15 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
 
     def deactivate(self):
         self.clearHighlights()
+        
+        if self.startMarker:
+            self.startMarker.hide()
+        if self.endMarker:
+            self.endMarker.hide()
+
+        self.resetProperties()
+        
         self.disconnectProjectSignals()
         self.setActionUnchecked()
+        
         QgsMapToolIdentify.deactivate(self)

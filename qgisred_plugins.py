@@ -4494,6 +4494,7 @@ class QGISRed:
         else:
             if existingDock:
                 existingDock.updateCollapsibleWidgetsState(collapseElementProperties=False)
+                existingDock.moveWidgetsToElementProperties()
                 existingDock.initializeElementTypes()
             try:
                 self.myMapTools[tool] = QGISRedIdentifyFeature(
