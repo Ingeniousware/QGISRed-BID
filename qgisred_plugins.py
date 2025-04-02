@@ -4449,7 +4449,8 @@ class QGISRed:
                 self.myMapTools[tool] = QGISRedIdentifyFeature(
                     self.iface.mapCanvas(), 
                     self.openFindElementsDialog, 
-                    useElementPropertiesDock=useElementProperties
+                    useElementPropertiesDock=useElementProperties,
+                    dock=dock
                 )
                 self.myMapTools[tool].setCursor(Qt.WhatsThisCursor)
                 self.iface.mapCanvas().setMapTool(self.myMapTools[tool])

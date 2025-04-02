@@ -18,28 +18,38 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
     # -------------------------------
     # Initialization and Setup Methods
     # -------------------------------
-    def __init__(self, canvas, button, toggleAction=None, useElementPropertiesDock=True):
+    def __init__(self, canvas, button, toggleAction=None, useElementPropertiesDock=True, dock=None):
         super().__init__(canvas)
         self.canvas = canvas
         self.setAction(button)
         self.toggleAction = toggleAction
         self.useElementPropertiesDock = useElementPropertiesDock
         self.currentHighlight = None
-        self.dock = None
+        self.dock = dock
         self.ignoreNextRelease = False
         self.setupConnections()
         self.startVertexes()
         self.resetProperties()
-        self.setDock(self.useElementPropertiesDock)
+        self.setDockConnections()
 
-    def setDock(self, skipDock):
-        if not skipDock:
-            self.dock = QGISRedElementExplorerDock.getInstance(
-                self.canvas,
-                iface.mainWindow(),
-                showFindElements=True,
-                showElementProperties=True
-            )
+    def setDock(self):
+        self.dock = QGISRedElementExplorerDock.getInstance(
+            self.canvas,
+            iface.mainWindow(),
+            showFindElements=True,
+            showElementProperties=True
+        )
+        self.setDockConnections()
+    
+    def setDockConnections(self):
+        if self.dock is not None:
+            self.dock.dockClosed.connect(self.onDockClosed)
+
+    def onDockClosed(self, closed):
+        if closed:
+            self.deactivate()
+            if self.canvas.mapTool() == self:
+                self.canvas.unsetMapTool(self)
 
     def resetProperties(self):
         self.firstPoint = None
@@ -170,8 +180,7 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
     # -------------------------------
     def showFeatureInDock(self, layer, feature, handler=None):
         if self.dock is None:
-            self.setDock(False)
-            return
+            self.setDock()
 
         if not self.dock.isVisible():
             iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
