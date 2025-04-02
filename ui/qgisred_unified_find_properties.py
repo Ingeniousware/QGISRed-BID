@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import os
-from .qgisred_spoiler import Spoiler
 from PyQt5.QtCore import Qt, pyqtSlot, pyqtSignal, QEvent
 from PyQt5.QtGui import QIcon, QFont, QColor
 from PyQt5.QtWidgets import QDockWidget, QWidget, QMessageBox, QLineEdit, QListWidgetItem, QTableWidgetItem, QHeaderView, QAbstractItemView, QFrame
@@ -118,38 +117,6 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
             self.labelFoundElementDescription.setWordWrap(True)
             self.labelFoundElementDescription.setText("")
 
-        # if hasattr(self, 'frameFindElements'):
-        #     parentLayout = self.frameFindElements.parentWidget().layout()
-        #     if parentLayout:
-        #         parentLayout.removeWidget(self.frameFindElements)
-        #     self.spoilerFindElements = Spoiler(title="Find Elements by Id")
-        #     self.spoilerFindElements.setContentLayout(self.frameFindElements.layout())
-        #     if parentLayout:
-        #         parentLayout.addWidget(self.spoilerFindElements)
-        #     self.frameFindElements = self.spoilerFindElements
-
-        # if hasattr(self, 'frameElementProperties'):
-        #     parentLayout = self.frameElementProperties.parentWidget().layout()
-        #     if parentLayout:
-        #         parentLayout.removeWidget(self.frameElementProperties)
-        #     self.spoilerElementProperties = Spoiler(title="Element Properties")
-        #     self.spoilerElementProperties.setContentLayout(self.frameElementProperties.layout())
-        #     if parentLayout:
-        #         parentLayout.addWidget(self.spoilerElementProperties)
-        #     self.frameElementProperties = self.spoilerElementProperties
-
-        # if hasattr(self, 'frameConnectedElements'):
-        #     parentLayout = self.frameConnectedElements.parentWidget().layout()
-        #     if parentLayout:
-        #         parentLayout.removeWidget(self.frameConnectedElements)
-        #     self.spoilerConnectedElements = Spoiler(title="Connected Elements")
-        #     self.spoilerConnectedElements.setContentLayout(self.frameConnectedElements.layout())
-        #     if parentLayout:
-        #         parentLayout.addWidget(self.spoilerConnectedElements)
-        #     self.frameConnectedElements = self.spoilerConnectedElements
-
-        #self.trackSpoilerEvents()
-
         self.setDockStyle()
         self.setupConnections()
         
@@ -159,7 +126,6 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         if hasattr(self, 'initializeElementTypes'):
             self.initializeElementTypes()
 
-        #self.placeConnectedElements()
 
         settings = QgsSettings()
         # if settings.contains("QGISRed/ElementsExplorer/geometry"):
@@ -167,32 +133,20 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         # if settings.contains("QGISRed/ElementsExplorer/floating"):
         #     self.setFloating(settings.value("QGISRed/ElementsExplorer/floating", type=bool))
 
-    def trackSpoilerEvents(self):
-        self.spoilerFindElements.toggledState.connect(self.onSpoilerFindElementsToggled)
-        self.spoilerElementProperties.toggledState.connect(self.onSpoilerElementPropertiesToggled)
+    def trackCollapsibleWidgetsEvents(self):
+        self.mFindElementsGroupBox.collapsedStateChanged.connect(self.onElementPropertiesToggled)
+        self.mElementPropertiesGroupBox.collapsedStateChanged.connect(self.onFindElementsToggled)
     
-    def onSpoilerElementPropertiesToggled(self, expanded):
-        if expanded:
-            self.moveWidgetsToElementProperties()
-        else:
-            if self.spoilerFindElements.isExpanded():
+    def onElementPropertiesToggled(self, collapsed):
+        if collapsed:
+            if not self.mFindElementsGroupBox.isCollapsed():
                 self.moveWidgetsToFindElements()
-
-    def onSpoilerFindElementsToggled(self, expanded):
-        if not self.spoilerElementProperties.isExpanded():
+        else:
+            self.moveWidgetsToElementProperties()
+            
+    def onFindElementsToggled(self, collapsed):
+        if self.mElementPropertiesGroupBox.isCollapsed():
             self.moveWidgetsToFindElements()
-
-    def collapseFindElements(self):
-        self.spoilerElementProperties.setExpanded(False)
-
-    def collapseElementProperties(self):
-        self.spoilerElementProperties.setExpanded(False)
-
-    def expandElementProperties(self):
-        self.spoilerFindElements.setExpanded(True)
-    
-    def expandFindElements(self):
-        self.spoilerElementProperties.setExpanded(True)
 
     def setupEventFilters(self):
         main_widget = self.widget()
@@ -206,33 +160,26 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
                     self.installEventFilterRecursive(child)
 
     def getFindElementsLayout(self):
-        # Get the outer layout from the mFindElementsGroupBox's content area.
         content_area = self.mFindElementsGroupBox.contentArea
         outer_layout = content_area.layout()
-        # If there is exactly one item and it has its own layout, return that nested layout.
         if outer_layout and outer_layout.count() == 1:
             inner_layout = outer_layout.itemAt(0).layout()
             if inner_layout is not None:
                 return inner_layout
-        # Otherwise, return the outer layout.
         return outer_layout
 
     def getElementPropertiesLayout(self):
-        # Get the outer layout from the mElementPropertiesGroupBox's content area.
         content_area = self.mElementPropertiesGroupBox.contentArea
         outer_layout = content_area.layout()
-        # If there is exactly one item and it has its own layout, return that nested layout.
         if outer_layout and outer_layout.count() == 1:
             inner_layout = outer_layout.itemAt(0).layout()
             if inner_layout is not None:
                 return inner_layout
-        # Otherwise, return the outer layout.
         return outer_layout
     
     def removeWidgetsFromLayouts(self, widgets, layouts):
         for layout in layouts:
             for widget in widgets:
-                # If the widget exists in the layout, remove it.
                 if layout.indexOf(widget) != -1:
                     layout.removeWidget(widget)
 
@@ -417,9 +364,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         
         self.clearHighlights()
         self.clearAllLayerSelections()
-        self.spoilerFindElements.setCollapsed(True)
-        self.spoilerElementProperties.setCollapsed(True)
-        
+
         # Reset the singleton instance
         if hasattr(self.__class__, '_instance') and self.__class__._instance == self:
             self.__class__._instance = None
