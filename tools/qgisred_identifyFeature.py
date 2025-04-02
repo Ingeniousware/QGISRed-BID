@@ -94,10 +94,20 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
             return
         
         if not self.dock.isVisible():
+            print("here")
             iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
             self.dock.show()
             self.dock.raise_()
             self.dock.activateWindow()
+
+        # if self.dock.mElementPropertiesGroupBox.isCollapsed() and not self.useElementPropertiesDock:
+        #     print('1.1')
+        #     self.dock.moveWidgetsToFindElements()
+        #     self.dock.mElementPropertiesGroupBox.setCollapsed(True)
+        # elif self.useElementPropertiesDock:
+        #     print('1.2')
+        #     self.dock.moveWidgetsToElementProperties()
+        #     self.dock.mElementPropertiesGroupBox.setCollapsed(False)
 
         self.dock.findFeature(layer, feature)
 

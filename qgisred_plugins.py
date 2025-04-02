@@ -4443,9 +4443,9 @@ class QGISRed:
             useElementProperties = False
             if existingDock:
                 useElementProperties = not existingDock.mElementPropertiesGroupBox.isCollapsed()
-                if existingDock.mFindElementsGroupBox.isCollapsed():
-                    existingDock.mFindElementsGroupBox.setCollapsed(False)
-
+                # if existingDock.mFindElementsGroupBox.isCollapsed():
+                #     existingDock.mFindElementsGroupBox.setCollapsed(False)
+                
                 existingDock.initializeElementTypes()
             else:
                 try:
@@ -4462,7 +4462,8 @@ class QGISRed:
                     dock.activateWindow()
                     dock.onLayerTreeChanged()
                     dock.setDefaultValue()
-                    dock.mFindElementsGroupBox.setCollapsed(False)
+                    # dock.mFindElementsGroupBox.setCollapsed(False)
+                    # dock.moveWidgetsToFindElements()
                 except Exception as e:
                     print(f"Error creating dock: {str(e)}")
                     self.openFindElementsDialog.setChecked(False)
@@ -4512,8 +4513,8 @@ class QGISRed:
             self.openElementsPropertyDialog.setChecked(False)
         else:
             if existingDock:
-                if existingDock.mElementPropertiesGroupBox.isCollapsed():
-                    existingDock.mElementPropertiesGroupBox.setCollapsed(False)
+                # if existingDock.mElementPropertiesGroupBox.isCollapsed():
+                #     existingDock.mElementPropertiesGroupBox.setCollapsed(False)
                 existingDock.initializeElementTypes()
             try:
                 self.myMapTools[tool] = QGISRedIdentifyFeature(
@@ -4526,7 +4527,7 @@ class QGISRed:
             except Exception as e:
                 print(f"Error creating map tool: {str(e)}")
                 self.openElementsPropertyDialog.setChecked(False)
-                
+
 # ==============================================================
 #                        END: QUERIES FIND ELEMENTS
 # --------------------------------------------------------------

@@ -97,7 +97,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
                             "qgisred_sources", "qgisred_demands", "qgisred_meters", "qgisred_isolationvalves"]
         self.special_layers = ["qgisred_serviceconnections"]
         self.sources_and_demands = ["qgisred_sources", "qgisred_demands"]
-        
+
         if hasattr(self, 'listWidget'):
             self.listWidget.installEventFilter(self)
         
@@ -126,6 +126,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         if hasattr(self, 'initializeElementTypes'):
             self.initializeElementTypes()
 
+        self.trackCollapsibleWidgetsEvents()
 
         settings = QgsSettings()
         # if settings.contains("QGISRed/ElementsExplorer/geometry"):
@@ -134,19 +135,28 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         #     self.setFloating(settings.value("QGISRed/ElementsExplorer/floating", type=bool))
 
     def trackCollapsibleWidgetsEvents(self):
-        self.mFindElementsGroupBox.collapsedStateChanged.connect(self.onElementPropertiesToggled)
-        self.mElementPropertiesGroupBox.collapsedStateChanged.connect(self.onFindElementsToggled)
-    
+        self.mElementPropertiesGroupBox.collapsedStateChanged.connect(self.onElementPropertiesToggled)
+        self.mFindElementsGroupBox.collapsedStateChanged.connect(self.onFindElementsToggled)
+
     def onElementPropertiesToggled(self, collapsed):
+        print("reach 1")
+        print(collapsed)
         if collapsed:
-            if not self.mFindElementsGroupBox.isCollapsed():
-                self.moveWidgetsToFindElements()
+            print("reach 1.1")
+            self.moveWidgetsToFindElements()
         else:
+            print("reach 1.2")
             self.moveWidgetsToElementProperties()
             
     def onFindElementsToggled(self, collapsed):
-        if self.mElementPropertiesGroupBox.isCollapsed():
-            self.moveWidgetsToFindElements()
+        print("reach 2")
+        print(collapsed)
+        if collapsed:
+            self.moveWidgetsToElementProperties()
+        else:
+            if self.mElementPropertiesGroupBox.isCollapsed():
+                print("reach 2.1")
+                self.moveWidgetsToFindElements()
 
     def setupEventFilters(self):
         main_widget = self.widget()
@@ -159,92 +169,57 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
                 if isinstance(child, QWidget):
                     self.installEventFilterRecursive(child)
 
-    def getFindElementsLayout(self):
-        content_area = self.mFindElementsGroupBox.contentArea
-        outer_layout = content_area.layout()
-        if outer_layout and outer_layout.count() == 1:
-            inner_layout = outer_layout.itemAt(0).layout()
-            if inner_layout is not None:
-                return inner_layout
-        return outer_layout
-
-    def getElementPropertiesLayout(self):
-        content_area = self.mElementPropertiesGroupBox.contentArea
-        outer_layout = content_area.layout()
-        if outer_layout and outer_layout.count() == 1:
-            inner_layout = outer_layout.itemAt(0).layout()
-            if inner_layout is not None:
-                return inner_layout
-        return outer_layout
-    
-    def removeWidgetsFromLayouts(self, widgets, layouts):
-        for layout in layouts:
-            for widget in widgets:
-                if layout.indexOf(widget) != -1:
-                    layout.removeWidget(widget)
-
     def moveWidgetsToElementProperties(self):
-        findLayout = self.getFindElementsLayout()
-        epLayout = self.getElementPropertiesLayout()
-
-        # Remove the widgets from both layouts
-        self.removeWidgetsFromLayouts(
-            [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription, self.mConnectedElementsGroupBox],
-            [findLayout, epLayout]
-        )
-
-        # Ensure self.lineEp exists in epLayout
-        if not hasattr(self, 'lineEp'):
-            self.lineEp = QFrame()
-            self.lineEp.setFrameShape(QFrame.HLine)
-            self.lineEp.setFrameShadow(QFrame.Sunken)
-        # If self.lineEp isn’t already added, add it at the bottom.
-        found = False
-        for i in range(epLayout.count()):
-            if epLayout.itemAt(i).widget() == self.lineEp:
-                found = True
-                break
-        if not found:
-            epLayout.addWidget(self.lineEp)
-
-        # Find the index of self.lineEp in epLayout
-        index = -1
-        for i in range(epLayout.count()):
-            if epLayout.itemAt(i).widget() == self.lineEp:
-                index = i
-                break
-        if index == -1:
-            index = epLayout.count()
-
-        # Insert the three widgets above self.lineEp.
-        epLayout.insertWidget(index, self.mConnectedElementsGroupBox)
-        epLayout.insertWidget(index, self.labelFoundElementDescription)
-        epLayout.insertWidget(index, self.labelFoundElementTag)
-        epLayout.insertWidget(index, self.labelFoundElement)
+        widgets = [
+            self.labelFoundElement,
+            self.labelFoundElementTag,
+            self.labelFoundElementDescription,
+            self.mConnectedElementsGroupBox
+        ]
+        
+        for widget in widgets:
+            current_parent = widget.parent()
+            if current_parent and current_parent.layout():
+                current_parent.layout().removeWidget(widget)
+        
+        target_layout = self.elementPropertiesLayout
+        line = self.lineEp
+        
+        index = target_layout.indexOf(line)
+        
+        target_layout.insertWidget(index + 1, widgets[0])
+        target_layout.insertWidget(index + 2, widgets[1])
+        target_layout.insertWidget(index + 3, widgets[2])
+        target_layout.insertWidget(index + 4, widgets[3])
+        
+        for widget in widgets:
+            widget.show()
 
     def moveWidgetsToFindElements(self):
-        findLayout = self.getFindElementsLayout()
-        epLayout = self.getElementPropertiesLayout()
-
-        self.removeWidgetsFromLayouts(
-            [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription, self.mConnectedElementsGroupBox],
-            [findLayout, epLayout]
-        )
-
-        # Find the index of self.line in the find elements layout.
-        index = -1
-        for i in range(findLayout.count()):
-            if findLayout.itemAt(i).widget() == self.line:
-                index = i
-                break
-        if index == -1:
-            index = findLayout.count()
-
-        # Insert widgets after self.line.
-        findLayout.insertWidget(index + 1, self.labelFoundElement)
-        findLayout.insertWidget(index + 2, self.labelFoundElementTag)
-        findLayout.insertWidget(index + 3, self.labelFoundElementDescription)
-        findLayout.insertWidget(index + 4, self.mConnectedElementsGroupBox)
+        widgets = [
+            self.labelFoundElement,
+            self.labelFoundElementTag,
+            self.labelFoundElementDescription,
+            self.mConnectedElementsGroupBox
+        ]
+        
+        for widget in widgets:
+            current_parent = widget.parent()
+            if current_parent and current_parent.layout():
+                current_parent.layout().removeWidget(widget)
+        
+        target_layout = self.findElementsLayout
+        line = self.line
+        
+        index = target_layout.indexOf(line)
+        
+        target_layout.insertWidget(index + 1, widgets[0])
+        target_layout.insertWidget(index + 2, widgets[1])
+        target_layout.insertWidget(index + 3, widgets[2])
+        target_layout.insertWidget(index + 4, widgets[3])
+        
+        for widget in widgets:
+            widget.show()
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.FocusIn:
@@ -650,6 +625,7 @@ class QGISRedElementsExplorerDock(QDockWidget, FORM_CLASS):
         project.layersRemoved.connect(self.onLayerTreeChanged)
         project.readProject.connect(self.onProjectChanged)
         project.cleared.connect(self.onProjectChanged)
+
 
         root = project.layerTreeRoot()
         inputs_group = root.findGroup("Inputs")
