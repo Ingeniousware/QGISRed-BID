@@ -1,10 +1,9 @@
-from ..ui.qgisred_element_explorer import QGISRedElementExplorerDock
+from ..ui.qgisred_element_explorer_dock import QGISRedElementExplorerDock
 from qgis.gui import QgsMapToolIdentify, QgsHighlight
 from qgis.utils import iface
 from qgis.core import QgsProject, QgsVectorLayer
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QCursor
-from PyQt5.QtGui import QColor, QCursor, QPixmap
+from PyQt5.QtGui import QColor
 from qgis.core import QgsPointXY, QgsProject, QgsSnappingConfig, QgsTolerance
 from qgis.gui import QgsMapTool, QgsVertexMarker, QgsMapCanvasSnappingUtils
 

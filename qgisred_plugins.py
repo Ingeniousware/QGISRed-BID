@@ -43,7 +43,7 @@ from .ui.qgisred_toolConnections_dialog import QGISRedServiceConnectionsToolDial
 from .ui.qgisred_toolConnectivity_dialog import QGISRedConnectivityToolDialog
 from .ui.qgisred_loadproject_dialog import QGISRedImportProjectDialog
 from .ui.qgisred_thematicmaps_dialog import QGISRedThematicMapsDialog
-from .ui.qgisred_element_explorer import QGISRedElementExplorerDock
+from .ui.qgisred_element_explorer_dock import QGISRedElementExplorerDock
 from .tools.qgisred_utils import QGISRedUtils
 from .tools.qgisred_dependencies import QGISRedDependencies as GISRed
 from .tools.qgisred_moveNodes import QGISRedMoveNodesTool
