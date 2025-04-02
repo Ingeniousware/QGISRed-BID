@@ -134,6 +134,17 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         self.mElementPropertiesGroupBox.collapsedStateChanged.connect(self.onElementPropertiesToggled)
         self.mFindElementsGroupBox.collapsedStateChanged.connect(self.onFindElementsToggled)
 
+    def updateCollapsibleWidgetsState(self, collapseElementProperties=None, collapseFindElements=None):
+        if collapseElementProperties is not None:
+            self.mElementPropertiesGroupBox.blockSignals(True)
+            self.mElementPropertiesGroupBox.setCollapsed(collapseElementProperties)
+            self.mElementPropertiesGroupBox.blockSignals(False)
+
+        if collapseFindElements is not None:
+            self.mFindElementsGroupBox.blockSignals(True)
+            self.mFindElementsGroupBox.setCollapsed(collapseFindElements)
+            self.mFindElementsGroupBox.blockSignals(False)
+
     # ------------------------------
     # Collapsible Widgets Handlers
     # ------------------------------

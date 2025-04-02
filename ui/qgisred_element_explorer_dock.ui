@@ -37,8 +37,8 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>280</width>
-         <height>522</height>
+         <width>297</width>
+         <height>360</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout">
@@ -48,7 +48,7 @@
            <string>Find Elements by Id</string>
           </property>
           <property name="collapsed">
-           <bool>false</bool>
+           <bool>true</bool>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_6">
            <item>
@@ -204,7 +204,7 @@
            <string>Element Properties</string>
           </property>
           <property name="collapsed">
-           <bool>false</bool>
+           <bool>true</bool>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_3">
            <item>
