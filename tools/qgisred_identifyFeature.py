@@ -30,6 +30,16 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         self.setupConnections()
         self.startVertexes()
         self.resetProperties()
+        self.setDock(self.useElementPropertiesDock)
+
+    def setDock(self, skipDock):
+        if not skipDock:
+            self.dock = QGISRedElementExplorerDock.getInstance(
+                self.canvas,
+                iface.mainWindow(),
+                showFindElements=True,
+                showElementProperties=True
+            )
 
     def resetProperties(self):
         self.firstPoint = None
@@ -159,14 +169,8 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
     # Dock Handling Methods
     # -------------------------------
     def showFeatureInDock(self, layer, feature, handler=None):
-        self.dock = QGISRedElementExplorerDock.getInstance(
-            self.canvas,
-            iface.mainWindow(),
-            showFindElements=True,
-            showElementProperties=True
-        )
-
         if self.dock is None:
+            self.setDock(False)
             return
 
         if not self.dock.isVisible():

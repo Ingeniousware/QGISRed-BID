@@ -16,6 +16,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
     findElementsDockVisibilityChanged = pyqtSignal(bool)
     elementPropertiesDockVisibilityChanged = pyqtSignal(bool)
     dockFocusChanged = pyqtSignal(bool)
+    dockClosed = pyqtSignal(bool)
 
     # ------------------------------
     # Initialization and Setup Methods
@@ -423,6 +424,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         if hasattr(self.__class__, '_instance') and self.__class__._instance == self:
             self.__class__._instance = None
 
+        self.dockClosed.emit(True)
         super(self.__class__, self).closeEvent(event)
 
     # ------------------------------
