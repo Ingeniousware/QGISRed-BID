@@ -43,7 +43,7 @@ from .ui.qgisred_toolConnections_dialog import QGISRedServiceConnectionsToolDial
 from .ui.qgisred_toolConnectivity_dialog import QGISRedConnectivityToolDialog
 from .ui.qgisred_loadproject_dialog import QGISRedImportProjectDialog
 from .ui.qgisred_thematicmaps_dialog import QGISRedThematicMapsDialog
-from .ui.qgisred_unified_find_properties import QGISRedElementsExplorerDock
+from .ui.qgisred_element_explorer import QGISRedElementExplorerDock
 from .tools.qgisred_utils import QGISRedUtils
 from .tools.qgisred_dependencies import QGISRedDependencies as GISRed
 from .tools.qgisred_moveNodes import QGISRedMoveNodesTool
@@ -4420,7 +4420,7 @@ class QGISRed:
             self.openFindElementsDialog.setChecked(False)
             return
         
-        existingDock = QGISRedElementsExplorerDock._instance
+        existingDock = QGISRedElementExplorerDock._instance
         
         tool = "identifyFeature"
         if tool in self.myMapTools.keys() and self.iface.mapCanvas().mapTool() is self.myMapTools[tool]:
@@ -4449,11 +4449,11 @@ class QGISRed:
                 existingDock.initializeElementTypes()
             else:
                 try:
-                    dock = QGISRedElementsExplorerDock.getInstance(
+                    dock = QGISRedElementExplorerDock.getInstance(
                         self.iface.mapCanvas(),
                         self.iface.mainWindow(),
-                        show_find_elements=True,
-                        show_element_properties=useElementProperties
+                        showFindElements=True,
+                        showElementProperties=useElementProperties
                     )
 
                     self.iface.addDockWidget(Qt.RightDockWidgetArea, dock)
@@ -4492,7 +4492,7 @@ class QGISRed:
             self.openElementsPropertyDialog.setChecked(False)
             return
         
-        existingDock = QGISRedElementsExplorerDock._instance
+        existingDock = QGISRedElementExplorerDock._instance
 
         tool = "identifyFeatureElementProperties"
         if tool in self.myMapTools.keys() and self.iface.mapCanvas().mapTool() is self.myMapTools[tool]:

@@ -1,4 +1,5 @@
-from ..ui.qgisred_unified_find_properties import QGISRedElementsExplorerDock
+from ..ui.qgisred_element_explorer import QGISRedElementExplorerDock
+
 from qgis.gui import QgsMapToolIdentify, QgsHighlight
 from qgis.utils import iface
 from qgis.core import QgsProject, QgsVectorLayer
@@ -83,11 +84,11 @@ class QGISRedIdentifyFeature(QgsMapToolIdentify):
         self.currentHighlight.show()
     
     def showFeatureInDock(self, layer, feature, handler=None):
-        self.dock = QGISRedElementsExplorerDock.getInstance(
+        self.dock = QGISRedElementExplorerDock.getInstance(
             self.canvas, 
             iface.mainWindow(),
-            show_find_elements=True,
-            show_element_properties=True
+            showFindElements=True,
+            showElementProperties=True
         )
 
         if self.dock is None:
