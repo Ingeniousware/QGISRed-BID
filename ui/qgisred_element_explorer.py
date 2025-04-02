@@ -9,7 +9,7 @@ from qgis.utils import iface
 from qgis.gui import QgsHighlight
 from qgis.gui import QgsScrollArea, QgsCollapsibleGroupBox
 
-FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_element_explorer.ui"))
+FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_element_explorer_dock.ui"))
 
 class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
     _instance = None
