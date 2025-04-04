@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-from PyQt5.QtCore import Qt, pyqtSlot, pyqtSignal, QEvent
+from PyQt5.QtCore import Qt, pyqtSlot, pyqtSignal, QEvent, QTimer
 from PyQt5.QtGui import QIcon, QFont, QColor
 from PyQt5.QtWidgets import QDockWidget, QWidget, QMessageBox, QLineEdit, QListWidgetItem, QTableWidgetItem, QHeaderView, QAbstractItemView, QFrame
 from qgis.PyQt import uic
@@ -205,6 +205,9 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         self.labelFoundElementTag.setVisible(self.isTagVisible)
         self.labelFoundElementDescription.setVisible(self.isDescVisible)
 
+        if self.isFloating():
+            QTimer.singleShot(50, self.resetScrollPosition)
+
     def moveWidgetsToFindElements(self):
         widgets = [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription, self.mConnectedElementsGroupBox]
 
@@ -223,6 +226,14 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
 
         self.labelFoundElementTag.setVisible(self.isTagVisible)
         self.labelFoundElementDescription.setVisible(self.isDescVisible)
+
+        if self.isFloating():
+            QTimer.singleShot(50, self.resetScrollPosition)
+
+    def resetScrollPosition(self):
+        # Reset the scroll area position to the top
+        if hasattr(self, 'scrollArea'):
+            self.scrollArea.ensureVisible(0, 0, 0, 0)
 
     # ------------------------------
     # Event Filter Setup
