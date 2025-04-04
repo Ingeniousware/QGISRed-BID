@@ -158,6 +158,10 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         ep_collapsed = self.mElementPropertiesGroupBox.isCollapsed()
         fe_collapsed = self.mFindElementsGroupBox.isCollapsed()
 
+        if ep_collapsed and fe_collapsed:
+            self.close()
+            return
+        
         if not fe_collapsed and ep_collapsed:
             self.moveWidgetsToFindElements()
         else:
