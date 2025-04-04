@@ -120,11 +120,13 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
             self.labelFoundElementTag.setWordWrap(True)
             self.labelFoundElementTag.setText("")
             self.labelFoundElementTag.hide()
+            self.isTagVisible = False
 
         if hasattr(self, 'labelFoundElementDescription'):
             self.labelFoundElementDescription.setWordWrap(True)
             self.labelFoundElementDescription.setText("")
             self.labelFoundElementDescription.hide()
+            self.isDescVisible = False
 
         self.setDockStyle()
         self.setupConnections()
@@ -144,67 +146,25 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         self.mFindElementsGroupBox.collapsedStateChanged.connect(self.onFindElementsToggled)
 
     def updateCollapsibleWidgetsState(self, collapseElementProperties=None, collapseFindElements=None):
-        print("\n--- updateCollapsibleWidgetsState called ---")
-        print(f"Initial collapseElementProperties: {collapseElementProperties}")
-        print(f"Initial collapseFindElements: {collapseFindElements}")
-
         self.mElementPropertiesGroupBox.blockSignals(True)
-        print("Blocked signals for mElementPropertiesGroupBox")
         self.mFindElementsGroupBox.blockSignals(True)
-        print("Blocked signals for mFindElementsGroupBox")
 
         if collapseElementProperties is not None:
-            print(f"Setting mElementPropertiesGroupBox collapsed to: {collapseElementProperties}")
             self.mElementPropertiesGroupBox.setCollapsed(collapseElementProperties)
-        else:
-            print("collapseElementProperties is None, skipping")
 
         if collapseFindElements is not None:
-            print(f"Setting mFindElementsGroupBox collapsed to: {collapseFindElements}")
             self.mFindElementsGroupBox.setCollapsed(collapseFindElements)
-        else:
-            print("collapseFindElements is None, skipping")
 
         ep_collapsed = self.mElementPropertiesGroupBox.isCollapsed()
         fe_collapsed = self.mFindElementsGroupBox.isCollapsed()
 
-        print(f"mElementPropertiesGroupBox.isCollapsed(): {ep_collapsed}")
-        print(f"mFindElementsGroupBox.isCollapsed(): {fe_collapsed}")
-
         if not fe_collapsed and ep_collapsed:
-            print("HEY -> Moving widgets to FindElements")
             self.moveWidgetsToFindElements()
         else:
-            print("HEY2 -> Moving widgets to ElementProperties")
             self.moveWidgetsToElementProperties()
 
         self.mElementPropertiesGroupBox.blockSignals(False)
-        print("Unblocked signals for mElementPropertiesGroupBox")
         self.mFindElementsGroupBox.blockSignals(False)
-        print("Unblocked signals for mFindElementsGroupBox")
-
-        print("--- updateCollapsibleWidgetsState finished ---\n")
-
-
-    # def updateCollapsibleWidgetsState(self, collapseElementProperties=None, collapseFindElements=None):
-    #     self.mElementPropertiesGroupBox.blockSignals(True)
-    #     self.mFindElementsGroupBox.blockSignals(True)    
-
-    #     if collapseElementProperties is not None:
-    #         self.mElementPropertiesGroupBox.setCollapsed(collapseElementProperties)
-
-    #     if collapseFindElements is not None:
-    #         self.mFindElementsGroupBox.setCollapsed(collapseFindElements)
-
-    #     if not self.mFindElementsGroupBox.isCollapsed() and self.mElementPropertiesGroupBox.isCollapsed():
-    #         print("HEY")
-    #         self.moveWidgetsToFindElements()
-    #     else:
-    #         print("HEY2")
-    #         self.moveWidgetsToElementProperties()
-
-    #     self.mElementPropertiesGroupBox.blockSignals(False)
-    #     self.mFindElementsGroupBox.blockSignals(False)
 
     # ------------------------------
     # Collapsible Widgets Handlers
@@ -223,11 +183,43 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
                 self.moveWidgetsToFindElements()
 
     def moveWidgetsToElementProperties(self):
-        ...
+        widgets = [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription, self.mConnectedElementsGroupBox]
+
+        for widget in widgets:
+            currentParent = widget.parent()
+            if currentParent and currentParent.layout():
+                currentParent.layout().removeWidget(widget)
+
+        targetLayout = self.elementPropertiesLayout
+        line = self.lineEp
+        index = targetLayout.indexOf(line)
+
+        for i, widget in enumerate(widgets):
+            targetLayout.insertWidget(index + 1 + i, widget)
+            widget.show()
+
+        self.labelFoundElementTag.setVisible(self.isTagVisible)
+        self.labelFoundElementDescription.setVisible(self.isDescVisible)
 
     def moveWidgetsToFindElements(self):
-        ...
-        
+        widgets = [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription, self.mConnectedElementsGroupBox]
+
+        for widget in widgets:
+            currentParent = widget.parent()
+            if currentParent and currentParent.layout():
+                currentParent.layout().removeWidget(widget)
+
+        targetLayout = self.findElementsLayout
+        line = self.line
+        index = targetLayout.indexOf(line)
+
+        for i, widget in enumerate(widgets):
+            targetLayout.insertWidget(index + 1 + i, widget)
+            widget.show()
+
+        self.labelFoundElementTag.setVisible(self.isTagVisible)
+        self.labelFoundElementDescription.setVisible(self.isDescVisible)
+
     # ------------------------------
     # Event Filter Setup
     # ------------------------------
@@ -578,8 +570,10 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         self.labelFoundElement.setText("")
         self.labelFoundElementTag.setText("")
         self.labelFoundElementTag.hide()
+        self.isTagVisible = False
         self.labelFoundElementDescription.setText("")
         self.labelFoundElementDescription.hide()
+        self.isDescVisible = False
         self.listWidget.clear()
         self.dataTableWidget.clear()
         self.setDataTableWidgetColumns()
@@ -788,14 +782,18 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         if featureTag and str(featureTag).strip() != "":
             self.labelFoundElementTag.setText(str(featureTag))
             self.labelFoundElementTag.show()
+            self.isTagVisible = True
         else:
             self.labelFoundElementTag.hide()
+            self.isTagVisible = False
 
         if featureDescription and str(featureDescription).strip() != "":
             self.labelFoundElementDescription.setText(str(featureDescription))
             self.labelFoundElementDescription.show()
+            self.isDescVisible = True
         else:
             self.labelFoundElementDescription.hide()
+            self.isDescVisible = False
 
 
     def appendFeatureProperties(self, feature, labelSuffix=""):
