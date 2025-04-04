@@ -23,7 +23,12 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
     # ------------------------------
     @classmethod
     def getInstance(cls, canvas, parent=None, showFindElements=True, showElementProperties=True):
-        if cls._instance is None:
+        if cls._instance is None or not cls._instance.isVisible():
+            if cls._instance is not None:
+                try:
+                    cls._instance.deleteLater()
+                except RuntimeError:
+                    pass
             cls._instance = cls(canvas, parent, showFindElements, showElementProperties)
         return cls._instance
 
@@ -130,30 +135,76 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         if hasattr(self, 'initializeElementTypes'):
             self.initializeElementTypes()
 
+        self.mElementPropertiesGroupBox.setCollapsed(True)
+        self.mFindElementsGroupBox.setCollapsed(True)
         self.trackCollapsibleWidgetsEvents()
-
+        
     def trackCollapsibleWidgetsEvents(self):
         self.mElementPropertiesGroupBox.collapsedStateChanged.connect(self.onElementPropertiesToggled)
         self.mFindElementsGroupBox.collapsedStateChanged.connect(self.onFindElementsToggled)
 
     def updateCollapsibleWidgetsState(self, collapseElementProperties=None, collapseFindElements=None):
+        print("\n--- updateCollapsibleWidgetsState called ---")
+        print(f"Initial collapseElementProperties: {collapseElementProperties}")
+        print(f"Initial collapseFindElements: {collapseFindElements}")
+
         self.mElementPropertiesGroupBox.blockSignals(True)
-        self.mFindElementsGroupBox.blockSignals(True)    
+        print("Blocked signals for mElementPropertiesGroupBox")
+        self.mFindElementsGroupBox.blockSignals(True)
+        print("Blocked signals for mFindElementsGroupBox")
 
         if collapseElementProperties is not None:
+            print(f"Setting mElementPropertiesGroupBox collapsed to: {collapseElementProperties}")
             self.mElementPropertiesGroupBox.setCollapsed(collapseElementProperties)
+        else:
+            print("collapseElementProperties is None, skipping")
 
         if collapseFindElements is not None:
+            print(f"Setting mFindElementsGroupBox collapsed to: {collapseFindElements}")
             self.mFindElementsGroupBox.setCollapsed(collapseFindElements)
+        else:
+            print("collapseFindElements is None, skipping")
 
-        if not self.mFindElementsGroupBox.isCollapsed() and self.mElementPropertiesGroupBox.isCollapsed():
-            print("HEY")
+        ep_collapsed = self.mElementPropertiesGroupBox.isCollapsed()
+        fe_collapsed = self.mFindElementsGroupBox.isCollapsed()
+
+        print(f"mElementPropertiesGroupBox.isCollapsed(): {ep_collapsed}")
+        print(f"mFindElementsGroupBox.isCollapsed(): {fe_collapsed}")
+
+        if not fe_collapsed and ep_collapsed:
+            print("HEY -> Moving widgets to FindElements")
             self.moveWidgetsToFindElements()
         else:
+            print("HEY2 -> Moving widgets to ElementProperties")
             self.moveWidgetsToElementProperties()
 
         self.mElementPropertiesGroupBox.blockSignals(False)
+        print("Unblocked signals for mElementPropertiesGroupBox")
         self.mFindElementsGroupBox.blockSignals(False)
+        print("Unblocked signals for mFindElementsGroupBox")
+
+        print("--- updateCollapsibleWidgetsState finished ---\n")
+
+
+    # def updateCollapsibleWidgetsState(self, collapseElementProperties=None, collapseFindElements=None):
+    #     self.mElementPropertiesGroupBox.blockSignals(True)
+    #     self.mFindElementsGroupBox.blockSignals(True)    
+
+    #     if collapseElementProperties is not None:
+    #         self.mElementPropertiesGroupBox.setCollapsed(collapseElementProperties)
+
+    #     if collapseFindElements is not None:
+    #         self.mFindElementsGroupBox.setCollapsed(collapseFindElements)
+
+    #     if not self.mFindElementsGroupBox.isCollapsed() and self.mElementPropertiesGroupBox.isCollapsed():
+    #         print("HEY")
+    #         self.moveWidgetsToFindElements()
+    #     else:
+    #         print("HEY2")
+    #         self.moveWidgetsToElementProperties()
+
+    #     self.mElementPropertiesGroupBox.blockSignals(False)
+    #     self.mFindElementsGroupBox.blockSignals(False)
 
     # ------------------------------
     # Collapsible Widgets Handlers
@@ -172,44 +223,11 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
                 self.moveWidgetsToFindElements()
 
     def moveWidgetsToElementProperties(self):
-        widgets = [self.labelFoundElement, self.mConnectedElementsGroupBox]
-
-        if self.labelFoundElementTag.isVisible() and self.labelFoundElementDescription.isVisible():
-            widgets = [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription, self.mConnectedElementsGroupBox]
-
-
-        for widget in widgets:
-            currentParent = widget.parent()
-            if currentParent and currentParent.layout():
-                currentParent.layout().removeWidget(widget)
-
-        targetLayout = self.elementPropertiesLayout
-        line = self.lineEp
-        index = targetLayout.indexOf(line)
-
-        for i, widget in enumerate(widgets):
-            targetLayout.insertWidget(index + 1 + i, widget)
-            widget.show()
+        ...
 
     def moveWidgetsToFindElements(self):
-        widgets = [self.labelFoundElement, self.mConnectedElementsGroupBox]
-
-        if self.labelFoundElementTag.isVisible() and self.labelFoundElementDescription.isVisible():
-            widgets = [self.labelFoundElement, self.labelFoundElementTag, self.labelFoundElementDescription, self.mConnectedElementsGroupBox]
-
-        for widget in widgets:
-            currentParent = widget.parent()
-            if currentParent and currentParent.layout():
-                currentParent.layout().removeWidget(widget)
-
-        targetLayout = self.findElementsLayout
-        line = self.line
-        index = targetLayout.indexOf(line)
-
-        for i, widget in enumerate(widgets):
-            targetLayout.insertWidget(index + 1 + i, widget)
-            widget.show()
-
+        ...
+        
     # ------------------------------
     # Event Filter Setup
     # ------------------------------
@@ -409,30 +427,75 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         canvas.refresh()
 
     def closeEvent(self, event):
-        self.dockVisibilityChanged.emit(False)
-        settings = QgsSettings()
-        settings.setValue("QGISRed/ElementsExplorer/geometry", self.saveGeometry())
-        settings.setValue("QGISRed/ElementsExplorer/floating", self.isFloating())
+        try:
+            self.dockVisibilityChanged.emit(False)
+            self.dockClosed.emit(True)
+            
+            settings = QgsSettings()
+            settings.setValue("QGISRed/ElementsExplorer/geometry", self.saveGeometry())
+            settings.setValue("QGISRed/ElementsExplorer/floating", self.isFloating())
 
-        root = QgsProject.instance().layerTreeRoot()
-        inputsGroup = root.findGroup("Inputs")
-        if inputsGroup and hasattr(self, 'onLayerTreeChanged'):
-            try:
-                inputsGroup.addedChildren.disconnect(self.onLayerTreeChanged)
-                inputsGroup.removedChildren.disconnect(self.onLayerTreeChanged)
+            # ----- Disconnect all signals -----
+            # Project signals
+            project = QgsProject.instance()
+            self.safeDisconnect(project.layersAdded, self.onLayerTreeChanged)
+            self.safeDisconnect(project.layersRemoved, self.onLayerTreeChanged)
+            self.safeDisconnect(project.readProject, self.onProjectChanged)
+            self.safeDisconnect(project.cleared, self.onProjectChanged)
+            
+            # Layer tree signals
+            root = project.layerTreeRoot()
+            inputsGroup = root.findGroup("Inputs")
+            if inputsGroup:
+                self.safeDisconnect(inputsGroup.addedChildren, self.onLayerTreeChanged)
+                self.safeDisconnect(inputsGroup.removedChildren, self.onLayerTreeChanged)
                 for layerNode in inputsGroup.findLayers():
-                    if hasattr(self, 'disconnectLayerSignals'):
-                        self.disconnectLayerSignals(layerNode.layer())
-            except Exception:
-                pass
-        
-        self.clearHighlights()
-        self.clearAllLayerSelections()
+                    self.disconnectLayerSignals(layerNode.layer())
+            
+            self.safeDisconnect(self.cbElementType.currentIndexChanged, self.updateElementIds)
+            self.safeDisconnect(self.leElementMask.textChanged, self.filterElementIds)
+            self.safeDisconnect(self.btFind.clicked, self.onFindButtonClicked)
+            self.safeDisconnect(self.listWidget.itemClicked, self.onListItemSingleClicked)
+            self.safeDisconnect(self.listWidget.itemDoubleClicked, self.onListItemDoubleClicked)
+            self.safeDisconnect(self.btClear.clicked, self.clearAll)
+            self.safeDisconnect(self.cbElementId.currentIndexChanged, self.onElementIdChanged)
+            self.safeDisconnect(self.btReload.clicked, self.initializeElementTypes)
+            
+            self.safeDisconnect(self.mElementPropertiesGroupBox.collapsedStateChanged, self.onElementPropertiesToggled)
+            self.safeDisconnect(self.mFindElementsGroupBox.collapsedStateChanged, self.onFindElementsToggled)
+            
+            self.removeEventFiltersRecursive(self.widget())
+            self.clearHighlights()
+            self.clearAllLayerSelections()
+            
+            self.canvas = None
+            self.identifyTool = None
+            self.currentLayer = None
+            self.currentFeature = None
+            self.mainHighlight = None
+            self.adjacentHighlights = []
+            self.currentSelectedHighlight = None
+            self.dictOfElementIds = {}
 
-        self.__class__._instance = None
+            self.__class__._instance = None
+            super(QDockWidget, self).closeEvent(event)
+            self.deleteLater()
+        except Exception as e:
+            self.__class__._instance = None
+            super(QDockWidget, self).closeEvent(event)
 
-        self.dockClosed.emit(True)
-        super(self.__class__, self).closeEvent(event)
+    def safeDisconnect(self, signal, slot):
+        try:
+            signal.disconnect(slot)
+        except (TypeError, RuntimeError):
+            pass
+
+    def removeEventFiltersRecursive(self, widget):
+        if widget:
+            widget.removeEventFilter(self)
+            for child in widget.children():
+                if isinstance(child, QWidget):
+                    self.removeEventFiltersRecursive(child)
 
     # ------------------------------
     # Layer and Project Event Methods
