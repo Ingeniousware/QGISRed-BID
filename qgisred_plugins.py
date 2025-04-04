@@ -4439,11 +4439,9 @@ class QGISRed:
                     dock.show()
                     dock.raise_()
                     dock.activateWindow()
-                    #dock.moveWidgetsToFindElements()
                     dock.onLayerTreeChanged()
                     dock.setDefaultValue()
                     dock.updateCollapsibleWidgetsState(collapseFindElements=False)
-                    dock.moveWidgetsToFindElements()
                 except Exception as e:
                     self.openFindElementsDialog.setChecked(False)
                     return
@@ -4493,7 +4491,6 @@ class QGISRed:
         else:
             if existingDock:
                 existingDock.updateCollapsibleWidgetsState(collapseElementProperties=False)
-                existingDock.moveWidgetsToElementProperties()
                 existingDock.initializeElementTypes()
             try:
                 self.myMapTools[tool] = QGISRedIdentifyFeature(

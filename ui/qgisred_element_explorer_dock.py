@@ -146,8 +146,14 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         if collapseFindElements is not None:
             self.mFindElementsGroupBox.setCollapsed(collapseFindElements)
 
+        if not self.mFindElementsGroupBox.isCollapsed() and self.mElementPropertiesGroupBox.isCollapsed():
+            print("HEY")
+            self.moveWidgetsToFindElements()
+        else:
+            self.moveWidgetsToElementProperties()
+
         self.mElementPropertiesGroupBox.blockSignals(False)
-        self.mFindElementsGroupBox.blockSignals(False)   
+        self.mFindElementsGroupBox.blockSignals(False)
 
     # ------------------------------
     # Collapsible Widgets Handlers
@@ -203,7 +209,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         for i, widget in enumerate(widgets):
             targetLayout.insertWidget(index + 1 + i, widget)
             widget.show()
-        
+
     # ------------------------------
     # Event Filter Setup
     # ------------------------------
@@ -507,6 +513,10 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
     @pyqtSlot(int)
     def onElementIdChanged(self, index):
         self.labelFoundElement.setText("")
+        self.labelFoundElementTag.setText("")
+        self.labelFoundElementTag.hide()
+        self.labelFoundElementDescription.setText("")
+        self.labelFoundElementDescription.hide()
         self.listWidget.clear()
         self.dataTableWidget.clear()
         self.setDataTableWidgetColumns()
@@ -709,10 +719,6 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         else:
             featureDescription = "" 
 
-        # self.labelFoundElement.setText(f"{featureIdText}")
-        # self.labelFoundElement.setStyleSheet("font-weight: bold; font-size: 12pt;")
-        # self.labelFoundElementTag.setText(f"{featureTag}")
-        # self.labelFoundElementDescription.setText(f"{featureDescription}")
         self.labelFoundElement.setText(f"{featureIdText}")
         self.labelFoundElement.setStyleSheet("font-weight: bold; font-size: 12pt;")
 
