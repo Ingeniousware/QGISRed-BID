@@ -65,7 +65,7 @@ class QGISRedUtils:
             if ind != 0:
                 original = original[:ind] + " " + original[ind:]
 
-        if "Demands" in original:
+        if "MultipleDemands" in original:
             original = "Multiple Demands"
         return original
 
@@ -168,7 +168,7 @@ class QGISRedUtils:
             "Sources.shp",
             "Reservoirs.shp",
             "Tanks.shp",
-            "Demands.shp",
+            "MultipleDemands.shp",
             "Junctions.shp",
             "Pumps.shp",
             "Valves.shp",
@@ -584,7 +584,7 @@ class QGISRedUtils:
                             if not qgisPath == "":
                                 QgsProject.instance().read(qgisPath)
                         else:
-                            layers = ["Pipes", "Junctions", "Demands", "Valves", "Pumps", "Tanks", "Reservoirs", "Sources"]
+                            layers = ["Pipes", "Junctions", "MultipleDemands", "Valves", "Pumps", "Tanks", "Reservoirs", "Sources"]
                             self.openGroupLayers("Inputs", layers)
                     return
             for groups in root.findall("./ThirdParty/QGISRed/Groups"):
