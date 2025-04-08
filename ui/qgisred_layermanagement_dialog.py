@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtWidgets import QDialog, QApplication
 from PyQt5.QtCore import Qt
-from qgis.core import QgsCoordinateReferenceSystem
+from qgis.core import QgsCoordinateReferenceSystem, QgsVectorLayer
 from qgis.PyQt import uic
 from qgis.gui import QgsProjectionSelectionDialog as QgsGenericProjectionSelector
 
@@ -187,8 +187,37 @@ class QGISRedLayerManagementDialog(QDialog, FORM_CLASS):
         self.layers = []
         self.createElementsList()
         self.createComplementaryList()
+        
+        # Filter out empty layers (except for Pipes)
+        filtered_layers = self.filterEmptyLayers(self.layers)
+        
         epsg = None
         if not self.crs.srsid() == self.originalCrs.srsid():
             epsg = self.crs.authid().replace("EPSG:", "")
-        self.parent.openRemoveSpecificLayers(self.layers, epsg)
+        self.parent.openRemoveSpecificLayers(filtered_layers, epsg)
         self.close()
+
+    def filterEmptyLayers(self, layer_list):
+        filtered_layers = []
+        
+        name_mapping = {
+            "Isolation Valves": "IsolationValves",
+            "Service Connections": "ServiceConnections"
+        }
+        
+        for layer_name in layer_list:
+            file_name = name_mapping.get(layer_name, layer_name)
+            
+            layer_path = os.path.join(self.ProjectDirectory, self.NetworkName + "_" + file_name + ".shp")
+            try:
+                layer = QgsVectorLayer(layer_path, file_name, "ogr")
+                if layer.isValid():
+                    is_pipe_layer = file_name.lower() == "pipes"
+                    
+                    if is_pipe_layer or layer.featureCount() > 0:
+                        filtered_layers.append(layer_name)
+                del layer
+            except Exception:
+                pass
+        
+        return filtered_layers
