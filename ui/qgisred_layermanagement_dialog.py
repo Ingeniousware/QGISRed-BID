@@ -62,7 +62,7 @@ class QGISRedLayerManagementDialog(QDialog, FORM_CLASS):
         self.btReservoirs.setVisible(not self.NetworkName + "_Reservoirs.shp" in dirList)
         self.btValves.setVisible(not self.NetworkName + "_Valves.shp" in dirList)
         self.btPumps.setVisible(not self.NetworkName + "_Pumps.shp" in dirList)
-        self.btDemands.setVisible(not self.NetworkName + "_Demands.shp" in dirList)
+        self.btDemands.setVisible(not self.NetworkName + "_MultipleDemands.shp" in dirList)
         self.btSources.setVisible(not self.NetworkName + "_Sources.shp" in dirList)
         self.btIsolatedValves.setVisible(not self.NetworkName + "_IsolationValves.shp" in dirList)
         self.btConnections.setVisible(not self.NetworkName + "_ServiceConnections.shp" in dirList)
@@ -103,7 +103,7 @@ class QGISRedLayerManagementDialog(QDialog, FORM_CLASS):
 
         hasLayer = utils.isLayerOpened("MultipleDemands")
         self.cbDemands.setChecked(hasLayer)
-        self.cbDemands.setEnabled(self.NetworkName + "_Demands.shp" in dirList)
+        self.cbDemands.setEnabled(self.NetworkName + "_MultipleDemands.shp" in dirList)
 
         hasLayer = utils.isLayerOpened("Sources")
         self.cbSources.setChecked(hasLayer)
