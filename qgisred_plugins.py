@@ -2090,12 +2090,19 @@ class QGISRed:
 
         # Restore all layers from the stored state
         if hasattr(self, 'stored_all_layers'):
+            self.clearInputGroup()
             self.restoreAllLayers(self.stored_all_layers)
         
         if resMessage == "True":
             pass
         else:
             self.iface.messageBar().pushMessage(self.tr("Error"), resMessage, level=2, duration=5)
+
+    def clearInputGroup(self):
+        inputGroup = self.getInputGroup()
+        if inputGroup:
+            for child in list(inputGroup.children()):
+                inputGroup.removeChildNode(child)
 
     def getComplementaryLayersOpened(self):
         complementary = []
