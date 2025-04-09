@@ -4897,7 +4897,10 @@ class QGISRed:
         
         # Restore query layers using existing method
         if 'Queries' in all_layers:
-            self.restoreQueryLayers(all_layers['Queries'])
+            root = QgsProject.instance().layerTreeRoot()
+            queries_group = root.findGroup("Queries")
+            if queries_group:
+                self.restoreQueryLayers(all_layers['Queries'])
         
         # Restore results layers
         if 'Results' in all_layers:
