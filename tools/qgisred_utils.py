@@ -73,10 +73,10 @@ class QGISRedUtils:
 
     def isLayerOpened(self, layerName):
         layers = self.getLayers()
-        layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + layerName + ".shp")
+        layer_identifier = f"qgisred_{layerName.lower()}"
+        
         for layer in layers:
-            openedLayerPath = self.getLayerPath(layer)
-            if openedLayerPath == layerPath:
+            if layer.customProperty("qgisred_identifier") == layer_identifier:
                 return True
         return False
 
@@ -168,41 +168,33 @@ class QGISRedUtils:
 
     def removeLayer(self, name, ext=".shp"):
         layers = self.getLayers()
-        layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + name + ext)
+        layer_identifier = f"qgisred_{name.lower()}"
+        
         for layer in layers:
-            openedLayerPath = self.getLayerPath(layer)
-            if openedLayerPath == layerPath:
+            if layer.customProperty("qgisred_identifier") == layer_identifier:
                 QgsProject.instance().removeMapLayer(layer.id())
         self.iface.mapCanvas().refresh()
         del layers
 
     """Order Layers"""
-
     def orderLayers(self, group):
         mylayersNames = [
-            "Meters.shp",
-            "ServiceConnections.shp",
-            "IsolationValves.shp",
-            "Hydrants.shp",
-            "WashoutValves.shp",
-            "AirReleaseValves.shp",
-            "Sources.shp",
-            "Reservoirs.shp",
-            "Tanks.shp",
-            "MultipleDemands.shp",
-            "Junctions.shp",
-            "Pumps.shp",
-            "Valves.shp",
-            "Pipes.shp",
+            "Meters", "ServiceConnections", "IsolationValves", "Hydrants",
+            "WashoutValves", "AirReleaseValves", "Sources", "Reservoirs",
+            "Tanks", "MultipleDemands", "Junctions", "Pumps", "Valves", "Pipes"
         ]
         layersToDelete = []
         layers = self.getLayers()
+        
         for layerName in mylayersNames:
-            layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + layerName)
+            # Generate identifier using the same pattern as setLayerIdentifier
+            layer_identifier = f"qgisred_{layerName.lower()}"
+            
             for layer in layers:
-                openedLayerPath = self.getLayerPath(layer)
-                if openedLayerPath == layerPath:
+                if layer.customProperty("qgisred_identifier") == layer_identifier:
                     layerCloned = layer.clone()
+                    # Preserve the identifier on the cloned layer
+                    layerCloned.setCustomProperty("qgisred_identifier", layer_identifier)
                     layersToDelete.append(layer.id())
                     QgsProject.instance().addMapLayer(layerCloned, group is None)
                     if group is not None:
