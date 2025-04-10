@@ -215,8 +215,9 @@ class QGISRedLayerManagementDialog(QDialog, FORM_CLASS):
                 if layer.isValid():
                     is_pipe_layer = file_name.lower() == "pipes"
                     
-                    if is_pipe_layer or layer.featureCount() > 0:
-                        filtered_layers.append(layer_name)
+                    # if is_pipe_layer or layer.featureCount() > 0:
+                    #     filtered_layers.append(layer_name)
+                    filtered_layers.append(layer_name)
                 del layer
             except Exception:
                 pass
