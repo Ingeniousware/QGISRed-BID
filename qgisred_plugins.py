@@ -1923,8 +1923,8 @@ class QGISRed:
             filtered_main_layers = self.filterEmptyLayers(self.ownMainLayers)
             filtered_complementary_layers = self.filterEmptyLayers(self.especificComplementaryLayers)
             
-            utils.openElementsLayers(inputGroup, filtered_main_layers)
-            utils.openElementsLayers(inputGroup, filtered_complementary_layers)
+            utils.openElementsLayers(inputGroup, self.ownMainLayers)
+            utils.openElementsLayers(inputGroup, self.especificComplementaryLayers) #TODO
 
             self.especificComplementaryLayers = []
 
@@ -2118,7 +2118,7 @@ class QGISRed:
         # Restore all layers from the stored state, but filter empty layers
         if hasattr(self, 'stored_all_layers'):
             self.clearInputGroup()
-            self.restoreAllLayersFiltered(self.stored_all_layers)
+            self.restoreAllLayers(self.stored_all_layers) #TODO
         
         if resMessage == "True":
             pass
@@ -5034,8 +5034,8 @@ class QGISRed:
                 is_pipe_layer = 'pipes' in layer_info['name'].lower()
                 
                 # Skip empty non-pipe input layers
-                if is_input_layer and not is_pipe_layer and new_layer.featureCount() == 0:
-                    continue
+                # if is_input_layer and not is_pipe_layer and new_layer.featureCount() == 0: TODO
+                #     continue
                     
                 # Apply style
                 if layer_info.get('style_string') and os.path.exists(layer_info['style_string']):
