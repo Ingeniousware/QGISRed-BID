@@ -231,6 +231,10 @@ class QGISRedUtils:
     """Styles"""
 
     def setStyle(self, layer, name):
+        if self is None:
+            temp_instance = QGISRedUtils()
+            return temp_instance.setStyle(layer, name)
+    
         if name == "":
             return
         stylePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "layerStyles")
@@ -239,12 +243,14 @@ class QGISRedUtils:
         qmlPath = os.path.join(stylePath, name + ".qml")
         if os.path.exists(qmlPath):
             layer.loadNamedStyle(qmlPath)
+            self.applySvgMarker(layer)
             return
 
         # Next, try user customized style
         userQmlPath = os.path.join(stylePath, name + "_user.qml")
         if os.path.exists(userQmlPath):
             layer.loadNamedStyle(userQmlPath)
+            self.applySvgMarker(layer)
             return
 
         # Fall back to backup style if available
@@ -447,6 +453,36 @@ class QGISRedUtils:
             # assign the created renderer to the layer
             if renderer is not None:
                 layer.setRenderer(renderer)
+
+    def applySvgMarker(self, layer):
+        identifier = layer.customProperty("qgisred_identifier")
+
+        if identifier in ["qgisred_tanks", "qgisred_valves", "qgisred_pumps", "qgisred_reservoirs"]:
+            marker_mapping = {
+                "qgisred_tanks": "tanks.svg",
+                "qgisred_pumps": "pumps.svg",
+                "qgisred_valves": "valves.svg",
+                "qgisred_reservoirs": "reservoirs.svg"
+            }
+
+            stylePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "layerStyles")
+            svg_file = marker_mapping[identifier]
+            svg_path = os.path.join(stylePath, svg_file)
+
+            if os.path.exists(svg_path):      
+                svg_style = {}
+                svg_style["name"] = svg_path
+                svg_style["size"] = "4"
+                
+                symbol_layer = QgsSvgMarkerSymbolLayer.create(svg_style)
+                symbol = QgsSymbol.defaultSymbol(layer.geometryType())
+                symbol.changeSymbolLayer(0, symbol_layer)
+                
+                renderer = QgsSingleSymbolRenderer(symbol)
+                layer.setRenderer(renderer)
+                layer.triggerRepaint()
+                return True
+        return False
 
     def setIssuesStyle(self, layer, name):
         """Apply style to issues layers"""
