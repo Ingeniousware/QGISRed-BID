@@ -107,35 +107,35 @@ class QGISRedUtils:
                     is_pipe_layer = is_pipe_layer or "qgisred_main_pipes" in existing_identifier.lower()
                 
                 # Only add the layer if it's a pipe layer OR has features
-                if is_pipe_layer or vlayer.featureCount() > 0:
-                    if not ext == ".dbf":
-                        if results:
-                            self.setResultStyle(vlayer)
-                        elif sectors:
-                            self.setSectorsStyle(vlayer)
-                        elif issues:
-                            pass
-                        else:
-                            self.setStyle(vlayer, name.lower())
-                    
-                    QgsProject.instance().addMapLayer(vlayer, group is None)
-                    self.setLayerIdentifier(vlayer, name) 
-                    
-                    if group is not None:
-                        if toEnd:
-                            group.addChildNode(QgsLayerTreeLayer(vlayer))
-                        else:
-                            group.insertChildNode(0, QgsLayerTreeLayer(vlayer))
-                    
+                #if True: #TODO is_pipe_layer or vlayer.featureCount() > 0:
+                if not ext == ".dbf":
                     if results:
-                        layerId = vlayer.id()
-                        del vlayer
-                        resultLayer = QgsProject.instance().mapLayer(layerId)
-                        if resultLayer:
-                            self.orderResultLayers(group)
+                        self.setResultStyle(vlayer)
+                    elif sectors:
+                        self.setSectorsStyle(vlayer)
+                    elif issues:
+                        pass
                     else:
-                        del vlayer
-                    return
+                        self.setStyle(vlayer, name.lower())
+                
+                QgsProject.instance().addMapLayer(vlayer, group is None)
+                self.setLayerIdentifier(vlayer, name) 
+                
+                if group is not None:
+                    if toEnd:
+                        group.addChildNode(QgsLayerTreeLayer(vlayer))
+                    else:
+                        group.insertChildNode(0, QgsLayerTreeLayer(vlayer))
+                
+                if results:
+                    layerId = vlayer.id()
+                    del vlayer
+                    resultLayer = QgsProject.instance().mapLayer(layerId)
+                    if resultLayer:
+                        self.orderResultLayers(group)
+                else:
+                    del vlayer
+                return
             
             del vlayer
 
@@ -287,9 +287,11 @@ class QGISRedUtils:
                 f.write(contents)
                 f.close()
                 layer.loadNamedStyle(newQmlPath)
+                self.applySvgMarker(layer)
                 os.remove(newQmlPath)
             else:
                 layer.loadNamedStyle(backupQmlPath)
+                self.applySvgMarker(layer)
             return
 
         # If no QML files are available, use SVG-based styling
@@ -456,7 +458,40 @@ class QGISRedUtils:
 
     def applySvgMarker(self, layer):
         identifier = layer.customProperty("qgisred_identifier")
-
+        
+        if not identifier or identifier not in ["qgisred_tanks", "qgisred_valves", "qgisred_pumps", "qgisred_reservoirs"]:
+            layer_name = layer.name().lower()
+            type_keywords = {
+                "tank": "qgisred_tanks",
+                "valve": "qgisred_valves", 
+                "pump": "qgisred_pumps",
+                "reservoir": "qgisred_reservoirs"
+            }
+            
+            identifier = None
+            for keyword, id_value in type_keywords.items():
+                if keyword in layer_name:
+                    identifier = id_value
+                    break
+                    
+            if not identifier:
+                file_path = self.getLayerPath(layer)
+                base_name = os.path.basename(file_path).lower()
+                for keyword, id_value in type_keywords.items():
+                    if keyword in base_name:
+                        identifier = id_value
+                        break
+            
+            if not identifier and layer.geometryType() == 0:
+                field_names = [field.name().lower() for field in layer.fields()]
+                for keyword, id_value in type_keywords.items():
+                    if any(keyword in field_name for field_name in field_names):
+                        identifier = id_value
+                        break
+            
+            if identifier:
+                layer.setCustomProperty("qgisred_identifier", identifier)
+        
         if identifier in ["qgisred_tanks", "qgisred_valves", "qgisred_pumps", "qgisred_reservoirs"]:
             marker_mapping = {
                 "qgisred_tanks": "tanks.svg",
@@ -469,12 +504,16 @@ class QGISRedUtils:
             svg_file = marker_mapping[identifier]
             svg_path = os.path.join(stylePath, svg_file)
 
-            if os.path.exists(svg_path):      
-                svg_style = {}
-                svg_style["name"] = svg_path
-                svg_style["size"] = "4"
+            if os.path.exists(svg_path):
+                svg_style = {
+                    "name": svg_path,
+                    "size": "4"
+                }
                 
                 symbol_layer = QgsSvgMarkerSymbolLayer.create(svg_style)
+                if symbol_layer is None:
+                    return False
+
                 symbol = QgsSymbol.defaultSymbol(layer.geometryType())
                 symbol.changeSymbolLayer(0, symbol_layer)
                 
@@ -482,7 +521,10 @@ class QGISRedUtils:
                 layer.setRenderer(renderer)
                 layer.triggerRepaint()
                 return True
+
         return False
+
+
 
     def setIssuesStyle(self, layer, name):
         """Apply style to issues layers"""
