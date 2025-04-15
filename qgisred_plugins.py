@@ -4656,10 +4656,18 @@ class QGISRed:
         # Run the dialog event loop
         dlg.exec_()
 
+    def findQueryGroup(self):
+        netGroup = QgsProject.instance().layerTreeRoot().findGroup(self.NetworkName)
+        if netGroup is None:
+            return None
+        
+        queryGroup = netGroup.findGroup("Queries")
+        return queryGroup
+
     def storeQueryLayers(self):
         self.random_color_queries = ['Material'] 
         query_layers = []
-        queries_group = self.getQueryGroup()
+        queries_group = self.findQueryGroup()
 
         if queries_group:
             self._storeLayersRecursive(queries_group, query_layers, group_path=[], group_positions=[])
