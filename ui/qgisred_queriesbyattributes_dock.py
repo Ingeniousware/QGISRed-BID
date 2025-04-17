@@ -14,3 +14,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         self.setupUi(self) 
         self.iface = iface
         self.canvas = iface.mapCanvas()
+
+    def resizeToMinimumHeight(self):
+        self.layout().activate()
+        self.adjustSize()

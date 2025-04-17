@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>381</width>
-    <height>513</height>
+    <width>374</width>
+    <height>471</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -28,8 +28,8 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>363</width>
-         <height>473</height>
+         <width>356</width>
+         <height>431</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout">
@@ -158,7 +158,14 @@
            </widget>
           </item>
           <item>
-           <widget class="QGraphicsView" name="graphicsViewCriteria"/>
+           <widget class="QGraphicsView" name="graphicsViewCriteria">
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>50</height>
+             </size>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>
@@ -217,7 +224,20 @@
            </widget>
           </item>
           <item>
-           <widget class="QGraphicsView" name="graphicsViewProperty"/>
+           <widget class="QGraphicsView" name="graphicsViewProperty">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>50</height>
+             </size>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>
@@ -226,7 +246,10 @@
           <item>
            <widget class="QLabel" name="labelSlider">
             <property name="text">
-             <string>TextLabel</string>
+             <string>Day 1, 15:10</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
             </property>
            </widget>
           </item>
