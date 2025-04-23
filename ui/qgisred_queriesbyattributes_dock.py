@@ -20,7 +20,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         self.initializeQueriesByAttributes()
 
     def initializeQueriesByAttributes(self):
-        # storage for user-defined criteria
+        # storage for user-defined criteria TODO
         self.criteria = []
         self.currentlyReplacingIndex = None
 
