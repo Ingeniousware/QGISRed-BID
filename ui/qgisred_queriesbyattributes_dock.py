@@ -41,7 +41,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
 
         # condition types by field category
         self.conditionsByType = {
-            'numeric': ['=', '>', '<'], #'>=', '<=', '≠'],
+            'numeric': ['=', '>', '<', '>=', '<=', '≠'],
             'text': ['=', '≠', 'contains', 'starts with', 'ends with'],
             'date': ['=', '>', '<', '>=', '<=', '≠'],
             'boolean': ['is true', 'is false']
