@@ -20,7 +20,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         self.initializeQueriesByAttributes()
 
     def initializeQueriesByAttributes(self):
-        # storage for user-defined criteria TODO
+        # storage for user-defined criteria
         self.criteria = []
         self.currentlyReplacingIndex = None
 
@@ -56,22 +56,31 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
             'bool': 'listed'
         }
 
-        # set up criteria table
-        if self.tableWidgetCriteria.columnCount() == 0:
-            self.tableWidgetCriteria.setColumnCount(1)
-            self.tableWidgetCriteria.setHorizontalHeaderLabels(["Query Conditions"])
-            self.tableWidgetCriteria.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        # set up criteria table com 3 colunas: Id, Oper, Criteria
+        self.tableWidgetCriteria.setColumnCount(3)
+        self.tableWidgetCriteria.setHorizontalHeaderLabels(["Id", "Oper", "Criteria"])
+        self.tableWidgetCriteria.verticalHeader().setVisible(False)
+        h = self.tableWidgetCriteria.horizontalHeader()
+        h.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # coluna Id
+        h.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # coluna Oper
+        h.setSectionResizeMode(2, QHeaderView.Stretch)           # coluna Criteria
 
         # set up statistics table
         if self.tableWidgetStatistics.columnCount() == 0:
             self.tableWidgetStatistics.setColumnCount(5)
-            self.tableWidgetStatistics.setHorizontalHeaderLabels(["Count","Sum","Avg","Min","Max"])
+            self.tableWidgetStatistics.setHorizontalHeaderLabels(
+                ["Count", "Sum", "Avg", "Min", "Max"]
+            )
             for i in range(5):
-                self.tableWidgetStatistics.horizontalHeader().setSectionResizeMode(i, QHeaderView.Stretch)
+                self.tableWidgetStatistics.horizontalHeader().setSectionResizeMode(
+                    i, QHeaderView.Stretch
+                )
 
+        # initialize other parts
         self.initializeElementTypes()
         self.setupConnections()
         self.setupButtonIcons()
+
 
     def setupButtonIcons(self):
         self.btImport.setIcon(QIcon(":/plugins/QGISRed/images/iconStatisticsImport.png"))
@@ -206,15 +215,40 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
 
     def reloadCriteriaTable(self):
         tbl = self.tableWidgetCriteria
-        tbl.setRowCount(0)
+        tbl.setRowCount(len(self.criteria))
+
         for i, c in enumerate(self.criteria):
-            op  = c.get('operator', '+')
-            txt = f"{op} {c['property']} {c['condition']} {c['value']}"
-            item = QTableWidgetItem(txt)
-            item.setTextAlignment(Qt.AlignCenter)
-            tbl.insertRow(i)
-            tbl.setItem(i, 0, item)
+            op = c.get('operator', '+')
+
+            # 1) Id: Cr1, Cr2, ...
+            id_item = QTableWidgetItem(f"Cr{i+1}")
+            id_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+
+            # 2) Oper: + ou -, alinhamento conforme o sinal
+            oper_item = QTableWidgetItem(op)
+            oper_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+            if op == '-':
+                oper_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            else:
+                oper_item.setTextAlignment(Qt.AlignLeft  | Qt.AlignVCenter)
+
+            # 3) Criteria: texto completo e, em Qt.UserRole, guardamos o dict
+            crit_txt = f"{c['property']} {c['condition']} {c['value']}"
+            crit_item = QTableWidgetItem(crit_txt)
+            crit_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+            crit_item.setTextAlignment(Qt.AlignCenter)
+
+            # montamos a expressão para QgsExpression e armazenamos
+            expr = self.buildExpression(c)
+            crit_item.setData(Qt.UserRole, {'expression': expr, 'operator': op})
+
+            # inserimos os 3 itens na linha i
+            tbl.setItem(i, 0, id_item)
+            tbl.setItem(i, 1, oper_item)
+            tbl.setItem(i, 2, crit_item)
+
         self.updateButtonsState()
+
 
     def addCriterion(self, operator):
         prop    = self.cbProperty.currentText()
