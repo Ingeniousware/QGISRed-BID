@@ -20,11 +20,9 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         self.initializeQueriesByAttributes()
 
     def initializeQueriesByAttributes(self):
-        # storage for user-defined criteria
         self.criteria = []
         self.currentlyReplacingIndex = None
 
-        # map element names to identifiers
         self.elementIdentifiers = {
             'Pipes': 'qgisred_pipes',
             'Junctions': 'qgisred_junctions',
@@ -39,13 +37,11 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
             'Meters': 'qgisred_meters'
         }
 
-        # condition types by field category
         self.conditionsByType = {
             'numeric': ['=', '>', '<', '>=', '<=', '≠'],
             'listed': ['=']
         }
 
-        # QGIS field type to our categories
         self.fieldTypeMapping = {
             'int': 'numeric',
             'double': 'numeric',
@@ -56,14 +52,13 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
             'bool': 'listed'
         }
 
-        # set up criteria table com 3 colunas: Id, Oper, Criteria
         self.tableWidgetCriteria.setColumnCount(3)
         self.tableWidgetCriteria.setHorizontalHeaderLabels(["Id", "Oper", "Criteria"])
         self.tableWidgetCriteria.verticalHeader().setVisible(False)
         h = self.tableWidgetCriteria.horizontalHeader()
-        h.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # coluna Id
-        h.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # coluna Oper
-        h.setSectionResizeMode(2, QHeaderView.Stretch)           # coluna Criteria
+        h.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        h.setSectionResizeMode(1, QHeaderView.ResizeToContents)  
+        h.setSectionResizeMode(2, QHeaderView.Stretch)          
 
         # set up statistics table
         if self.tableWidgetStatistics.columnCount() == 0:
@@ -76,7 +71,6 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
                     i, QHeaderView.Stretch
                 )
 
-        # initialize other parts
         self.initializeElementTypes()
         self.setupConnections()
         self.setupButtonIcons()
@@ -104,7 +98,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         self.btClear.clicked.connect(self.clearCriteria)
         self.btSubmit.clicked.connect(self.runQuery)
         # stats property change
-        self.cbStatisticsFor.currentIndexChanged.connect(self.calculateStatistics)
+        #self.cbStatisticsFor.currentIndexChanged.connect(self.calculateStatistics)
         # initial button state
         self.updateButtonsState()
 
@@ -133,10 +127,12 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         if not layer:
             return
         self.cbProperty.clear()
+        #self.cbStatisticsFor.clear()
         for field in layer.fields():
             fn = field.name()
             if fn.lower() not in ('id','descrip'):
                 self.cbProperty.addItem(fn)
+                #self.cbStatisticsFor.addItem(fn)
         if self.cbProperty.count():
             self.updateConditions()
             self.updateValues()
@@ -153,30 +149,31 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         self.cbCondition.addItems(self.conditionsByType.get('numeric', [])) #all numeric for now
 
     def updateValues(self):
-        self.cbValue.clear()
-        prop = self.cbProperty.currentText()
-        layer = self.cbElementType.currentData(Qt.UserRole)
-        if not layer or not prop:
-            return
-        field = layer.fields().field(prop)
-        cat = self.fieldTypeMapping.get(field.typeName().lower(), 'text')
-        if cat == 'boolean':
-            self.cbValue.addItems(['true','false'])
-        elif cat == 'numeric':
-            mn, mx = self.getFieldMinMax(layer, prop)
-            if mn is not None and mx is not None:
-                interval = (mx - mn) / 5.0
-                for i in range(5):
-                    start = mn + i*interval
-                    end   = mn + (i+1)*interval
-                    if i == 4:
-                        end = mx
-                    self.cbValue.addItem(f"{start:.2f} - {end:.2f}")
-        else:
-            vals = self.getUniqueFieldValues(layer, prop)
-            for v in vals:
-                if v is not None:
-                    self.cbValue.addItem(str(v))
+        ...
+        # self.cbValue.clear()
+        # prop = self.cbProperty.currentText()
+        # layer = self.cbElementType.currentData(Qt.UserRole)
+        # if not layer or not prop:
+        #     return
+        # field = layer.fields().field(prop)
+        # cat = self.fieldTypeMapping.get(field.typeName().lower(), 'text')
+        # if cat == 'boolean':
+        #     self.cbValue.addItems(['true','false'])
+        # elif cat == 'numeric':
+        #     mn, mx = self.getFieldMinMax(layer, prop)
+        #     if mn is not None and mx is not None:
+        #         interval = (mx - mn) / 5.0
+        #         for i in range(5):
+        #             start = mn + i*interval
+        #             end   = mn + (i+1)*interval
+        #             if i == 4:
+        #                 end = mx
+        #             self.cbValue.addItem(f"{start:.2f} - {end:.2f}")
+        # else:
+        #     vals = self.getUniqueFieldValues(layer, prop)
+        #     for v in vals:
+        #         if v is not None:
+        #             self.cbValue.addItem(str(v))
 
     def getFieldMinMax(self, layer, name):
         mn = mx = None
@@ -220,11 +217,9 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         for i, c in enumerate(self.criteria):
             op = c.get('operator', '+')
 
-            # 1) Id: Cr1, Cr2, ...
             id_item = QTableWidgetItem(f"Cr{i+1}")
             id_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
 
-            # 2) Oper: + ou -, alinhamento conforme o sinal
             oper_item = QTableWidgetItem(op)
             oper_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
             if op == '-':
@@ -232,17 +227,14 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
             else:
                 oper_item.setTextAlignment(Qt.AlignLeft  | Qt.AlignVCenter)
 
-            # 3) Criteria: texto completo e, em Qt.UserRole, guardamos o dict
             crit_txt = f"{c['property']} {c['condition']} {c['value']}"
             crit_item = QTableWidgetItem(crit_txt)
             crit_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
             crit_item.setTextAlignment(Qt.AlignCenter)
 
-            # montamos a expressão para QgsExpression e armazenamos
             expr = self.buildExpression(c)
             crit_item.setData(Qt.UserRole, {'expression': expr, 'operator': op})
 
-            # inserimos os 3 itens na linha i
             tbl.setItem(i, 0, id_item)
             tbl.setItem(i, 1, oper_item)
             tbl.setItem(i, 2, crit_item)
@@ -253,7 +245,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
     def addCriterion(self, operator):
         prop    = self.cbProperty.currentText()
         cond    = self.cbCondition.currentText()
-        val_txt = self.cbValue.currentText()
+        val_txt = self.cbValue.value()
         if not prop or not cond or not val_txt:
             return
         val  = self.parseValue(val_txt)
@@ -276,7 +268,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
             self.currentlyReplacingIndex = row
             self.cbProperty .setCurrentText(crit['property'])
             self.cbCondition.setCurrentText(crit['condition'])
-            self.cbValue.setCurrentText(str(crit['value']))
+            self.cbValue.setValue(str(crit['value']))
             self.btAdd.setEnabled(False)
             self.btSubtract.setEnabled(False)
             self.btClear.setEnabled(False)
@@ -306,10 +298,70 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         return f"{fld} {op} {val}"
 
     def runQuery(self):
-        ...
+        property = self.cbProperty.currentText()
+        self.labelStatisticsProperty.setText(property)
+        self.labelStatisticsPropertyFor.setText(f"Statistics of {property} for selected Elements")
+        self.calculateStatistics()
 
     def calculateStatistics(self):
-        ...
+        layer = self.cbElementType.currentData(Qt.UserRole)
+        if not layer:
+            return
+
+        field = self.cbProperty.currentText()
+        if not field:
+            return
+
+        stats_per_crit = []
+        for c in self.criteria:
+            expr = self.buildExpression(c)
+            req  = QgsFeatureRequest().setFilterExpression(expr)
+            vals = [
+                feat[field]
+                for feat in layer.getFeatures(req)
+                if feat[field] is not None
+            ]
+            stats_per_crit.append(vals)
+
+        plus_exprs  = [self.buildExpression(c) for c in self.criteria if c['operator']=='+']
+        minus_exprs = [self.buildExpression(c) for c in self.criteria if c['operator']=='-']
+        or_part     = ' OR '.join(plus_exprs)
+        nand_part   = ' AND '.join(minus_exprs)
+        full_expr   = ' AND '.join(filter(None, [
+            or_part,
+            f"NOT ({nand_part})" if nand_part else ''
+        ]))
+        req_all     = QgsFeatureRequest().setFilterExpression(full_expr)
+        vals_all    = [
+            feat[field]
+            for feat in layer.getFeatures(req_all)
+            if feat[field] is not None
+        ]
+        stats_per_crit.append(vals_all)
+
+        def comp(vals):
+            cnt   = len(vals)
+            total = sum(vals) if cnt else 0
+            avg   = total/cnt     if cnt else 0
+            mn    = min(vals)     if cnt else None
+            mx    = max(vals)     if cnt else None
+            return cnt, total, avg, mn, mx
+
+        stats_list = [comp(v) for v in stats_per_crit]
+
+        tbl = self.tableWidgetStatistics
+        tbl.setRowCount(len(stats_list))
+        tbl.verticalHeader().setVisible(True)
+
+        for i, (cnt, total, avg, mn, mx) in enumerate(stats_list):
+            for j, val in enumerate((cnt, total, avg, mn, mx)):
+                txt = f"{val:.2f}" if isinstance(val, float) else str(val)
+                item = QTableWidgetItem(txt)
+                item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+                tbl.setItem(i, j, item)
+
+            label = "All" if i == len(stats_list) - 1 else f"Cr{i+1}"
+            tbl.setVerticalHeaderItem(i, QTableWidgetItem(label))
 
     def closeEvent(self, event):
         self.clearCriteria()
