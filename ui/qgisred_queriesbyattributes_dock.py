@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtWidgets import QDockWidget, QTableWidgetItem, QHeaderView
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QColor, QIcon
 from qgis.PyQt import uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsFeatureRequest
 import os
@@ -42,20 +42,18 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         # condition types by field category
         self.conditionsByType = {
             'numeric': ['=', '>', '<', '>=', '<=', '≠'],
-            'text': ['=', '≠', 'contains', 'starts with', 'ends with'],
-            'date': ['=', '>', '<', '>=', '<=', '≠'],
-            'boolean': ['is true', 'is false']
+            'listed': ['=']
         }
 
         # QGIS field type to our categories
         self.fieldTypeMapping = {
             'int': 'numeric',
             'double': 'numeric',
-            'string': 'text',
-            'date': 'date',
-            'datetime': 'date',
-            'time': 'date',
-            'bool': 'boolean'
+            'string': 'listed',
+            'date': 'numeric',
+            'datetime': 'numeric',
+            'time': 'numeric',
+            'bool': 'listed'
         }
 
         # set up criteria table
@@ -73,6 +71,18 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
 
         self.initializeElementTypes()
         self.setupConnections()
+        self.setupButtonIcons()
+
+    def setupButtonIcons(self):
+        self.btImport.setIcon(QIcon(":/plugins/QGISRed/images/iconStatisticsImport.png"))
+        self.btExport.setIcon(QIcon(":/plugins/QGISRed/images/iconStatisticsExport.png"))
+
+        self.btCriteriaUp.setIcon(QIcon(":/plugins/QGISRed/images/iconStatisticsArrowUp.png"))
+        self.btCriteriaDown.setIcon(QIcon(":/plugins/QGISRed/images/iconStatisticsArrowDown.png"))
+        self.btCriteriaClear.setIcon(QIcon(":/plugins/QGISRed/images/iconStatisticsDelete.png"))
+        self.btCriteriaEdit.setIcon(QIcon(":/plugins/QGISRed/images/iconStatisticsEdit.png"))
+
+        self.btExcel.setIcon(QIcon(":/plugins/QGISRed/images/iconStatisticsExcel.png"))
 
     def setupConnections(self):
         # element / property updates
