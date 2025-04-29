@@ -98,9 +98,13 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         self.btClear.clicked.connect(self.clearCriteria)
         self.btSubmit.clicked.connect(self.runQuery)
         # stats property change
-        #self.cbStatisticsFor.currentIndexChanged.connect(self.calculateStatistics)
+        self.cbStatisticsFor.currentIndexChanged.connect(self.onStatisticsForChanged)
         # initial button state
         self.updateButtonsState()
+
+    def onStatisticsForChanged(self):
+        if self.cbStatisticsFor.isEnabled():
+            self.calculateStatistics()
 
     def initializeElementTypes(self):
         self.cbElementType.clear()
@@ -121,18 +125,20 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         self.btClear.setEnabled(has)
         self.btSubmit.setEnabled(has)
         self.cbElementType.setEnabled(not has)
+        self.cbStatisticsFor.setEnabled(has)
 
     def updateProperties(self):
         layer = self.cbElementType.currentData(Qt.UserRole)
         if not layer:
             return
         self.cbProperty.clear()
-        #self.cbStatisticsFor.clear()
+        self.cbStatisticsFor.clear()
+        #self.cbStatisticsFor.addItem("")
         for field in layer.fields():
             fn = field.name()
             if fn.lower() not in ('id','descrip'):
                 self.cbProperty.addItem(fn)
-                #self.cbStatisticsFor.addItem(fn)
+                self.cbStatisticsFor.addItem(fn)
         if self.cbProperty.count():
             self.updateConditions()
             self.updateValues()
@@ -272,6 +278,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
             self.btAdd.setEnabled(False)
             self.btSubtract.setEnabled(False)
             self.btClear.setEnabled(False)
+            self.cbStatisticsFor.setEnabled(False)
         else:
             self.addCriterion(self.criteria[self.currentlyReplacingIndex]['operator'])
 
@@ -308,7 +315,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         if not layer:
             return
 
-        field = self.cbProperty.currentText()
+        field = self.cbStatisticsFor.currentText()
         if not field:
             return
 
