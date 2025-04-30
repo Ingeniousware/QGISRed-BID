@@ -306,69 +306,83 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
 
     def runQuery(self):
         property = self.cbProperty.currentText()
-        self.labelStatisticsProperty.setText(property)
+        #self.labelStatisticsProperty.setText(property)
         self.labelStatisticsPropertyFor.setText(f"Statistics of {property} for selected Elements")
         self.calculateStatistics()
 
     def calculateStatistics(self):
-        layer = self.cbElementType.currentData(Qt.UserRole)
-        if not layer:
+        selectedLayer = self.cbElementType.currentData(Qt.UserRole)
+        if not selectedLayer:
             return
 
-        field = self.cbStatisticsFor.currentText()
-        if not field:
+        targetField = self.cbStatisticsFor.currentText()
+        if not targetField:
             return
 
-        stats_per_crit = []
-        for c in self.criteria:
-            expr = self.buildExpression(c)
-            req  = QgsFeatureRequest().setFilterExpression(expr)
-            vals = [
-                feat[field]
-                for feat in layer.getFeatures(req)
-                if feat[field] is not None
+        # Collect feature values per individual criterion
+        statsPerCriterion = []
+        for criterion in self.criteria:
+            filterExpression = self.buildExpression(criterion)
+            featureRequest = QgsFeatureRequest().setFilterExpression(filterExpression)
+            featureValues = [
+                feat[targetField]
+                for feat in selectedLayer.getFeatures(featureRequest)
+                if feat[targetField] is not None
             ]
-            stats_per_crit.append(vals)
+            statsPerCriterion.append(featureValues)
 
-        plus_exprs  = [self.buildExpression(c) for c in self.criteria if c['operator']=='+']
-        minus_exprs = [self.buildExpression(c) for c in self.criteria if c['operator']=='-']
-        or_part     = ' OR '.join(plus_exprs)
-        nand_part   = ' AND '.join(minus_exprs)
-        full_expr   = ' AND '.join(filter(None, [
-            or_part,
-            f"NOT ({nand_part})" if nand_part else ''
-        ]))
-        req_all     = QgsFeatureRequest().setFilterExpression(full_expr)
-        vals_all    = [
-            feat[field]
-            for feat in layer.getFeatures(req_all)
-            if feat[field] is not None
+        # Build expressions for included and excluded criteria
+        includeExpressions = [
+            self.buildExpression(crit)
+            for crit in self.criteria
+            if crit['operator'] == '+'
         ]
-        stats_per_crit.append(vals_all)
+        excludeExpressions = [
+            self.buildExpression(crit)
+            for crit in self.criteria
+            if crit['operator'] == '-'
+        ]
+        inclusionExpressionString = ' OR '.join(includeExpressions)
+        exclusionExpressionString = ' AND '.join(excludeExpressions)
 
-        def comp(vals):
-            cnt   = len(vals)
-            total = sum(vals) if cnt else 0
-            avg   = total/cnt     if cnt else 0
-            mn    = min(vals)     if cnt else None
-            mx    = max(vals)     if cnt else None
-            return cnt, total, avg, mn, mx
+        # Combine into full filter: (includes) AND NOT (excludes)
+        combinedExpression = ' AND '.join(filter(None, [
+            inclusionExpressionString,
+            f"NOT ({exclusionExpressionString})" if exclusionExpressionString else ''
+        ]))
+        allFeaturesRequest = QgsFeatureRequest().setFilterExpression(combinedExpression)
+        allFeatureValues = [
+            feat[targetField]
+            for feat in selectedLayer.getFeatures(allFeaturesRequest)
+            if feat[targetField] is not None
+        ]
+        statsPerCriterion.append(allFeatureValues)
 
-        stats_list = [comp(v) for v in stats_per_crit]
+        # Helper to compute count, sum, average, min, max
+        def computeMetrics(values):
+            count = len(values)
+            totalValue = sum(values) if count else 0
+            averageValue = totalValue / count if count else 0
+            minValue = min(values) if count else None
+            maxValue = max(values) if count else None
+            return count, totalValue, averageValue, minValue, maxValue
 
-        tbl = self.tableWidgetStatistics
-        tbl.setRowCount(len(stats_list))
-        tbl.verticalHeader().setVisible(True)
+        statsResults = [computeMetrics(vals) for vals in statsPerCriterion]
 
-        for i, (cnt, total, avg, mn, mx) in enumerate(stats_list):
-            for j, val in enumerate((cnt, total, avg, mn, mx)):
-                txt = f"{val:.2f}" if isinstance(val, float) else str(val)
-                item = QTableWidgetItem(txt)
-                item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-                tbl.setItem(i, j, item)
+        # Populate the statistics table
+        statisticsTable = self.tableWidgetStatistics
+        statisticsTable.setRowCount(len(statsResults))
+        statisticsTable.verticalHeader().setVisible(True)
 
-            label = "All" if i == len(stats_list) - 1 else f"Cr{i+1}"
-            tbl.setVerticalHeaderItem(i, QTableWidgetItem(label))
+        for rowIndex, (count, totalValue, averageValue, minValue, maxValue) in enumerate(statsResults):
+            for colIndex, value in enumerate((count, totalValue, averageValue, minValue, maxValue)):
+                cellText = f"{value:.2f}" if isinstance(value, float) else str(value)
+                tableItem = QTableWidgetItem(cellText)
+                tableItem.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+                statisticsTable.setItem(rowIndex, colIndex, tableItem)
+
+            rowLabel = "All" if rowIndex == len(statsResults) - 1 else f"Cr{rowIndex+1}"
+            statisticsTable.setVerticalHeaderItem(rowIndex, QTableWidgetItem(rowLabel))
 
     def closeEvent(self, event):
         self.clearCriteria()
