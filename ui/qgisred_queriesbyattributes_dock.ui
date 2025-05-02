@@ -39,7 +39,7 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>0</y>
+         <y>-181</y>
          <width>265</width>
          <height>536</height>
         </rect>
@@ -251,6 +251,11 @@
               <layout class="QHBoxLayout" name="horizontalLayout_4">
                <item>
                 <widget class="QTableWidget" name="tableWidgetCriteria">
+                 <property name="font">
+                  <font>
+                   <family>MS Shell Dlg 2</family>
+                  </font>
+                 </property>
                  <property name="gridStyle">
                   <enum>Qt::SolidLine</enum>
                  </property>
@@ -418,7 +423,13 @@
                 </widget>
                </item>
                <item>
-                <widget class="QTableWidget" name="tableWidgetStatistics"/>
+                <widget class="QTableWidget" name="tableWidgetStatistics">
+                 <property name="font">
+                  <font>
+                   <family>MS Shell Dlg 2</family>
+                  </font>
+                 </property>
+                </widget>
                </item>
               </layout>
              </item>
