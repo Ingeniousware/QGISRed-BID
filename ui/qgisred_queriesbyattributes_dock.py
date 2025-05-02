@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtWidgets import QDockWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QIcon
+from PyQt5.QtGui import QColor, QIcon, QFont  
 from qgis.PyQt import uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsFeatureRequest
 import os
@@ -38,7 +38,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         }
 
         self.conditionsByType = {
-            'numeric': ['=', '>', '<', '>=', '<=', '≠'],
+            'numeric': ['>=', '<=', '=', '>', '<', '≠'],
             'listed': ['=']
         }
 
@@ -228,6 +228,11 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
 
             operItem = QTableWidgetItem(op)
             operItem.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+
+            font = QFont()
+            font.setPointSize(12)
+            operItem.setFont(font)
+
             if op == '-':
                 operItem.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             else:
