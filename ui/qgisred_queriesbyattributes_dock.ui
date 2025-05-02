@@ -39,9 +39,9 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>-181</y>
+         <y>0</y>
          <width>265</width>
-         <height>536</height>
+         <height>565</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout">
@@ -306,6 +306,19 @@
                   </widget>
                  </item>
                  <item>
+                  <widget class="QPushButton" name="btCriteriaSwitch">
+                   <property name="maximumSize">
+                    <size>
+                     <width>20</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string/>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
                   <widget class="QPushButton" name="btCriteriaEdit">
                    <property name="maximumSize">
                     <size>
@@ -359,6 +372,9 @@
            <widget class="QPushButton" name="btSubmit">
             <property name="text">
              <string>Submit</string>
+            </property>
+            <property name="checkable">
+             <bool>false</bool>
             </property>
            </widget>
           </item>

@@ -70,6 +70,12 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
                     i, QHeaderView.Stretch
                 )
 
+
+        self.criteria = []
+        self.currentlyReplacingIndex = None
+        # track which row (if any) is being edited
+        self.editingIndex = None
+
         self.initializeElementTypes()
         self.setupConnections()
         self.setupButtonIcons()
@@ -84,6 +90,11 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         self.btCriteriaClear.setIcon(QIcon(":/plugins/QGISRed/images/iconStatisticsDelete.png"))
         self.btCriteriaEdit.setIcon(QIcon(":/plugins/QGISRed/images/iconStatisticsEdit.png"))
 
+        self.iconSwitchEnabled  = QIcon(":/plugins/QGISRed/images/iconSwitchEnabled.png")
+        self.iconSwitchDisabled = QIcon(":/plugins/QGISRed/images/iconSwitchDisabled.png")
+
+        self.btCriteriaSwitch.setIcon(self.iconSwitchEnabled)
+
         self.btExcel.setIcon(QIcon(":/plugins/QGISRed/images/iconStatisticsExcel.png"))
 
     def setupConnections(self):
@@ -96,6 +107,20 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         self.btReplace.clicked.connect(self.replaceCriterion)
         self.btClear.clicked.connect(self.clearCriteria)
         self.btSubmit.clicked.connect(self.runQuery)
+
+        # criteria table buttons
+        self.btCriteriaUp.clicked.connect(self.moveCriterionUp)
+        self.btCriteriaDown.clicked.connect(self.moveCriterionDown)
+        self.btCriteriaClear.clicked.connect(self.clearCriteriaItem)
+        self.btCriteriaEdit.setCheckable(True)
+        self.btCriteriaEdit.clicked.connect(self.toggleEditCriterion)
+
+        self.btCriteriaSwitch.setCheckable(True)
+        # when clicked, toggle enabled on the selected row
+        self.btCriteriaSwitch.clicked.connect(self.toggleCriterionEnabled)
+        # keep the switch’s checked‐state in sync whenever the selection changes
+        self.tableWidgetCriteria.currentCellChanged.connect(self.onCriteriaSelectionChanged)
+
         # stats property change
         self.cbStatisticsFor.currentIndexChanged.connect(self.onStatisticsForChanged)
         # initial button state
@@ -125,6 +150,38 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         self.btSubmit.setEnabled(has)
         self.cbElementType.setEnabled(not has)
         self.cbStatisticsFor.setEnabled(has)
+
+    def moveCriterionUp(self):
+        row = self.tableWidgetCriteria.currentRow()
+        if row > 0:
+            self.criteria[row - 1], self.criteria[row] = (
+                self.criteria[row],
+                self.criteria[row - 1],
+            )
+            self.reloadCriteriaTable()
+            self.tableWidgetCriteria.selectRow(row - 1)
+
+    def moveCriterionDown(self):
+        row = self.tableWidgetCriteria.currentRow()
+        if 0 <= row < len(self.criteria) - 1:
+            self.criteria[row], self.criteria[row + 1] = (
+                self.criteria[row + 1],
+                self.criteria[row],
+            )
+            self.reloadCriteriaTable()
+            self.tableWidgetCriteria.selectRow(row + 1)
+
+    def clearCriteriaItem(self):
+        row = self.tableWidgetCriteria.currentRow()
+        if row >= 0:
+            self.criteria.pop(row)
+        else:
+            self.criteria = []
+        self.currentlyReplacingIndex = None
+
+        self.reloadCriteriaTable()
+
+        self.tableWidgetCriteria.clearSelection()
 
     def updateProperties(self):
         layer = self.cbElementType.currentData(Qt.UserRole)
@@ -217,40 +274,52 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
 
     def reloadCriteriaTable(self):
         tbl = self.tableWidgetCriteria
-        # ensure two columns: operator and criteria text
+        # Ensure two columns: operator and criteria text
         tbl.setColumnCount(2)
         tbl.setHorizontalHeaderLabels(["  Oper  ", "Criteria"])
+        # One row per criterion
         tbl.setRowCount(len(self.criteria))
         tbl.verticalHeader().setVisible(True)
 
         for i, crit in enumerate(self.criteria):
             op = crit.get('operator', '+')
+            enabled = crit.get('enabled', True)
 
+            # Operator cell
             operItem = QTableWidgetItem(op)
             operItem.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-
             font = QFont()
             font.setPointSize(12)
             operItem.setFont(font)
-
             if op == '-':
                 operItem.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             else:
                 operItem.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
+            # Criteria text cell
             critText = f"{crit['property']} {crit['condition']} {crit['value']}"
             critItem = QTableWidgetItem(critText)
             critItem.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
             critItem.setTextAlignment(Qt.AlignCenter)
             expr = self.buildExpression(crit)
-            critItem.setData(Qt.UserRole, {'expression': expr, 'operator': op})
+            critItem.setData(Qt.UserRole, {'expression': expr, 'operator': op, 'enabled': enabled})
+
+            # Grey out & strike-through if disabled
+            if not enabled:
+                for item in (operItem, critItem):
+                    item.setForeground(QColor(Qt.gray))
+                    f2 = item.font()
+                    f2.setStrikeOut(True)
+                    item.setFont(f2)
 
             tbl.setItem(i, 0, operItem)
             tbl.setItem(i, 1, critItem)
 
+            # Label the row header (Cr1, Cr2...)
             label = f"Cr{i+1}"
             tbl.setVerticalHeaderItem(i, QTableWidgetItem(label))
 
+        # Update state of buttons based on new selection / criteria
         self.updateButtonsState()
 
 
@@ -261,12 +330,20 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         if not prop or not cond or not val_txt:
             return
         val  = self.parseValue(val_txt)
-        crit = {'property': prop, 'condition': cond, 'value': val, 'operator': operator}
+        crit = {
+            'property': prop,
+            'condition': cond,
+            'value':     val,
+            'operator':  operator,
+            'enabled':   True
+        }
         if self.currentlyReplacingIndex is None:
             self.criteria.append(crit)
         else:
-            op = self.criteria[self.currentlyReplacingIndex]['operator']
-            crit['operator'] = op
+            # preserve the original operator (and enabled flag)
+            old = self.criteria[self.currentlyReplacingIndex]
+            crit['operator'] = old['operator']
+            crit['enabled']  = old.get('enabled', True)
             self.criteria[self.currentlyReplacingIndex] = crit
             self.currentlyReplacingIndex = None
         self.reloadCriteriaTable()
@@ -328,6 +405,9 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         # Collect feature values per individual criterion
         statsPerCriterion = []
         for criterion in self.criteria:
+            if not criterion.get('enabled', True):
+                continue
+
             filterExpression = self.buildExpression(criterion)
             featureRequest = QgsFeatureRequest().setFilterExpression(filterExpression)
             featureValues = [
@@ -389,17 +469,151 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
             rowLabel = "All" if rowIndex == len(statsResults) - 1 else f"Cr{rowIndex+1}"
             statisticsTable.setVerticalHeaderItem(rowIndex, QTableWidgetItem(rowLabel))
 
-        # ─── STEP 1: Highlight the “All” row in yellow ────────────────
         lastRow = statisticsTable.rowCount() - 1
         for col in range(statisticsTable.columnCount()):
             item = statisticsTable.item(lastRow, col)
             if item:
                 item.setBackground(QColor(Qt.yellow))
-        # also color the row header cell
         statisticsTable.verticalHeaderItem(lastRow).setBackground(QColor(Qt.yellow))
 
-        # ─── STEP 2: Always scroll the “All” row into view ────────────
-        # statisticsTable.scrollToItem(
-        #     statisticsTable.item(lastRow, 0),
-        #     QAbstractItemView.PositionAtBottom
-        # )
+
+    def toggleEditCriterion(self):
+        """Switch in and out of edit‐mode on the selected row."""
+        if self.btCriteriaEdit.isChecked():
+            self.startCriterionEdit()
+        else:
+            self.commitCriterionEdit()
+
+    def startCriterionEdit(self):
+        row = self.tableWidgetCriteria.currentRow()
+        if row < 0:
+            # nothing selected → cancel edit
+            self.btCriteriaEdit.setChecked(False)
+            return
+
+        self.editingIndex = row
+        crit = self.criteria[row]
+
+        # load into the controls
+        self.cbProperty.setCurrentText(crit['property'])
+        self.updateConditions()
+        self.cbCondition.setCurrentText(crit['condition'])
+        self.updateValues()
+
+        # cbValue may be a QLineEdit (QgsFilterLineEdit) or spinbox or combo:
+        val = crit['value']
+        if hasattr(self.cbValue, 'setText'):
+            # line‐edit style
+            self.cbValue.setText(str(val))
+        else:
+            # spinbox style
+            try:
+                self.cbValue.setValue(val)
+            except Exception:
+                # combo‐box fallback
+                idx = self.cbValue.findText(str(val))
+                if idx >= 0:
+                    self.cbValue.setCurrentIndex(idx)
+
+        # disable other actions while editing
+        for btn in (
+            self.btAdd,
+            self.btSubtract,
+            self.btCriteriaUp,
+            self.btCriteriaDown,
+            self.btCriteriaClear,
+            self.btSubmit,
+        ):
+            btn.setEnabled(False)
+
+    def commitCriterionEdit(self):
+        # read back the controls
+        prop = self.cbProperty.currentText()
+        cond = self.cbCondition.currentText()
+
+        if hasattr(self.cbValue, 'text'):
+            val_txt = self.cbValue.text()
+        else:
+            try:
+                val_txt = self.cbValue.value()
+            except Exception:
+                val_txt = self.cbValue.currentText()
+
+        val = self.parseValue(val_txt)
+
+        # preserve the original operator
+        op = self.criteria[self.editingIndex]['operator']
+
+        # overwrite the criterion
+        self.criteria[self.editingIndex] = {
+            'property': prop,
+            'condition': cond,
+            'value': val,
+            'operator': op,
+        }
+
+        # reset edit state
+        self.editingIndex = None
+        self.btCriteriaEdit.setChecked(False)
+
+        # re-enable buttons
+        for btn in (
+            self.btAdd,
+            self.btSubtract,
+            self.btCriteriaUp,
+            self.btCriteriaDown,
+            self.btCriteriaClear,
+            self.btSubmit,
+        ):
+            btn.setEnabled(True)
+
+        # refresh the table (and Cr1, Cr2… headers)
+        self.reloadCriteriaTable()
+
+    def moveCriterionUp(self):
+        row = self.tableWidgetCriteria.currentRow()
+        if row > 0:
+            self.criteria[row - 1], self.criteria[row] = (
+                self.criteria[row],
+                self.criteria[row - 1],
+            )
+            self.reloadCriteriaTable()
+            self.tableWidgetCriteria.selectRow(row - 1)
+
+    def moveCriterionDown(self):
+        row = self.tableWidgetCriteria.currentRow()
+        if 0 <= row < len(self.criteria) - 1:
+            self.criteria[row], self.criteria[row + 1] = (
+                self.criteria[row + 1],
+                self.criteria[row],
+            )
+            self.reloadCriteriaTable()
+            self.tableWidgetCriteria.selectRow(row + 1)
+
+    def onCriteriaSelectionChanged(self, row, col):
+        if row < 0 or row >= len(self.criteria):
+            self.btCriteriaSwitch.setIcon(self.iconSwitchDisabled)
+            self.btCriteriaSwitch.setChecked(False)
+        else:
+            enabled = self.criteria[row].get('enabled', True)
+            self.btCriteriaSwitch.setChecked(not enabled)
+            self.btCriteriaSwitch.setIcon(
+            self.iconSwitchEnabled  if enabled  else
+            self.iconSwitchDisabled )
+            
+    def toggleCriterionEnabled(self):
+        row = self.tableWidgetCriteria.currentRow()
+        if not (0 <= row < len(self.criteria)):
+            return
+
+        crit = self.criteria[row]
+        crit['enabled'] = not crit.get('enabled', True)
+
+        is_enabled = crit['enabled']
+        self.btCriteriaSwitch.setChecked(not is_enabled)
+        self.btCriteriaSwitch.setIcon(
+            self.iconSwitchEnabled  if is_enabled  else
+            self.iconSwitchDisabled
+        )
+
+        self.reloadCriteriaTable()

@@ -105,5 +105,8 @@
         <file>images/iconStatisticsDelete.png</file>
         <file>images/iconStatisticsEdit.png</file>
         <file>images/iconStatisticsExcel.png</file>
+        <file>images/iconSwitch.png</file>
+        <file>images/iconSwitchEnabled.png</file>
+        <file>images/iconSwitchDisabled.png</file>
     </qresource>
 </RCC>
