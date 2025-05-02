@@ -52,13 +52,12 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
             'bool': 'listed'
         }
 
-        self.tableWidgetCriteria.setColumnCount(3)
-        self.tableWidgetCriteria.setHorizontalHeaderLabels(["Id", "Oper", "Criteria"])
+        self.tableWidgetCriteria.setColumnCount(2)
+        self.tableWidgetCriteria.setHorizontalHeaderLabels(["Oper", "Criteria"])
         self.tableWidgetCriteria.verticalHeader().setVisible(False)
         h = self.tableWidgetCriteria.horizontalHeader()
         h.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        h.setSectionResizeMode(1, QHeaderView.ResizeToContents)  
-        h.setSectionResizeMode(2, QHeaderView.Stretch)          
+        h.setSectionResizeMode(1, QHeaderView.Stretch)          
 
         # set up statistics table
         if self.tableWidgetStatistics.columnCount() == 0:
@@ -218,32 +217,34 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
 
     def reloadCriteriaTable(self):
         tbl = self.tableWidgetCriteria
+        # ensure two columns: operator and criteria text
+        tbl.setColumnCount(2)
+        tbl.setHorizontalHeaderLabels(["Oper", "Criteria"])
         tbl.setRowCount(len(self.criteria))
+        tbl.verticalHeader().setVisible(True)
 
-        for i, c in enumerate(self.criteria):
-            op = c.get('operator', '+')
+        for i, crit in enumerate(self.criteria):
+            op = crit.get('operator', '+')
 
-            id_item = QTableWidgetItem(f"Cr{i+1}")
-            id_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-
-            oper_item = QTableWidgetItem(op)
-            oper_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+            operItem = QTableWidgetItem(op)
+            operItem.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
             if op == '-':
-                oper_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                operItem.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             else:
-                oper_item.setTextAlignment(Qt.AlignLeft  | Qt.AlignVCenter)
+                operItem.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
-            crit_txt = f"{c['property']} {c['condition']} {c['value']}"
-            crit_item = QTableWidgetItem(crit_txt)
-            crit_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-            crit_item.setTextAlignment(Qt.AlignCenter)
+            critText = f"{crit['property']} {crit['condition']} {crit['value']}"
+            critItem = QTableWidgetItem(critText)
+            critItem.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+            critItem.setTextAlignment(Qt.AlignCenter)
+            expr = self.buildExpression(crit)
+            critItem.setData(Qt.UserRole, {'expression': expr, 'operator': op})
 
-            expr = self.buildExpression(c)
-            crit_item.setData(Qt.UserRole, {'expression': expr, 'operator': op})
+            tbl.setItem(i, 0, operItem)
+            tbl.setItem(i, 1, critItem)
 
-            tbl.setItem(i, 0, id_item)
-            tbl.setItem(i, 1, oper_item)
-            tbl.setItem(i, 2, crit_item)
+            label = f"Cr{i+1}"
+            tbl.setVerticalHeaderItem(i, QTableWidgetItem(label))
 
         self.updateButtonsState()
 

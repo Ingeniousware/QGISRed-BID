@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>395</width>
+    <width>300</width>
     <height>395</height>
    </rect>
   </property>
@@ -18,7 +18,7 @@
   </property>
   <property name="minimumSize">
    <size>
-    <width>395</width>
+    <width>300</width>
     <height>395</height>
    </size>
   </property>
@@ -39,8 +39,8 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>-181</y>
-         <width>360</width>
+         <y>0</y>
+         <width>265</width>
          <height>536</height>
         </rect>
        </property>
@@ -182,6 +182,12 @@
               <layout class="QHBoxLayout" name="horizontalLayout_5">
                <item>
                 <widget class="QPushButton" name="btAdd">
+                 <property name="minimumSize">
+                  <size>
+                   <width>30</width>
+                   <height>0</height>
+                  </size>
+                 </property>
                  <property name="text">
                   <string>Add</string>
                  </property>
@@ -189,6 +195,12 @@
                </item>
                <item>
                 <widget class="QPushButton" name="btSubtract">
+                 <property name="minimumSize">
+                  <size>
+                   <width>30</width>
+                   <height>0</height>
+                  </size>
+                 </property>
                  <property name="text">
                   <string>Subtract</string>
                  </property>
@@ -196,6 +208,12 @@
                </item>
                <item>
                 <widget class="QPushButton" name="btReplace">
+                 <property name="minimumSize">
+                  <size>
+                   <width>30</width>
+                   <height>0</height>
+                  </size>
+                 </property>
                  <property name="text">
                   <string>Replace</string>
                  </property>
@@ -203,6 +221,12 @@
                </item>
                <item>
                 <widget class="QPushButton" name="btClear">
+                 <property name="minimumSize">
+                  <size>
+                   <width>30</width>
+                   <height>0</height>
+                  </size>
+                 </property>
                  <property name="text">
                   <string>Clear</string>
                  </property>
@@ -427,13 +451,13 @@
   <customwidget>
    <class>QgsCollapsibleGroupBox</class>
    <extends>QGroupBox</extends>
-   <header>qgscollapsiblegroupbox.h</header>
+   <header>qgis.gui</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>QgsFilterLineEdit</class>
    <extends>QLineEdit</extends>
-   <header>qgsfilterlineedit.h</header>
+   <header>qgis.gui</header>
   </customwidget>
   <customwidget>
    <class>QgsScrollArea</class>
