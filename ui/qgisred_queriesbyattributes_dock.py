@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtWidgets import QDockWidget, QTableWidgetItem, QHeaderView
+from PyQt5.QtWidgets import QDockWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QIcon
 from qgis.PyQt import uic
@@ -53,7 +53,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         }
 
         self.tableWidgetCriteria.setColumnCount(2)
-        self.tableWidgetCriteria.setHorizontalHeaderLabels(["Oper", "Criteria"])
+        self.tableWidgetCriteria.setHorizontalHeaderLabels(["   Oper   ", "Criteria"])
         self.tableWidgetCriteria.verticalHeader().setVisible(False)
         h = self.tableWidgetCriteria.horizontalHeader()
         h.setSectionResizeMode(0, QHeaderView.ResizeToContents)
@@ -219,7 +219,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         tbl = self.tableWidgetCriteria
         # ensure two columns: operator and criteria text
         tbl.setColumnCount(2)
-        tbl.setHorizontalHeaderLabels(["Oper", "Criteria"])
+        tbl.setHorizontalHeaderLabels(["  Oper  ", "Criteria"])
         tbl.setRowCount(len(self.criteria))
         tbl.verticalHeader().setVisible(True)
 
@@ -332,7 +332,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
             ]
             statsPerCriterion.append(featureValues)
 
-        # Build expressions for included and excluded criteria
+        # Build include/exclude expressions
         includeExpressions = [
             self.buildExpression(crit)
             for crit in self.criteria
@@ -346,7 +346,6 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         inclusionExpressionString = ' OR '.join(includeExpressions)
         exclusionExpressionString = ' AND '.join(excludeExpressions)
 
-        # Combine into full filter: (includes) AND NOT (excludes)
         combinedExpression = ' AND '.join(filter(None, [
             inclusionExpressionString,
             f"NOT ({exclusionExpressionString})" if exclusionExpressionString else ''
@@ -359,7 +358,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         ]
         statsPerCriterion.append(allFeatureValues)
 
-        # Helper to compute count, sum, average, min, max
+        # Helper to compute metrics
         def computeMetrics(values):
             count = len(values)
             totalValue = sum(values) if count else 0
@@ -370,7 +369,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
 
         statsResults = [computeMetrics(vals) for vals in statsPerCriterion]
 
-        # Populate the statistics table
+        # Populate the table
         statisticsTable = self.tableWidgetStatistics
         statisticsTable.setRowCount(len(statsResults))
         statisticsTable.verticalHeader().setVisible(True)
@@ -385,9 +384,17 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
             rowLabel = "All" if rowIndex == len(statsResults) - 1 else f"Cr{rowIndex+1}"
             statisticsTable.setVerticalHeaderItem(rowIndex, QTableWidgetItem(rowLabel))
 
-    def closeEvent(self, event):
-        self.clearCriteria()
-        layer = self.cbElementType.currentData(Qt.UserRole)
-        if layer:
-            layer.removeSelection()
-        super(QGISRedQueriesByAttributesDock, self).closeEvent(event)
+        # ─── STEP 1: Highlight the “All” row in yellow ────────────────
+        lastRow = statisticsTable.rowCount() - 1
+        for col in range(statisticsTable.columnCount()):
+            item = statisticsTable.item(lastRow, col)
+            if item:
+                item.setBackground(QColor(Qt.yellow))
+        # also color the row header cell
+        statisticsTable.verticalHeaderItem(lastRow).setBackground(QColor(Qt.yellow))
+
+        # ─── STEP 2: Always scroll the “All” row into view ────────────
+        # statisticsTable.scrollToItem(
+        #     statisticsTable.item(lastRow, 0),
+        #     QAbstractItemView.PositionAtBottom
+        # )
