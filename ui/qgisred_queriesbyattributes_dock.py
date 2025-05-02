@@ -114,11 +114,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         self.btCriteriaClear.clicked.connect(self.clearCriteriaItem)
         self.btCriteriaEdit.setCheckable(True)
         self.btCriteriaEdit.clicked.connect(self.toggleEditCriterion)
-
-        self.btCriteriaSwitch.setCheckable(True)
-        # when clicked, toggle enabled on the selected row
         self.btCriteriaSwitch.clicked.connect(self.toggleCriterionEnabled)
-        # keep the switch’s checked‐state in sync whenever the selection changes
         self.tableWidgetCriteria.currentCellChanged.connect(self.onCriteriaSelectionChanged)
 
         # stats property change
@@ -593,10 +589,10 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
     def onCriteriaSelectionChanged(self, row, col):
         if row < 0 or row >= len(self.criteria):
             self.btCriteriaSwitch.setIcon(self.iconSwitchDisabled)
-            self.btCriteriaSwitch.setChecked(False)
+            #self.btCriteriaSwitch.setChecked(False)
         else:
             enabled = self.criteria[row].get('enabled', True)
-            self.btCriteriaSwitch.setChecked(not enabled)
+            #self.btCriteriaSwitch.setChecked(not enabled)
             self.btCriteriaSwitch.setIcon(
             self.iconSwitchEnabled  if enabled  else
             self.iconSwitchDisabled )
@@ -610,7 +606,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         crit['enabled'] = not crit.get('enabled', True)
 
         is_enabled = crit['enabled']
-        self.btCriteriaSwitch.setChecked(not is_enabled)
+        #self.btCriteriaSwitch.setChecked(not is_enabled)
         self.btCriteriaSwitch.setIcon(
             self.iconSwitchEnabled  if is_enabled  else
             self.iconSwitchDisabled
