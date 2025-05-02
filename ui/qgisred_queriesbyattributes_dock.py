@@ -5,6 +5,9 @@ from PyQt5.QtGui import QColor, QIcon, QFont
 from qgis.PyQt import uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsFeatureRequest
 import os
+from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from datetime import datetime
+import csv
 
 from ..tools.qgisred_utils import QGISRedUtils
 
@@ -116,6 +119,10 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         self.btCriteriaEdit.clicked.connect(self.toggleEditCriterion)
         self.btCriteriaSwitch.clicked.connect(self.toggleCriterionEnabled)
         self.tableWidgetCriteria.currentCellChanged.connect(self.onCriteriaSelectionChanged)
+
+        # export
+        self.btExport.clicked.connect(self.exportCriteria)
+        self.btExcel.clicked.connect(self.exportStatistics)
 
         # stats property change
         self.cbStatisticsFor.currentIndexChanged.connect(self.onStatisticsForChanged)
@@ -563,7 +570,7 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         ):
             btn.setEnabled(True)
 
-        # refresh the table (and Cr1, Cr2… headers)
+        # refresh table (and Cr1, Cr2… headers)
         self.reloadCriteriaTable()
 
     def moveCriterionUp(self):
@@ -589,10 +596,8 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
     def onCriteriaSelectionChanged(self, row, col):
         if row < 0 or row >= len(self.criteria):
             self.btCriteriaSwitch.setIcon(self.iconSwitchDisabled)
-            #self.btCriteriaSwitch.setChecked(False)
         else:
             enabled = self.criteria[row].get('enabled', True)
-            #self.btCriteriaSwitch.setChecked(not enabled)
             self.btCriteriaSwitch.setIcon(
             self.iconSwitchEnabled  if enabled  else
             self.iconSwitchDisabled )
@@ -606,10 +611,51 @@ class QGISRedQueriesByAttributesDock(QDockWidget, FORM_CLASS):
         crit['enabled'] = not crit.get('enabled', True)
 
         is_enabled = crit['enabled']
-        #self.btCriteriaSwitch.setChecked(not is_enabled)
+
         self.btCriteriaSwitch.setIcon(
             self.iconSwitchEnabled  if is_enabled  else
             self.iconSwitchDisabled
         )
 
         self.reloadCriteriaTable()
+
+    def exportTableWidgetCsv(self, table, prefix):
+        folder = QFileDialog.getExistingDirectory(
+            self,
+            "Select output folder",
+            str(QgsProject.instance().homePath())
+        )
+        if not folder:
+            return
+
+        # 2) build filename
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        fname = os.path.join(folder, f"{prefix}_{ts}.csv")
+
+        try:
+            with open(fname, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                headers = [
+                    table.horizontalHeaderItem(col).text() 
+                        if table.horizontalHeaderItem(col) else ''
+                    for col in range(table.columnCount())
+               ]
+                writer.writerow(headers)
+
+                for row in range(table.rowCount()):
+                    rowdata = [
+                        table.item(row, col).text() 
+                            if table.item(row, col) else ''
+                        for col in range(table.columnCount())
+                    ]
+                    writer.writerow(rowdata)
+
+            QMessageBox.information(self, "Export successful", f"Saved to:\n{fname}")
+        except Exception as e:
+            QMessageBox.critical(self, "Export failed", str(e))
+
+    def exportCriteria(self):
+        self.exportTableWidgetCsv(self.tableWidgetCriteria, "QGISRed_Criterias")
+
+    def exportStatistics(self):
+        self.exportTableWidgetCsv(self.tableWidgetStatistics, "QGISRed_Statistics")
