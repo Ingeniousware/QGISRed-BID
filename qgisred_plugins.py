@@ -44,6 +44,7 @@ from .ui.qgisred_toolConnectivity_dialog import QGISRedConnectivityToolDialog
 from .ui.qgisred_loadproject_dialog import QGISRedImportProjectDialog
 from .ui.qgisred_thematicmaps_dialog import QGISRedThematicMapsDialog
 from .ui.qgisred_element_explorer_dock import QGISRedElementExplorerDock
+from .ui.qgisred_queriesbyattributes_dock import QGISRedQueriesByAttributesDock
 from .tools.qgisred_utils import QGISRedUtils
 from .tools.qgisred_dependencies import QGISRedDependencies as GISRed
 from .tools.qgisred_moveNodes import QGISRedMoveNodesTool
@@ -1512,7 +1513,7 @@ class QGISRed:
         self.openLiveQueriesDialog = self.add_action(
             icon_path,
             text=self.tr("Queries by Attributes..."),
-            callback=self.runLiveQueries,
+            callback=self.runQueriesByAttributes,
             menubar=self.queriesMenu,
             toolbar=self.queriesToolbar,
             actionBase=queriesDropButton,
@@ -4621,7 +4622,7 @@ class QGISRed:
     # ==============================================================
     #                        START: QUERIES LIVE QUERIES
     # --------------------------------------------------------------
-    def runLiveQueries(self):
+    def runQueriesByAttributes(self):
         if not self.checkDependencies():
             return
         # Validations
@@ -4630,10 +4631,12 @@ class QGISRed:
             return
         if self.isLayerOnEdition():
             return
-
-        #dlg = QGISRedFindElementsDialog()
-        # Run the dialog event loop
-        #dlg.exec_()
+        
+        print("AAAa")
+        self.queriesByAttributesDock = QGISRedQueriesByAttributesDock(self.iface)
+        self.iface.addDockWidget(Qt.RightDockWidgetArea, self.queriesByAttributesDock)
+        # self.queriesByAttributesDock.show()
+        # self.queriesByAttributesDock.raise_()   
     # ==============================================================
     #                        END: QUERIES LIVE QUERIES
     # --------------------------------------------------------------
