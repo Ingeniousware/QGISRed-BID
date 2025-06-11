@@ -22,11 +22,12 @@
 
 # Import QGis
 from qgis.core import QgsProject, QgsVectorLayer, QgsMapLayer, QgsLayerTreeLayer
+from qgis.core import QgsMessageLog, QgsCoordinateTransform, QgsApplication, QgsLayerTreeGroup, QgsLayerTreeNode
 from PyQt5.QtGui import QIcon, QCursor
 from PyQt5.QtWidgets import QAction, QMessageBox, QApplication, QMenu, QFileDialog, QToolButton
 from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt
 from PyQt5.QtXml import QDomDocument
-from qgis.core import QgsMessageLog, QgsCoordinateTransform, QgsApplication, QgsLayerTreeGroup, QgsLayerTreeNode
+
 
 # Import resources
 from . import resources3x
@@ -115,14 +116,14 @@ class QGISRed:
         self.iface.initializationCompleted.connect(self.updateChecables)
         # Declare instance attributes
         self.actions = []
-        # Toolbar
-        self.toolbar = self.iface.addToolBar("QGISRed")
-        self.toolbar.setObjectName("QGISRed")
-        # Menu
+       # Menu
         self.qgisredmenu = QMenu("&QGISRed-BID", self.iface.mainWindow().menuBar())
         actions = self.iface.mainWindow().menuBar().actions()
         lastAction = actions[-1]
         self.iface.mainWindow().menuBar().insertMenu(lastAction, self.qgisredmenu)
+        # Toolbar
+        self.toolbar = self.iface.addToolBar("QGISRed-BID")
+        self.toolbar.setObjectName("QGISRed")
         # Status Bar
         self.unitsButton = QToolButton()
         self.unitsButton.setToolButtonStyle(2)
@@ -210,10 +211,10 @@ class QGISRed:
             return
 
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
-        self.addFileMenu()
+        self.addGeneralMenu()
         self.addProjectMenu()
         self.addEditMenu()
-        self.addVerificationsMenu()
+        self.addDebugMenu()
         self.addToolsMenu()
         self.addAnalysisMenu()
         self.addDigitalTwinMenu()
@@ -306,10 +307,10 @@ class QGISRed:
 
         # remove the toolbar
         del self.toolbar
-        del self.fileToolbar
+        del self.generalToolbar
         del self.projectToolbar
         del self.editionToolbar
-        del self.verificationsToolbar
+        del self.debugToolbar
         del self.toolsToolbar
         del self.analysisToolbar
         del self.dtToolbar
@@ -319,14 +320,14 @@ class QGISRed:
         self.iface.mainWindow().statusBar().removeWidget(self.unitsButton)
 
         # remove menus
-        if self.fileMenu:
-            self.fileMenu.menuAction().setVisible(False)
+        if self.generalMenu:
+            self.generalMenu.menuAction().setVisible(False)
         if self.projectMenu:
             self.projectMenu.menuAction().setVisible(False)
         if self.editionMenu:
             self.editionMenu.menuAction().setVisible(False)
-        if self.verificationsMenu:
-            self.verificationsMenu.menuAction().setVisible(False)
+        if self.debugMenu:
+            self.debugMenu.menuAction().setVisible(False)
         if self.toolsMenu:
             self.toolsMenu.menuAction().setVisible(False)
         if self.analysisMenu:
@@ -340,41 +341,41 @@ class QGISRed:
 
     """Create menus"""
 
-    def addFileMenu(self):
+    def addGeneralMenu(self):
         #    #Menu
-        self.fileMenu = self.qgisredmenu.addMenu(self.tr("Global"))
-        self.fileMenu.setIcon(QIcon(":/plugins/QGISRed/images/qgisred32.png"))
+        self.generalMenu = self.qgisredmenu.addMenu(self.tr("General"))
+        self.generalMenu.setIcon(QIcon(":/plugins/QGISRed/images/qgisred32.png"))
         #    #Toolbar
-        self.fileToolbar = self.iface.addToolBar(self.tr("QGISRed Global"))
-        self.fileToolbar.setObjectName(self.tr("QGISRed Global"))
-        self.fileToolbar.visibilityChanged.connect(self.changeFileToolbarVisibility)
-        self.fileToolbar.setVisible(False)
+        self.generalToolbar = self.iface.addToolBar(self.tr("QGISRed General"))
+        self.generalToolbar.setObjectName(self.tr("QGISRed General"))
+        self.generalToolbar.visibilityChanged.connect(self.changeGeneralToolbarVisibility)
+        self.generalToolbar.setVisible(False)
         #    #Buttons
-        fileDropButton = QToolButton()
+        generalDropButton = QToolButton()
         icon_path = ":/plugins/QGISRed/images/qgisred32.png"
         self.add_action(
             icon_path,
-            text=self.tr("File"),
-            callback=self.runFileToolbar,
-            menubar=self.fileMenu,
+            text=self.tr("General"),
+            callback=self.runGeneralToolbar,
+            menubar=self.generalMenu,
             add_to_menu=False,
             toolbar=self.toolbar,
-            dropButton=fileDropButton,
+            dropButton=generalDropButton,
             addActionToDrop=False,
             checable=True,
             add_to_toolbar=False,
             parent=self.iface.mainWindow(),
         )
-        self.fileDropButton = fileDropButton
+        self.generalDropButton = generalDropButton
 
         icon_path = ":/plugins/QGISRed/images/iconProjectManager.png"
         self.add_action(
             icon_path,
             text=self.tr("Project manager"),
             callback=self.runProjectManager,
-            menubar=self.fileMenu,
-            toolbar=self.fileToolbar,
-            actionBase=fileDropButton,
+            menubar=self.generalMenu,
+            toolbar=self.generalToolbar,
+            actionBase=generalDropButton,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
@@ -383,9 +384,9 @@ class QGISRed:
             icon_path,
             text=self.tr("Open project"),
             callback=self.runCanOpenProject,
-            menubar=self.fileMenu,
-            toolbar=self.fileToolbar,
-            actionBase=fileDropButton,
+            menubar=self.generalMenu,
+            toolbar=self.generalToolbar,
+            actionBase=generalDropButton,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
@@ -394,9 +395,9 @@ class QGISRed:
             icon_path,
             text=self.tr("Create project"),
             callback=self.runCanCreateProject,
-            menubar=self.fileMenu,
-            toolbar=self.fileToolbar,
-            actionBase=fileDropButton,
+            menubar=self.generalMenu,
+            toolbar=self.generalToolbar,
+            actionBase=generalDropButton,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
@@ -405,9 +406,9 @@ class QGISRed:
             icon_path,
             text=self.tr("Import project"),
             callback=self.runCanImportData,
-            menubar=self.fileMenu,
-            toolbar=self.fileToolbar,
-            actionBase=fileDropButton,
+            menubar=self.generalMenu,
+            toolbar=self.generalToolbar,
+            actionBase=generalDropButton,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
@@ -806,41 +807,41 @@ class QGISRed:
             parent=self.iface.mainWindow(),
         )
 
-    def addVerificationsMenu(self):
+    def addDebugMenu(self):
         #    #Menu
-        self.verificationsMenu = self.qgisredmenu.addMenu(self.tr("Verifications"))
-        self.verificationsMenu.setIcon(QIcon(":/plugins/QGISRed/images/iconCommit.png"))
+        self.debugMenu = self.qgisredmenu.addMenu(self.tr("Debug"))
+        self.debugMenu.setIcon(QIcon(":/plugins/QGISRed/images/iconCommit.png"))
         #    #Toolbar
-        self.verificationsToolbar = self.iface.addToolBar(self.tr("QGISRed Verifications"))
-        self.verificationsToolbar.setObjectName(self.tr("QGISRed Verifications"))
-        self.verificationsToolbar.visibilityChanged.connect(self.changeVerificationsToolbarVisibility)
-        self.verificationsToolbar.setVisible(False)
+        self.debugToolbar = self.iface.addToolBar(self.tr("QGISRed Debug"))
+        self.debugToolbar.setObjectName(self.tr("QGISRed Debug"))
+        self.debugToolbar.visibilityChanged.connect(self.changeDebugToolbarVisibility)
+        self.debugToolbar.setVisible(False)
         #    #Buttons
-        verificationsDropButton = QToolButton()
+        debugDropButton = QToolButton()
         icon_path = ":/plugins/QGISRed/images/iconCommit.png"
         self.add_action(
             icon_path,
-            text=self.tr("Verifications"),
-            callback=self.runVerificationsToolbar,
-            menubar=self.verificationsMenu,
+            text=self.tr("Debug"),
+            callback=self.runDebugToolbar,
+            menubar=self.debugMenu,
             add_to_menu=False,
             checable=True,
             toolbar=self.toolbar,
-            dropButton=verificationsDropButton,
+            dropButton=debugDropButton,
             addActionToDrop=False,
             add_to_toolbar=False,
             parent=self.iface.mainWindow(),
         )
-        self.verificationsDropButton = verificationsDropButton
+        self.debugDropButton = debugDropButton
 
         icon_path = ":/plugins/QGISRed/images/iconCommit.png"
         self.add_action(
             icon_path,
             text=self.tr("Check && Commit data"),
             callback=self.runCommit,
-            menubar=self.verificationsMenu,
-            toolbar=self.verificationsToolbar,
-            actionBase=verificationsDropButton,
+            menubar=self.debugMenu,
+            toolbar=self.debugToolbar,
+            actionBase=debugDropButton,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
@@ -849,9 +850,9 @@ class QGISRed:
             icon_path,
             text=self.tr("Remove overlapping elements"),
             callback=self.runCheckOverlappingElements,
-            menubar=self.verificationsMenu,
-            toolbar=self.verificationsToolbar,
-            actionBase=verificationsDropButton,
+            menubar=self.debugMenu,
+            toolbar=self.debugToolbar,
+            actionBase=debugDropButton,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
@@ -860,9 +861,9 @@ class QGISRed:
             icon_path,
             text=self.tr("Simplify link vertices"),
             callback=self.runSimplifyVertices,
-            menubar=self.verificationsMenu,
-            toolbar=self.verificationsToolbar,
-            actionBase=verificationsDropButton,
+            menubar=self.debugMenu,
+            toolbar=self.debugToolbar,
+            actionBase=debugDropButton,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
@@ -871,9 +872,9 @@ class QGISRed:
             icon_path,
             text=self.tr("Join consecutive pipes (diameter, material and year)"),
             callback=self.runCheckJoinPipes,
-            menubar=self.verificationsMenu,
-            toolbar=self.verificationsToolbar,
-            actionBase=verificationsDropButton,
+            menubar=self.debugMenu,
+            toolbar=self.debugToolbar,
+            actionBase=debugDropButton,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
@@ -882,9 +883,9 @@ class QGISRed:
             icon_path,
             text=self.tr("Create T Connections"),
             callback=self.runCheckTConncetions,
-            menubar=self.verificationsMenu,
-            toolbar=self.verificationsToolbar,
-            actionBase=verificationsDropButton,
+            menubar=self.debugMenu,
+            toolbar=self.debugToolbar,
+            actionBase=debugDropButton,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
@@ -894,9 +895,9 @@ class QGISRed:
             icon_path,
             text=self.tr("Check connectivity"),
             callback=self.runCheckConnectivityM,
-            menubar=self.verificationsMenu,
-            toolbar=self.verificationsToolbar,
-            actionBase=verificationsDropButton,
+            menubar=self.debugMenu,
+            toolbar=self.debugToolbar,
+            actionBase=debugDropButton,
             dropButton=dropButton,
             add_to_toolbar=False,
             parent=self.iface.mainWindow(),
@@ -906,23 +907,23 @@ class QGISRed:
             icon_path,
             text=self.tr("Delete issolated subzones"),
             callback=self.runCheckConnectivityC,
-            menubar=self.verificationsMenu,
-            toolbar=self.verificationsToolbar,
+            menubar=self.debugMenu,
+            toolbar=self.debugToolbar,
             actionBase=dropButton,
             add_to_toolbar=False,
             parent=self.iface.mainWindow(),
         )
         dropButton.menu().addSeparator()
-        self.verificationsToolbar.addSeparator()
-        self.verificationsMenu.addSeparator()
+        self.debugToolbar.addSeparator()
+        self.debugMenu.addSeparator()
         icon_path = ":/plugins/QGISRed/images/iconLengthC.png"
         self.add_action(
             icon_path,
             text=self.tr("Check pipe lengths"),
             callback=self.runCheckLengths,
-            menubar=self.verificationsMenu,
-            toolbar=self.verificationsToolbar,
-            actionBase=verificationsDropButton,
+            menubar=self.debugMenu,
+            toolbar=self.debugToolbar,
+            actionBase=debugDropButton,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
@@ -931,9 +932,9 @@ class QGISRed:
             icon_path,
             text=self.tr("Check diameters"),
             callback=self.runCheckDiameters,
-            menubar=self.verificationsMenu,
-            toolbar=self.verificationsToolbar,
-            actionBase=verificationsDropButton,
+            menubar=self.debugMenu,
+            toolbar=self.debugToolbar,
+            actionBase=debugDropButton,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
@@ -942,9 +943,9 @@ class QGISRed:
             icon_path,
             text=self.tr("Check pipe materials"),
             callback=self.runCheckMaterials,
-            menubar=self.verificationsMenu,
-            toolbar=self.verificationsToolbar,
-            actionBase=verificationsDropButton,
+            menubar=self.debugMenu,
+            toolbar=self.debugToolbar,
+            actionBase=debugDropButton,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
@@ -953,23 +954,23 @@ class QGISRed:
             icon_path,
             text=self.tr("Check pipe installation dates"),
             callback=self.runCheckInstallationDates,
-            menubar=self.verificationsMenu,
-            toolbar=self.verificationsToolbar,
-            actionBase=verificationsDropButton,
+            menubar=self.debugMenu,
+            toolbar=self.debugToolbar,
+            actionBase=debugDropButton,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
         dropButton.menu().addSeparator()
-        self.verificationsToolbar.addSeparator()
-        self.verificationsMenu.addSeparator()
+        self.debugToolbar.addSeparator()
+        self.debugMenu.addSeparator()
         icon_path = ":/plugins/QGISRed/images/iconHydraulic.png"
         self.add_action(
             icon_path,
             text=self.tr("Check hydraulic sectors"),
             callback=self.runHydraulicSectors,
-            menubar=self.verificationsMenu,
-            toolbar=self.verificationsToolbar,
-            actionBase=verificationsDropButton,
+            menubar=self.debugMenu,
+            toolbar=self.debugToolbar,
+            actionBase=debugDropButton,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
@@ -2408,14 +2409,15 @@ class QGISRed:
         xform = QgsCoordinateTransform(projectCrs, pipesCrs, QgsProject.instance())
         return xform.transform(point)
 
-    """Main methods"""
+    """MAIN METHODS"""
+
     """Toolbars"""
 
-    def runFileToolbar(self):
-        self.fileToolbar.setVisible(not self.fileToolbar.isVisible())
+    def runGeneralToolbar(self):
+        self.generalToolbar.setVisible(not self.generalToolbar.isVisible())
 
-    def changeFileToolbarVisibility(self, status):
-        self.fileDropButton.setChecked(status)
+    def changeGeneralToolbarVisibility(self, status):
+        self.generalDropButton.setChecked(status)
 
     def runProjectToolbar(self):
         self.projectToolbar.setVisible(not self.projectToolbar.isVisible())
@@ -2429,11 +2431,11 @@ class QGISRed:
     def changeEditionToolbarVisibility(self, status):
         self.editDropButton.setChecked(status)
 
-    def runVerificationsToolbar(self):
-        self.verificationsToolbar.setVisible(not self.verificationsToolbar.isVisible())
+    def runDebugToolbar(self):
+        self.debugToolbar.setVisible(not self.debugToolbar.isVisible())
 
-    def changeVerificationsToolbarVisibility(self, status):
-        self.verificationsDropButton.setChecked(status)
+    def changeDebugToolbarVisibility(self, status):
+        self.debugDropButton.setChecked(status)
 
     def runToolsToolbar(self):
         self.toolsToolbar.setVisible(not self.toolsToolbar.isVisible())
@@ -2463,10 +2465,10 @@ class QGISRed:
         self.experimentalToolbar.setVisible(not self.experimentalToolbar.isVisible())
 
     def updateChecables(self):
-        self.fileDropButton.setChecked(self.fileToolbar.isVisible())
+        self.generalDropButton.setChecked(self.generalToolbar.isVisible())
         self.projectDropButton.setChecked(self.projectToolbar.isVisible())
         self.editDropButton.setChecked(self.editionToolbar.isVisible())
-        self.verificationsDropButton.setChecked(self.verificationsToolbar.isVisible())
+        self.debugDropButton.setChecked(self.debugToolbar.isVisible())
         self.toolsDropButton.setChecked(self.toolsToolbar.isVisible())
         self.analysisDropButton.setChecked(self.analysisToolbar.isVisible())
         self.dtDropButton.setChecked(self.dtToolbar.isVisible())
@@ -2480,7 +2482,7 @@ class QGISRed:
     def runReportIssues(self):
         webbrowser.open("https://github.com/neslerel/QGISRed/issues")
 
-    """File"""
+    """General"""
 
     def runProjectManager(self):
         if not self.checkDependencies():
@@ -3512,7 +3514,7 @@ class QGISRed:
 
         self.processCsharpResult(resMessage, "")
 
-    """Verifications"""
+    """Debug"""
 
     def runCommit(self):
         if not self.checkDependencies():
