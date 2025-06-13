@@ -661,7 +661,7 @@ class QGISRed:
             checable=True,
             parent=self.iface.mainWindow(),
         )
-        icon_path = ":/plugins/QGISRed-BID/images/iconMoveVertexs.png"
+        icon_path = ":/plugins/QGISRed-BID/images/iconMoveVertices.png"
         self.moveVertexsButton = self.add_action(
             icon_path,
             text=self.tr("Edit link vertices"),
@@ -772,7 +772,7 @@ class QGISRed:
         editDropButton.menu().addSeparator()
         self.editionToolbar.addSeparator()
         self.editionMenu.addSeparator()
-        icon_path = ":/plugins/QGISRed-BID/images/iconEdit.png"
+        icon_path = ":/plugins/QGISRed-BID/images/iconEditProperties.png"
         self.editElementButton = self.add_action(
             icon_path,
             text=self.tr("Edit element properties"),
@@ -1409,6 +1409,9 @@ class QGISRed:
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
+        dtDropButton.menu().addSeparator()
+        self.dtMenu.addSeparator()
+        self.dtToolbar.addSeparator()
         icon_path = ":/plugins/QGISRed-BID/images/iconStatus.png"
         self.add_action(
             icon_path,
@@ -1420,9 +1423,7 @@ class QGISRed:
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
-        dtDropButton.menu().addSeparator()
-        self.dtMenu.addSeparator()
-        self.dtToolbar.addSeparator()
+
         icon_path = ":/plugins/QGISRed-BID/images/iconConnections.png"
         self.add_action(
             icon_path,
@@ -1434,6 +1435,32 @@ class QGISRed:
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
+
+        """ dtDropButton.menu().addSeparator()
+        self.dtMenu.addSeparator()
+        self.dtToolbar.addSeparator()
+        self.add_action(
+            icon_path=None,
+            text=self.tr("Calibrate Model"),
+            callback=self.runAddConnections,
+            menubar=self.dtMenu,
+            toolbar=self.dtToolbar,
+            actionBase=dtDropButton,
+            add_to_toolbar=True,
+            parent=self.iface.mainWindow(),
+        )
+        """
+        """  self.add_action(
+            icon_path=None,
+            text=self.tr("State Estimation"),
+            callback=self.runAddConnections,
+            menubar=self.dtMenu,
+            toolbar=self.dtToolbar,
+            actionBase=dtDropButton,
+            add_to_toolbar=True,
+            parent=self.iface.mainWindow(),
+        ) """
+
         # icon_path = ':/plugins/QGISRed/images/iconHydrants.png'
         # self.add_action(icon_path, text=self.tr(u'Add hydrants to the model'), callback=self.runAddHydrants,
         #                 menubar=self.dtMenu, toolbar=self.dtToolbar,
@@ -4476,12 +4503,23 @@ class QGISRed:
         if task is not None:
             return {"task": task.definition()}
 
-    # ==============================================================
-    #                        START: QUERIES FIND ELEMENTS
-    # --------------------------------------------------------------
-    # ==============================================================
-    #                        START: QUERIES FIND ELEMENTS
-    # --------------------------------------------------------------
+    # ======================================
+    #              NEW BUTTONS - BID
+    # --------------------------------------
+
+    def runThematicMaps(self):
+        if not self.checkDependencies():
+            return
+        # Validations
+        self.defineCurrentProject()
+        if not self.isValidProject():
+            return
+        if self.isLayerOnEdition():
+            return
+
+        dlg = QGISRedThematicMapsDialog()
+        # Run the dialog event loop
+        dlg.exec_()
     
     def runFindElements(self): 
         if not self.checkDependencies():
@@ -4599,31 +4637,6 @@ class QGISRed:
                 print(f"Error creating map tool: {str(e)}")
                 self.openElementsPropertyDialog.setChecked(False)
 
-
-# ==============================================================
-#                        END: QUERIES FIND ELEMENTS
-# --------------------------------------------------------------
-
-# ==============================================================
-#                        START: QUERIES ELEMENTS PROPERTIES
-# --------------------------------------------------------------
-    # ==============================================================
-    #                        END: QUERIES ELEMENTS PROPERTIES
-    # --------------------------------------------------------------
-
-    # ==============================================================
-    #                        START: COMMON FE AND EP
-    # --------------------------------------------------------------
-
-
-    # ==============================================================
-    #                        END: COMMON FE AND EP
-    # --------------------------------------------------------------
-
-
-    # ==============================================================
-    #                        START: QUERIES LIVE QUERIES
-    # --------------------------------------------------------------
     def runQueriesByAttributes(self):
         if not self.checkDependencies():
             return
@@ -4638,16 +4651,10 @@ class QGISRed:
         self.queriesByAttributesDock = QGISRedQueriesByAttributesDock(self.iface)
         self.iface.addDockWidget(Qt.RightDockWidgetArea, self.queriesByAttributesDock)
         # self.queriesByAttributesDock.show()
-        # self.queriesByAttributesDock.raise_()   
-    # ==============================================================
-    #                        END: QUERIES LIVE QUERIES
-    # --------------------------------------------------------------
-
-    # ==============================================================
-    #                        START: QUERIES THEMATIC MAPS
-    # --------------------------------------------------------------
-
-    def runThematicMaps(self):
+        # self.queriesByAttributesDock.raise_() 
+        #   
+    
+    def runStatisticsAndPlots(self):
         if not self.checkDependencies():
             return
         # Validations
@@ -4657,10 +4664,14 @@ class QGISRed:
         if self.isLayerOnEdition():
             return
 
-        dlg = QGISRedThematicMapsDialog()
+        #dlg = QGISRedFindElementsDialog()
         # Run the dialog event loop
-        dlg.exec_()
-
+        #dlg.exec_()
+    
+    # ======================================  
+    #          Auxiliar procedures - BID
+    # --------------------------------------
+    
     def findQueryGroup(self):
         netGroup = QgsProject.instance().layerTreeRoot().findGroup(self.NetworkName)
         if netGroup is None:
@@ -4821,30 +4832,8 @@ class QGISRed:
         query_layer.dataProvider().forceReload()
         query_layer.triggerRepaint()
 
-    # ==============================================================
-    #                        END: QUERIES THEMATIC MAPS
-    # --------------------------------------------------------------
-
-    # ==============================================================
-    #                        START: QUERIES STATISTICS AND PLOTS
-    # --------------------------------------------------------------
-    def runStatisticsAndPlots(self):
-        if not self.checkDependencies():
-            return
-        # Validations
-        self.defineCurrentProject()
-        if not self.isValidProject():
-            return
-        if self.isLayerOnEdition():
-            return
-
-        #dlg = QGISRedFindElementsDialog()
-        # Run the dialog event loop
-        #dlg.exec_()
-    # ==============================================================
-    #                        END: QUERIES STATISTICS AND PLOTS
-    # --------------------------------------------------------------
-
+    
+   
     ## TEMP COMMENT ISSUE 41 AND 42 TODO REMOVE
     def storeAllLayers(self):
         """Store information about all layers to be restored later.
