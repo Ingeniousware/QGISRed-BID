@@ -97,7 +97,7 @@ class QGISRed:
         self.iface = iface
 
         if not platform.system() == "Windows":
-            self.iface.messageBar().pushMessage(self.tr("Error"), self.tr("QGISRed only works in Windows"), level=2, duration=5)
+            self.iface.messageBar().pushMessage(self.tr("Error"), self.tr("QGISRed only works on Windows"), level=2, duration=5)
             return
 
         # initialize plugin directory
@@ -113,7 +113,7 @@ class QGISRed:
             if qVersion() > "4.3.3":
                 QCoreApplication.installTranslator(self.translator)
 
-        self.iface.initializationCompleted.connect(self.updateChecables)
+        self.iface.initializationCompleted.connect(self.updateCheckables)
         # Declare instance attributes
         self.actions = []
        # Menu
@@ -123,13 +123,13 @@ class QGISRed:
         self.iface.mainWindow().menuBar().insertMenu(lastAction, self.qgisredmenu)
         # Toolbar
         self.toolbar = self.iface.addToolBar("QGISRed-BID")
-        self.toolbar.setObjectName("QGISRed")
+        self.toolbar.setObjectName("QGISRed-BID")
         # Status Bar
         self.unitsButton = QToolButton()
         self.unitsButton.setToolButtonStyle(2)
         icon = QIcon(":/plugins/QGISRed-BID/images/qgisred32.png")
         self.unitsAction = QAction(icon, "QGISRed: LPS | H-W", None)
-        self.unitsAction.setToolTip("Click to change it")
+        self.unitsAction.setToolTip(self.tr("Click to change it"))
         self.unitsAction.triggered.connect(self.runAnalysisOptions)
         self.actions.append(self.unitsAction)
         self.unitsButton.setDefaultAction(self.unitsAction)
@@ -156,7 +156,7 @@ class QGISRed:
         callback,
         menubar,
         toolbar,
-        checable=False,
+        checkable=False,
         actionBase=None,
         dropButton=None,
         addActionToDrop=True,
@@ -171,7 +171,7 @@ class QGISRed:
         action = QAction(icon, text, parent)
         action.triggered.connect(callback)
         action.setEnabled(enabled_flag)
-        action.setCheckable(checable)
+        action.setCheckable(checkable)
 
         if status_tip is not None:
             action.setStatusTip(status_tip)
@@ -278,6 +278,7 @@ class QGISRed:
             self.issuesLayers.append(name + "_Issues")
         for name in self.complementaryLayers:
             self.issuesLayers.append(name + "_Issues")
+            
         # Open layers options
         self.hasToOpenConnectivityLayers = False
         self.hasToOpenIssuesLayers = False
@@ -362,7 +363,7 @@ class QGISRed:
             toolbar=self.toolbar,
             dropButton=generalDropButton,
             addActionToDrop=False,
-            checable=True,
+            checkable=True,
             add_to_toolbar=False,
             parent=self.iface.mainWindow(),
         )
@@ -433,7 +434,7 @@ class QGISRed:
             add_to_menu=False,
             toolbar=self.toolbar,
             dropButton=projectDropButton,
-            checable=True,
+            checkable=True,
             addActionToDrop=False,
             add_to_toolbar=False,
             parent=self.iface.mainWindow(),
@@ -565,7 +566,7 @@ class QGISRed:
             callback=self.runEditionToolbar,
             menubar=self.editionMenu,
             add_to_menu=False,
-            checable=True,
+            checkable=True,
             toolbar=self.toolbar,
             dropButton=editDropButton,
             addActionToDrop=False,
@@ -583,7 +584,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconAddTank.png"
@@ -595,7 +596,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconAddReservoir.png"
@@ -607,7 +608,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconAddValve.png"
@@ -619,7 +620,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconAddPump.png"
@@ -631,7 +632,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         editDropButton.menu().addSeparator()
@@ -646,7 +647,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconMoveElements.png"
@@ -658,7 +659,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconMoveVertices.png"
@@ -670,7 +671,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconReverseLink.png"
@@ -682,7 +683,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconSplitPipe.png"
@@ -694,7 +695,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconMergeSplitJunction.png"
@@ -706,7 +707,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconCreateRevTconn.png"
@@ -718,7 +719,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconCreateRevCrossings.png"
@@ -730,7 +731,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconMoveValvePump.png"
@@ -742,7 +743,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconWand.png"
@@ -754,7 +755,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconDeleteElements.png"
@@ -766,7 +767,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         editDropButton.menu().addSeparator()
@@ -781,7 +782,7 @@ class QGISRed:
             toolbar=self.editionToolbar,
             actionBase=editDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconLinePlot.png"
@@ -825,7 +826,7 @@ class QGISRed:
             callback=self.runDebugToolbar,
             menubar=self.debugMenu,
             add_to_menu=False,
-            checable=True,
+            checkable=True,
             toolbar=self.toolbar,
             dropButton=debugDropButton,
             addActionToDrop=False,
@@ -993,7 +994,7 @@ class QGISRed:
             callback=self.runToolsToolbar,
             menubar=self.toolsMenu,
             add_to_menu=False,
-            checable=True,
+            checkable=True,
             toolbar=self.toolbar,
             dropButton=toolDropButton,
             addActionToDrop=False,
@@ -1080,7 +1081,7 @@ class QGISRed:
             toolbar=self.toolsToolbar,
             actionBase=toolDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         toolDropButton.menu().addSeparator()
@@ -1129,7 +1130,7 @@ class QGISRed:
             add_to_menu=False,
             toolbar=self.toolbar,
             dropButton=analysisDropButton,
-            checable=True,
+            checkable=True,
             addActionToDrop=False,
             add_to_toolbar=False,
             parent=self.iface.mainWindow(),
@@ -1199,7 +1200,7 @@ class QGISRed:
             callback=self.runDtToolbar,
             menubar=self.dtMenu,
             add_to_menu=False,
-            checable=True,
+            checkable=True,
             toolbar=self.toolbar,
             dropButton=dtDropButton,
             addActionToDrop=False,
@@ -1217,7 +1218,7 @@ class QGISRed:
             toolbar=self.dtToolbar,
             actionBase=dtDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
 
@@ -1230,7 +1231,7 @@ class QGISRed:
             toolbar=self.dtToolbar,
             actionBase=dtDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
 
@@ -1247,7 +1248,7 @@ class QGISRed:
             actionBase=dtDropButton,
             addActionToDrop=False,
             add_to_toolbar=False,
-            checable=True,
+            checkable=True,
             dropButton=self.addMeterDropButton,
             parent=self.iface.mainWindow(),
         )
@@ -1260,7 +1261,7 @@ class QGISRed:
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         self.addMeterDropButton.setDefaultAction(self.addAutoMeterButton)
@@ -1273,7 +1274,7 @@ class QGISRed:
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconAddFlowmeter.png"
@@ -1285,7 +1286,7 @@ class QGISRed:
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconAddCountermeter.png"
@@ -1297,7 +1298,7 @@ class QGISRed:
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconAddLevelSensor.png"
@@ -1309,7 +1310,7 @@ class QGISRed:
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconAddDiffManometer.png"
@@ -1321,7 +1322,7 @@ class QGISRed:
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconAddQualitySensor.png"
@@ -1333,7 +1334,7 @@ class QGISRed:
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconAddEnergySensor.png"
@@ -1345,7 +1346,7 @@ class QGISRed:
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconAddStatusSensor.png"
@@ -1357,7 +1358,7 @@ class QGISRed:
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconAddValveOpening.png"
@@ -1369,7 +1370,7 @@ class QGISRed:
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         icon_path = ":/plugins/QGISRed-BID/images/iconAddTachometer.png"
@@ -1381,7 +1382,7 @@ class QGISRed:
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
         dtDropButton.menu().addSeparator()
@@ -1491,7 +1492,7 @@ class QGISRed:
             add_to_menu=False,
             toolbar=self.toolbar,
             dropButton=queriesDropButton,
-            checable=True,
+            checkable=True,
             addActionToDrop=False,
             add_to_toolbar=False,
             parent=self.iface.mainWindow(),
@@ -1507,7 +1508,7 @@ class QGISRed:
             toolbar=self.queriesToolbar,
             actionBase=queriesDropButton,
             add_to_toolbar=True,
-            checable=True,
+            checkable=True,
             parent=self.iface.mainWindow(),
         )
 
@@ -1520,7 +1521,7 @@ class QGISRed:
             menubar=self.queriesMenu,
             toolbar=self.queriesToolbar,
             actionBase=queriesDropButton,
-            checable=True,
+            checkable=True,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
@@ -2491,7 +2492,7 @@ class QGISRed:
     def runExperimentalToolbar(self):
         self.experimentalToolbar.setVisible(not self.experimentalToolbar.isVisible())
 
-    def updateChecables(self):
+    def updateCheckables(self):
         self.generalDropButton.setChecked(self.generalToolbar.isVisible())
         self.projectDropButton.setChecked(self.projectToolbar.isVisible())
         self.editDropButton.setChecked(self.editionToolbar.isVisible())
