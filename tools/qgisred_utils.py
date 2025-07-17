@@ -74,10 +74,11 @@ class QGISRedUtils:
 
     def isLayerOpened(self, layerName):
         layers = self.getLayers()
-        layer_identifier = f"qgisred_{layerName.lower()}"
-        
+        layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + layerName + ".shp")
+
         for layer in layers:
-            if layer.customProperty("qgisred_identifier") == layer_identifier:
+            openedLayerPath = self.getLayerPath(layer)
+            if openedLayerPath == layerPath:
                 return True
         return False
 
@@ -152,10 +153,11 @@ class QGISRedUtils:
 
     def removeLayer(self, name, ext=".shp"):
         layers = self.getLayers()
-        layer_identifier = f"qgisred_{name.lower()}"
-        
+        layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + name + ext)
+
         for layer in layers:
-            if layer.customProperty("qgisred_identifier") == layer_identifier:
+            openedLayerPath = self.getLayerPath(layer)
+            if openedLayerPath == layerPath:
                 QgsProject.instance().removeMapLayer(layer.id())
         self.iface.mapCanvas().refresh()
         del layers
@@ -171,14 +173,12 @@ class QGISRedUtils:
         layers = self.getLayers()
         
         for layerName in mylayersNames:
-            # Generate identifier using the same pattern as setLayerIdentifier
-            layer_identifier = f"qgisred_{layerName.lower()}"
-            
+            layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + layerName)
+
             for layer in layers:
-                if layer.customProperty("qgisred_identifier") == layer_identifier:
+                openedLayerPath = self.getLayerPath(layer)
+                if openedLayerPath == layerPath:
                     layerCloned = layer.clone()
-                    # Preserve the identifier on the cloned layer
-                    layerCloned.setCustomProperty("qgisred_identifier", layer_identifier)
                     layersToDelete.append(layer.id())
                     QgsProject.instance().addMapLayer(layerCloned, group is None)
                     if group is not None:
