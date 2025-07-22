@@ -2057,6 +2057,8 @@ class QGISRed:
     """Others"""
 
     def processCsharpResult(self, b, message):
+        QGISRedUtils().exportLayerQLRs()
+
         self.stored_query_layers = self.storeQueryLayers()
         
         # Action
@@ -2119,7 +2121,10 @@ class QGISRed:
         if hasattr(self, 'stored_all_layers'):
             self.clearInputGroup()
             self.restoreAllLayers(self.stored_all_layers) #TODO
-        
+
+        QGISRedUtils().importLayerQLRs()
+        #QGISRedUtils().cleanupLayerQLRs()
+
         if resMessage == "True":
             pass
         else:

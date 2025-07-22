@@ -4,13 +4,22 @@ from PyQt5.QtCore import QFileInfo
 from PyQt5.QtWidgets import QMessageBox, QFileDialog
 from qgis.core import QgsVectorLayer, QgsProject, QgsLayerTreeLayer, QgsTask, QgsApplication, QgsLayerMetadata
 from qgis.core import QgsSvgMarkerSymbolLayer, QgsSymbol, QgsSingleSymbolRenderer, Qgis
-from qgis.core import QgsLineSymbol, QgsSimpleLineSymbolLayer, QgsProperty
+from qgis.core import QgsLineSymbol, QgsSimpleLineSymbolLayer, QgsProperty, QgsLayerDefinition
 from qgis.core import QgsMarkerSymbol, QgsMarkerLineSymbolLayer, QgsSimpleMarkerSymbolLayer
 from qgis.core import QgsRendererCategory, QgsCategorizedSymbolRenderer, QgsCoordinateReferenceSystem, QgsVectorLayerCache
 from qgis.gui import QgsAttributeTableFilterModel, QgsAttributeTableModel, QgsAttributeTableView
 from qgis.core import QgsSymbolLayer, NULL
 from qgis.utils import iface
 from qgis.core import QgsSingleSymbolRenderer, QgsSymbol,QgsSvgMarkerSymbolLayer,QgsMarkerLineSymbolLayer,QgsMarkerSymbol,QgsWkbTypes
+from qgis.core import QgsReadWriteContext
+from PyQt5.QtXml import QDomDocument
+from qgis.core import (
+    QgsProject,
+    QgsLayerTreeLayer,
+    QgsLayerDefinition,
+    QgsMessageLog,
+    Qgis
+)
 
 # Others imports
 import os
@@ -975,3 +984,76 @@ class QGISRedUtils:
         layer_metadata.setIdentifier(identifier)
         layer.setMetadata(layer_metadata)
         print(f"qgisred_{layerType.lower()}")
+
+## TODO QLR TESTS##
+
+    def exportLayerQLRs(self):
+        """
+        Export every layer in the 'Inputs' group to its own .qlr file.
+        """
+        # 1. Ensure the output folder exists
+        qlr_dir = os.path.join(self.ProjectDirectory, "qlr")
+        os.makedirs(qlr_dir, exist_ok=True)
+
+        # 2. Find the 'Inputs' group under your project root
+        root = QgsProject.instance().layerTreeRoot()
+        inputs_group = root.findGroup("Inputs")
+        if not inputs_group:
+            QgsMessageLog.logMessage("No 'Inputs' group found for QLR export",
+                                     "QGISRed", level=1)
+            return
+
+        # 3. Iterate over each layer in that group
+        for node in inputs_group.children():
+            if isinstance(node, QgsLayerTreeLayer):
+                layer = node.layer()
+                if not layer:
+                    continue
+
+                # Build a safe filename
+                safe_name = layer.name().replace(" ", "_")
+                qlr_path = os.path.join(qlr_dir, f"{safe_name}.qlr")
+
+                # 4. Call the static exportLayerDefinition, capturing its (bool, str)
+                success, err = QgsLayerDefinition.exportLayerDefinition(
+                    qlr_path,
+                    [node],
+                    # you can optionally force relative paths:
+                    # Qgis.FilePathType.Relative
+                )
+
+                if not success:
+                    QgsMessageLog.logMessage(
+                        f"Failed to export QLR for layer '{layer.name()}': {err}",
+                        "QGISRed", level=2
+                    )
+
+    def importLayerQLRs(self):
+        """
+        Load back all .qlr files from <getGISRedFolder()>/qlr into the current project,
+        preserving group/style.
+        """
+        qlr_folder = os.path.join(self.getGISRedFolder(), "qlr")
+        if not os.path.isdir(qlr_folder):
+            return
+
+        project = QgsProject.instance()
+        root = project.layerTreeRoot()
+
+        for fname in os.listdir(qlr_folder):
+            if not fname.lower().endswith(".qlr"):
+                continue
+            full_path = os.path.join(qlr_folder, fname)
+            err = ""
+            # loadLayerDefinition inserts layers/groups exactly as exported :contentReference[oaicite:2]{index=2}
+            QgsLayerDefinition.loadLayerDefinition(full_path, project, root, err)
+            # err will contain any error message
+
+
+    def cleanupLayerQLRs(self):
+        """
+        Delete the entire qlr folder to clean up temporary definitions.
+        """
+        qlr_folder = os.path.join(self.getGISRedFolder(), "qlr")
+        if os.path.exists(qlr_folder):
+            shutil.rmtree(qlr_folder)
