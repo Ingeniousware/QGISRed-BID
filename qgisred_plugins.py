@@ -1920,18 +1920,28 @@ class QGISRed:
             utils = QGISRedUtils(self.ProjectDirectory, self.NetworkName, self.iface)
             inputGroup = self.getInputGroup()
             
+
             # Filter empty layers before opening them (except for Pipes)
             #filtered_main_layers = self.filterEmptyLayers(self.ownMainLayers)
             #filtered_complementary_layers = self.filterEmptyLayers(self.especificComplementaryLayers)
             
-            utils.openElementsLayers(inputGroup, self.ownMainLayers)
-            utils.openElementsLayers(inputGroup, self.especificComplementaryLayers) #TODO
+            # Try to load from QLR first, if not use standard approach
+            for layer_name in self.ownMainLayers:
+                if not utils.loadLayerFromQLR(layer_name):
+                    utils.openElementsLayers(inputGroup, [layer_name])
+            
+            for layer_name in self.especificComplementaryLayers:
+                if not utils.loadLayerFromQLR(layer_name):
+                    utils.openElementsLayers(inputGroup, [layer_name])
 
             self.especificComplementaryLayers = []
 
             self.updateMetadata()
 
             self.setSelectedFeaturesById()
+
+            QGISRedUtils().deleteQLRFiles()
+
             if task is not None:
                 return {"task": task.definition()}
                 
@@ -2057,9 +2067,9 @@ class QGISRed:
     """Others"""
 
     def processCsharpResult(self, b, message):
-        QGISRedUtils().exportLayerQLRs()
+        QGISRedUtils().saveLayersAsQLR()
 
-        self.stored_query_layers = self.storeQueryLayers()
+        #self.stored_query_layers = self.storeQueryLayers()
         
         # Action
         self.hasToOpenNewLayers = False
@@ -2122,8 +2132,8 @@ class QGISRed:
             self.clearInputGroup()
             self.restoreAllLayers(self.stored_all_layers) #TODO
 
-        QGISRedUtils().importLayerQLRs()
-        #QGISRedUtils().cleanupLayerQLRs()
+        # QGISRedUtils().importLayerQLRs()
+        # QGISRedUtils().deleteQLRFiles()
 
         if resMessage == "True":
             pass

@@ -986,74 +986,50 @@ class QGISRedUtils:
         print(f"qgisred_{layerType.lower()}")
 
 ## TODO QLR TESTS##
+    def getQLRFolder(self):
+        """Get the QLR folder path inside GISRed folder"""
+        qlr_folder = os.path.join(self.getGISRedFolder(), "qlr")
+        if not os.path.exists(qlr_folder):
+            os.makedirs(qlr_folder)
+        return qlr_folder
 
-    def exportLayerQLRs(self):
-        """
-        Export every layer in the 'Inputs' group to its own .qlr file.
-        """
-        # 1. Ensure the output folder exists
-        qlr_dir = os.path.join(self.ProjectDirectory, "qlr")
-        os.makedirs(qlr_dir, exist_ok=True)
-
-        # 2. Find the 'Inputs' group under your project root
+    def saveLayersAsQLR(self):
+        """Save all current layers as QLR files before removing them"""
+        qlr_folder = self.getQLRFolder()
+        layers = self.getLayers()
         root = QgsProject.instance().layerTreeRoot()
-        inputs_group = root.findGroup("Inputs")
-        if not inputs_group:
-            QgsMessageLog.logMessage("No 'Inputs' group found for QLR export",
-                                     "QGISRed", level=1)
-            return
+        
+        for layer in layers:
+            # Only save layers from current project
+            layer_path = self.getLayerPath(layer)
+            if self.ProjectDirectory in layer_path and self.NetworkName in layer_path:
+                # Generate QLR filename based on layer name
+                qlr_filename = f"{layer.name()}.qlr"
+                qlr_path = os.path.join(qlr_folder, qlr_filename)
+                
+                # Find the layer tree node for this layer
+                layer_node = root.findLayer(layer)
+                if layer_node:
+                    QgsLayerDefinition.exportLayerDefinition(qlr_path, [layer_node])
+                else:
+                    # Fallback to just the layer if node not found
+                    QgsLayerDefinition.exportLayerDefinition(qlr_path, [layer])
 
-        # 3. Iterate over each layer in that group
-        for node in inputs_group.children():
-            if isinstance(node, QgsLayerTreeLayer):
-                layer = node.layer()
-                if not layer:
-                    continue
+    def loadLayerFromQLR(self, layer_name):
+        """Load layer style from QLR if exists"""
+        qlr_folder = self.getQLRFolder()
+        qlr_filename = f"{layer_name}.qlr"
+        qlr_path = os.path.join(qlr_folder, qlr_filename)
+        
+        if os.path.exists(qlr_path):
+            # Load the layer definition
+            QgsLayerDefinition.loadLayerDefinition(qlr_path, QgsProject.instance(), QgsProject.instance().layerTreeRoot())
+            return True
+        return False
 
-                # Build a safe filename
-                safe_name = layer.name().replace(" ", "_")
-                qlr_path = os.path.join(qlr_dir, f"{safe_name}.qlr")
-
-                # 4. Call the static exportLayerDefinition, capturing its (bool, str)
-                success, err = QgsLayerDefinition.exportLayerDefinition(
-                    qlr_path,
-                    [node],
-                    # you can optionally force relative paths:
-                    # Qgis.FilePathType.Relative
-                )
-
-                if not success:
-                    QgsMessageLog.logMessage(
-                        f"Failed to export QLR for layer '{layer.name()}': {err}",
-                        "QGISRed", level=2
-                    )
-
-    def importLayerQLRs(self):
-        """
-        Load back all .qlr files from <getGISRedFolder()>/qlr into the current project,
-        preserving group/style.
-        """
-        qlr_folder = os.path.join(self.getGISRedFolder(), "qlr")
-        if not os.path.isdir(qlr_folder):
-            return
-
-        project = QgsProject.instance()
-        root = project.layerTreeRoot()
-
-        for fname in os.listdir(qlr_folder):
-            if not fname.lower().endswith(".qlr"):
-                continue
-            full_path = os.path.join(qlr_folder, fname)
-            err = ""
-            # loadLayerDefinition inserts layers/groups exactly as exported :contentReference[oaicite:2]{index=2}
-            QgsLayerDefinition.loadLayerDefinition(full_path, project, root, err)
-            # err will contain any error message
-
-
-    def cleanupLayerQLRs(self):
-        """
-        Delete the entire qlr folder to clean up temporary definitions.
-        """
-        qlr_folder = os.path.join(self.getGISRedFolder(), "qlr")
-        if os.path.exists(qlr_folder):
-            shutil.rmtree(qlr_folder)
+    def deleteQLRFiles(self):
+        """Delete all QLR files for current network"""
+        qlr_folder = self.getQLRFolder()
+        for file in os.listdir(qlr_folder):
+            if file.startswith(self.NetworkName + "_") and file.endswith(".qlr"):
+                os.remove(os.path.join(qlr_folder, file))
