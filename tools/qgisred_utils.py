@@ -993,43 +993,52 @@ class QGISRedUtils:
             os.makedirs(qlr_folder)
         return qlr_folder
 
-    def saveLayersAsQLR(self):
-        """Save all current layers as QLR files before removing them"""
+    def saveProjectAsQLR(self):
+        """
+        Export the entire project's layer-tree (all layers/groups)
+        into ONE QLR file.
+        """
         qlr_folder = self.getQLRFolder()
-        layers = self.getLayers()
+        # Name the single QLR file (you can customize the prefix)
+        qlr_path = os.path.join(qlr_folder, f"all_layers.qlr")
+        
+        # Collect all top-level layer-tree nodes under the project root
         root = QgsProject.instance().layerTreeRoot()
+        nodes = list(root.children())
         
-        for layer in layers:
-            # Only save layers from current project
-            layer_path = self.getLayerPath(layer)
-            if self.ProjectDirectory in layer_path and self.NetworkName in layer_path:
-                # Generate QLR filename based on layer name
-                qlr_filename = f"{layer.name()}.qlr"
-                qlr_path = os.path.join(qlr_folder, qlr_filename)
-                
-                # Find the layer tree node for this layer
-                layer_node = root.findLayer(layer)
-                if layer_node:
-                    QgsLayerDefinition.exportLayerDefinition(qlr_path, [layer_node])
-                else:
-                    # Fallback to just the layer if node not found
-                    QgsLayerDefinition.exportLayerDefinition(qlr_path, [layer])
+        # Export in one call
+        error_message = ""
+        success = QgsLayerDefinition.exportLayerDefinition(qlr_path, nodes) 
+        if not success:
+            raise RuntimeError(f"Failed to export project QLR: {error_message}")  
+        return qlr_path
 
-    def loadLayerFromQLR(self, layer_name):
-        """Load layer style from QLR if exists"""
+    def loadProjectFromQLR(self):
+        """
+        Load the single QLR back into the project,
+        adding all layers under the root group.
+        """
         qlr_folder = self.getQLRFolder()
-        qlr_filename = f"{layer_name}.qlr"
-        qlr_path = os.path.join(qlr_folder, qlr_filename)
+        qlr_path = os.path.join(qlr_folder, f"all_layers.qlr")
         
+        if not os.path.exists(qlr_path):
+            return False
+        
+        error_message = ""
+        success = QgsLayerDefinition().loadLayerDefinition(qlr_path, QgsProject.instance(), QgsProject.instance().layerTreeRoot())
+
+        if not success:
+            raise RuntimeError(f"Failed to load project QLR: {error_message}")
+        return True
+
+    def deleteProjectQLR(self):
+        """
+        Delete the single project QLR file.
+        """
+        qlr_folder = self.getQLRFolder()
+        qlr_filename = f"all_layers.qlr"
+        qlr_path = os.path.join(qlr_folder, qlr_filename)
         if os.path.exists(qlr_path):
-            # Load the layer definition
-            QgsLayerDefinition.loadLayerDefinition(qlr_path, QgsProject.instance(), QgsProject.instance().layerTreeRoot())
+            os.remove(qlr_path)
             return True
         return False
-
-    def deleteQLRFiles(self):
-        """Delete all QLR files for current network"""
-        qlr_folder = self.getQLRFolder()
-        for file in os.listdir(qlr_folder):
-            if file.startswith(self.NetworkName + "_") and file.endswith(".qlr"):
-                os.remove(os.path.join(qlr_folder, file))

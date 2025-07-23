@@ -1910,41 +1910,36 @@ class QGISRed:
         self.updateMetadata()
 
     def openElementLayers(self, task, net="", folder=""):
-        if not self.opendedLayers:
-            if not net == "" and not folder == "":
-                self.NetworkName = net
-                self.ProjectDirectory = folder
+        """
+        Open the project's main and complementary input layers,
+        using a single QLR export if available.
+        """
+        # Allow overriding project/network if provided
+        if not net == "" and not folder == "":
+            self.NetworkName = net
+            self.ProjectDirectory = folder
 
-            self.opendedLayers = True
-            # Open layers
-            utils = QGISRedUtils(self.ProjectDirectory, self.NetworkName, self.iface)
-            inputGroup = self.getInputGroup()
+        # Prepare for opening
+        self.opendedLayers = False
+        utils = QGISRedUtils(self.ProjectDirectory, self.NetworkName, self.iface)
+        inputGroup = self.getInputGroup()
+
+        # Try loading the entire project QLR in one shot
+        if not utils.loadProjectFromQLR():
+            # If no single QLR exists or loading failed, open layers individually
+            for layer_name in self.ownMainLayers + self.especificComplementaryLayers:
+                utils.openElementsLayers(inputGroup, [layer_name])
+
+        # Reset any scenario‑specific list
+        self.especificComplementaryLayers = []
+
+        # Always remove the one project‑level QLR file if it was created
+        utils.deleteProjectQLR()
+
+        # Continue any pending task
+        if task is not None:
+            return {"task": task.definition()}
             
-
-            # Filter empty layers before opening them (except for Pipes)
-            #filtered_main_layers = self.filterEmptyLayers(self.ownMainLayers)
-            #filtered_complementary_layers = self.filterEmptyLayers(self.especificComplementaryLayers)
-            
-            # Try to load from QLR first, if not use standard approach
-            for layer_name in self.ownMainLayers:
-                if not utils.loadLayerFromQLR(layer_name):
-                    utils.openElementsLayers(inputGroup, [layer_name])
-            
-            for layer_name in self.especificComplementaryLayers:
-                if not utils.loadLayerFromQLR(layer_name):
-                    utils.openElementsLayers(inputGroup, [layer_name])
-
-            self.especificComplementaryLayers = []
-
-            self.updateMetadata()
-
-            self.setSelectedFeaturesById()
-
-            QGISRedUtils().deleteQLRFiles()
-
-            if task is not None:
-                return {"task": task.definition()}
-                
     def filterEmptyLayers(self, layer_list):
         """Filter out empty layers (except for Pipes)"""
         filtered_layers = []
@@ -2067,7 +2062,7 @@ class QGISRed:
     """Others"""
 
     def processCsharpResult(self, b, message):
-        QGISRedUtils().saveLayersAsQLR()
+        QGISRedUtils().saveProjectAsQLR()
 
         #self.stored_query_layers = self.storeQueryLayers()
         
