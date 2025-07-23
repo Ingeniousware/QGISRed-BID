@@ -1042,3 +1042,10 @@ class QGISRedUtils:
             os.remove(qlr_path)
             return True
         return False
+    
+    def removeTopLevelGroups(names):
+        root = QgsProject.instance().layerTreeRoot()
+        for name in names:
+            grp = root.findGroup(name)
+            if grp:
+                root.removeChildNode(grp)

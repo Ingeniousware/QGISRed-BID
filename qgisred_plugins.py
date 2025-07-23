@@ -1839,6 +1839,7 @@ class QGISRed:
         utils.removeLayers(self.ownFiles, ".dbf")
         utils.removeLayers(self.especificComplementaryLayers)
         utils.removeLayers(self.issuesLayers)
+        utils.removeTopLevelGroups(["Inputs", "Queries", "Results"])
         if task is not None:
             return {"task": task.definition()}
 
