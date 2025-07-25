@@ -1958,6 +1958,7 @@ class QGISRed:
         if (self.storeQLRSucess):
             print("Here1")
             utils.loadProjectFromQLR()
+            self.storeQLRSucess = False
         else:
             print("Here2")
             for layer_name in self.ownMainLayers + self.especificComplementaryLayers:
