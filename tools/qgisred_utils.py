@@ -75,8 +75,8 @@ class QGISRedUtils:
             if ind != 0:
                 original = original[:ind] + " " + original[ind:]
 
-        if "MultipleDemands" in original:
-            original = "Multiple Demands"
+        # if "MultipleDemands" in original:
+        #     original = "Multiple Demands"
         return original
 
     """Open Layers"""
