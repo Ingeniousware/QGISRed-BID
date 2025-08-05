@@ -190,9 +190,6 @@ class QGISRedLayerManagementDialog(QDialog, FORM_CLASS):
         self.createElementsList()
         self.createComplementaryList()
 
-        # Filter out empty layers (except for Pipes)
-        #filtered_layers = self.filterEmptyLayers(self.layers)
-
         epsg = None
         if not self.crs.srsid() == self.originalCrs.srsid():
             epsg = self.crs.authid().replace("EPSG:", "")

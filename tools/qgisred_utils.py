@@ -133,6 +133,7 @@ class QGISRedUtils:
             if results:
                 self.orderResultLayers(group)
 
+
     def openTreeLayer(self, group, name, treeName, link=False):
         layerPath = os.path.join(self.ProjectDirectory, self.NetworkName + "_" + name + "_Tree_" + treeName + ".shp")
         if os.path.exists(layerPath):
@@ -985,31 +986,22 @@ class QGISRedUtils:
         layer.setMetadata(layer_metadata)
         print(f"qgisred_{layerType.lower()}")
 
-## TODO QLR TESTS##
     def getQLRFolder(self):
-        """Get the QLR folder path inside GISRed folder"""
         qlr_folder = os.path.join(self.getGISRedFolder(), "qlr")
         if not os.path.exists(qlr_folder):
             os.makedirs(qlr_folder)
         return qlr_folder
 
     def saveProjectAsQLR(self):
-        """
-        Export the entire project's layer-tree (all layers/groups)
-        into ONE QLR file.
-        """
         qlr_folder = self.getQLRFolder()
-        # Name the single QLR file (you can customize the prefix)
         qlr_path = os.path.join(qlr_folder, f"all_layers.qlr")
         
-        # Collect all top-level layer-tree nodes under the project root
         root = QgsProject.instance().layerTreeRoot()
         nodes = list(root.children())
         
         if not QgsProject.instance().mapLayers():
             return False
 
-        # Export in one call
         error_message = ""
         success = QgsLayerDefinition.exportLayerDefinition(qlr_path, nodes) 
         if not success:
@@ -1017,10 +1009,6 @@ class QGISRedUtils:
         return qlr_path
 
     def loadProjectFromQLR(self):
-        """
-        Load the single QLR back into the project,
-        adding all layers under the root group.
-        """
         qlr_folder = self.getQLRFolder()
         qlr_path = os.path.join(qlr_folder, f"all_layers.qlr")
         
@@ -1036,9 +1024,6 @@ class QGISRedUtils:
         return True
 
     def deleteProjectQLR(self):
-        """
-        Delete the single project QLR file.
-        """
         qlr_folder = self.getQLRFolder()
         qlr_filename = f"all_layers.qlr"
         qlr_path = os.path.join(qlr_folder, qlr_filename)
@@ -1048,21 +1033,32 @@ class QGISRedUtils:
         return False
     
     def removeTopLevelGroups(self, names=None):
-        """
-        Remove every top‐level group and layer from the project,
-        then unregister all map layers and refresh the canvas.
-        """
-        # 1. Get project instance and its layer‐tree root
         proj = QgsProject.instance()
         root = proj.layerTreeRoot()
 
-        # 2. Remove all layer‐tree nodes (both groups and standalone layers)
         root.removeAllChildren()
-
-        # 3. Unregister all map layers from the project registry
         proj.removeAllMapLayers()
 
-        # 4. Redraw the canvas so nothing remains visible
         if self.iface:
             self.iface.mapCanvas().refresh()
 
+    # def isLayerOpened(self, layer_name):
+    #     for layer in QgsProject.instance().mapLayers().values():
+    #         if layer.name() == layer_name:
+    #             return True
+    #     return False
+
+    def removeEmptyLayersInGroup(self, group, exceptions=None):
+        if exceptions is None:
+            exceptions = ["Pipes"]
+        project = QgsProject.instance()
+
+        for node in list(group.children()):
+            if isinstance(node, QgsLayerTreeLayer):
+                layer = node.layer()
+                if layer and layer.featureCount() == 0 and layer.name() not in exceptions:
+                    layer_id = layer.id()
+                    project.removeMapLayer(layer_id)
+
+        if self.iface:
+            self.iface.mapCanvas().refresh()
