@@ -516,7 +516,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconSave.png"
         self.add_action(
             icon_path,
-            text=self.tr("Save project"),
+            text=self.tr("Save map"),
             callback=self.runSaveActionProject,
             menubar=self.projectMenu,
             toolbar=self.projectToolbar,
