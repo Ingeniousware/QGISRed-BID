@@ -1970,7 +1970,7 @@ class QGISRed:
         # Always remove the one project‑level QLR file if it was created
         utils.deleteProjectQLR()
         utils.removeEmptyLayersInGroup(inputGroup)
-        utils.orderLayers(inputGroup)
+        #utils.orderLayers(inputGroup)
 
         # Continue any pending task
         if task is not None:
@@ -2077,7 +2077,7 @@ class QGISRed:
 
     def processCsharpResult(self, b, message):
         utils = QGISRedUtils(self.ProjectDirectory, self.NetworkName, self.iface)
-        self.storeQLRSucess = utils.saveProjectAsQLR()
+        self.storeQLRSucess, _ = utils.saveProjectAsQLR()
 
         # Action
         self.hasToOpenNewLayers = False

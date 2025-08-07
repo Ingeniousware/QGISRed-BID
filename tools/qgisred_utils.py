@@ -3,7 +3,7 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QFileInfo
 from PyQt5.QtWidgets import QMessageBox, QFileDialog
 from qgis.core import QgsVectorLayer, QgsProject, QgsLayerTreeLayer, QgsTask, QgsApplication, QgsLayerMetadata
-from qgis.core import QgsSvgMarkerSymbolLayer, QgsSymbol, QgsSingleSymbolRenderer, Qgis
+from qgis.core import QgsSvgMarkerSymbolLayer, QgsSymbol, QgsSingleSymbolRenderer, Qgis, QgsLayerTreeGroup
 from qgis.core import QgsLineSymbol, QgsSimpleLineSymbolLayer, QgsProperty, QgsLayerDefinition
 from qgis.core import QgsMarkerSymbol, QgsMarkerLineSymbolLayer, QgsSimpleMarkerSymbolLayer
 from qgis.core import QgsRendererCategory, QgsCategorizedSymbolRenderer, QgsCoordinateReferenceSystem, QgsVectorLayerCache
@@ -95,6 +95,7 @@ class QGISRedUtils:
         for fileName in ownMainLayers:
             self.openLayer(group, fileName)
         if len(ownMainLayers) > 0:
+            print("true")
             self.orderLayers(group)
         for child in group.children():
             child.setCustomProperty("showFeatureCount", True)
@@ -174,6 +175,7 @@ class QGISRedUtils:
 
     """Order Layers"""
     def orderLayers(self, group):
+        print("=== orderLayers iniciado ===")
         mylayersNames = [
             "Meters", "ServiceConnections", "IsolationValves", "Hydrants",
             "WashoutValves", "AirReleaseValves", "Sources", "Reservoirs",
@@ -181,21 +183,35 @@ class QGISRedUtils:
         ]
         layersToDelete = []
         layers = self.getLayers()
+        print(f"Total de camadas carregadas: {len(layers)}")
         
         for layerName in mylayersNames:
             layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + layerName)
+            print(f"\nProcurando camada: {layerName}")
+            print(f"Caminho esperado: {layerPath}")
 
             for layer in layers:
                 openedLayerPath = self.getLayerPath(layer)
+                print(f" - Verificando camada aberta: {layer.name()} | Caminho: {openedLayerPath}")
+
                 if openedLayerPath == layerPath:
+                    print(f"   > Correspondência encontrada para: {layer.name()}")
                     layerCloned = layer.clone()
+                    print(f"   > Camada clonada: {layerCloned.name()}")
                     layersToDelete.append(layer.id())
                     QgsProject.instance().addMapLayer(layerCloned, group is None)
+                    print(f"   > Camada clonada adicionada ao projeto {'(raiz)' if group is None else '(grupo)'}")
                     if group is not None:
                         group.addChildNode(QgsLayerTreeLayer(layerCloned))
+                        print(f"   > Camada adicionada dentro do grupo: {group.name()}")
 
         if len(layersToDelete) > 0:
+            print(f"\nRemovendo {len(layersToDelete)} camada(s) original(is)...")
             QgsProject.instance().removeMapLayers(layersToDelete)
+        else:
+            print("\nNenhuma camada para remover.")
+
+        print("=== orderLayers finalizado ===")
 
     def orderResultLayers(self, group):
         layers = [tree_layer.layer() for tree_layer in group.findLayers()]  # Only in group
@@ -1000,13 +1016,13 @@ class QGISRedUtils:
         nodes = list(root.children())
         
         if not QgsProject.instance().mapLayers():
-            return False
+            return False, None
 
         error_message = ""
         success = QgsLayerDefinition.exportLayerDefinition(qlr_path, nodes) 
         if not success:
-            raise RuntimeError(f"Failed to export project QLR: {error_message}") 
-        return qlr_path
+            return False, qlr_path
+        return True, qlr_path
 
     def loadProjectFromQLR(self):
         qlr_folder = self.getQLRFolder()
