@@ -175,7 +175,6 @@ class QGISRedUtils:
 
     """Order Layers"""
     def orderLayers(self, group):
-        print("=== orderLayers iniciado ===")
         mylayersNames = [
             "Meters", "ServiceConnections", "IsolationValves", "Hydrants",
             "WashoutValves", "AirReleaseValves", "Sources", "Reservoirs",
@@ -183,35 +182,21 @@ class QGISRedUtils:
         ]
         layersToDelete = []
         layers = self.getLayers()
-        print(f"Total de camadas carregadas: {len(layers)}")
         
         for layerName in mylayersNames:
             layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + layerName)
-            print(f"\nProcurando camada: {layerName}")
-            print(f"Caminho esperado: {layerPath}")
 
             for layer in layers:
                 openedLayerPath = self.getLayerPath(layer)
-                print(f" - Verificando camada aberta: {layer.name()} | Caminho: {openedLayerPath}")
-
                 if openedLayerPath == layerPath:
-                    print(f"   > Correspondência encontrada para: {layer.name()}")
                     layerCloned = layer.clone()
-                    print(f"   > Camada clonada: {layerCloned.name()}")
                     layersToDelete.append(layer.id())
                     QgsProject.instance().addMapLayer(layerCloned, group is None)
-                    print(f"   > Camada clonada adicionada ao projeto {'(raiz)' if group is None else '(grupo)'}")
                     if group is not None:
                         group.addChildNode(QgsLayerTreeLayer(layerCloned))
-                        print(f"   > Camada adicionada dentro do grupo: {group.name()}")
 
         if len(layersToDelete) > 0:
-            print(f"\nRemovendo {len(layersToDelete)} camada(s) original(is)...")
             QgsProject.instance().removeMapLayers(layersToDelete)
-        else:
-            print("\nNenhuma camada para remover.")
-
-        print("=== orderLayers finalizado ===")
 
     def orderResultLayers(self, group):
         layers = [tree_layer.layer() for tree_layer in group.findLayers()]  # Only in group
