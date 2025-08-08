@@ -75,8 +75,8 @@ class QGISRedUtils:
             if ind != 0:
                 original = original[:ind] + " " + original[ind:]
 
-        # if "MultipleDemands" in original:
-        #     original = "Multiple Demands"
+        # if "Demands" in original:
+        #     original = "Demands"
         return original
 
     """Open Layers"""
@@ -178,7 +178,7 @@ class QGISRedUtils:
         mylayersNames = [
             "Meters", "ServiceConnections", "IsolationValves", "Hydrants",
             "WashoutValves", "AirReleaseValves", "Sources", "Reservoirs",
-            "Tanks", "MultipleDemands", "Junctions", "Pumps", "Valves", "Pipes"
+            "Tanks", "Demands", "Junctions", "Pumps", "Valves", "Pipes"
         ]
         layersToDelete = []
         layers = self.getLayers()
@@ -743,7 +743,7 @@ class QGISRedUtils:
                             if not qgisPath == "":
                                 QgsProject.instance().read(qgisPath)
                         else:
-                            layers = ["Pipes", "Junctions", "MultipleDemands", "Valves", "Pumps", "Tanks", "Reservoirs", "Sources"]
+                            layers = ["Pipes", "Junctions", "Demands", "Valves", "Pumps", "Tanks", "Reservoirs", "Sources"]
                             self.openGroupLayers("Inputs", layers)
                     return
             for groups in root.findall("./ThirdParty/QGISRed/Groups"):
