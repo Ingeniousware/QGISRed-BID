@@ -1235,8 +1235,18 @@ class QGISRed:
             parent=self.iface.mainWindow(),
         )
 
+        # Create submenu for the main menu
+        self.meterSubMenu = self.dtMenu.addMenu(self.tr("Add Meter"))
+        self.meterSubMenu.setIcon(QIcon(":/plugins/QGISRed-BID/images/iconAddDefaultMeter.png"))
+        
+        # Create a separate submenu for the toolbar dropdown
+        self.meterSubMenuToolbar = QMenu(self.tr("Add Meter"), self.iface.mainWindow())
+        act_toolbar_meter = self.dtDropButton.menu().addMenu(self.meterSubMenuToolbar)
+        act_toolbar_meter.setIcon(QIcon(":/plugins/QGISRed-BID/images/iconAddDefaultMeter.png"))
+
         self.currentMeter = "Undefined"
         self.addMeterDropButton = QToolButton()
+        self.addMeterDropButton.setPopupMode(QToolButton.InstantPopup)  # Optional: open menu on click
         icon_path = ":/plugins/QGISRed-BID/images/iconAddDefaultMeter.png"
         self.add_action(
             icon_path,
@@ -1245,19 +1255,20 @@ class QGISRed:
             add_to_menu=False,
             menubar=None,
             toolbar=self.dtToolbar,
-            actionBase=dtDropButton,
+            actionBase=None,  # Changed: no flat action in dtDropButton menu
             addActionToDrop=False,
             add_to_toolbar=False,
             checkable=True,
             dropButton=self.addMeterDropButton,
             parent=self.iface.mainWindow(),
         )
+        
         icon_path = ":/plugins/QGISRed-BID/images/iconAddAutometer.png"
         self.addAutoMeterButton = self.add_action(
             icon_path,
             text=self.tr("Add automatic meter"),
             callback=self.runSelectAutoMeterPoint,
-            menubar=self.dtMenu,
+            menubar=self.meterSubMenu,
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
@@ -1265,129 +1276,157 @@ class QGISRed:
             parent=self.iface.mainWindow(),
         )
         self.addMeterDropButton.setDefaultAction(self.addAutoMeterButton)
+        
         icon_path = ":/plugins/QGISRed-BID/images/iconAddManometer.png"
         self.addManometerButton = self.add_action(
             icon_path,
             text=self.tr("Add manometer"),
             callback=self.runSelectManometerPoint,
-            menubar=self.dtMenu,
+            menubar=self.meterSubMenu,
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
             checkable=True,
             parent=self.iface.mainWindow(),
         )
+        
         icon_path = ":/plugins/QGISRed-BID/images/iconAddFlowmeter.png"
         self.addFlowmeterButton = self.add_action(
             icon_path,
             text=self.tr("Add flowmeter"),
             callback=self.runSelectFlowmeterPoint,
-            menubar=self.dtMenu,
+            menubar=self.meterSubMenu,
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
             checkable=True,
             parent=self.iface.mainWindow(),
         )
+        
         icon_path = ":/plugins/QGISRed-BID/images/iconAddCountermeter.png"
         self.addCountermeterButton = self.add_action(
             icon_path,
             text=self.tr("Add countermeter"),
             callback=self.runSelectCountermeterPoint,
-            menubar=self.dtMenu,
+            menubar=self.meterSubMenu,
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
             checkable=True,
             parent=self.iface.mainWindow(),
         )
+        
         icon_path = ":/plugins/QGISRed-BID/images/iconAddLevelSensor.png"
         self.addLevelSensorButton = self.add_action(
             icon_path,
             text=self.tr("Add level sensor"),
             callback=self.runSelectLevelSensorPoint,
-            menubar=self.dtMenu,
+            menubar=self.meterSubMenu,
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
             checkable=True,
             parent=self.iface.mainWindow(),
         )
+        
         icon_path = ":/plugins/QGISRed-BID/images/iconAddDiffManometer.png"
         self.addDifferentialManometerButton = self.add_action(
             icon_path,
             text=self.tr("Add differential manometer"),
             callback=self.runSelectDifferentialManometerPoint,
-            menubar=self.dtMenu,
+            menubar=self.meterSubMenu,
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
             checkable=True,
             parent=self.iface.mainWindow(),
         )
+        
         icon_path = ":/plugins/QGISRed-BID/images/iconAddQualitySensor.png"
         self.addQualitySensorButton = self.add_action(
             icon_path,
             text=self.tr("Add quality sensor"),
             callback=self.runSelectQualitySensorPoint,
-            menubar=self.dtMenu,
+            menubar=self.meterSubMenu,
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
             checkable=True,
             parent=self.iface.mainWindow(),
         )
+        
         icon_path = ":/plugins/QGISRed-BID/images/iconAddEnergySensor.png"
         self.addEnergySensorButton = self.add_action(
             icon_path,
             text=self.tr("Add energy sensor"),
             callback=self.runSelectEnergySensorPoint,
-            menubar=self.dtMenu,
+            menubar=self.meterSubMenu,
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
             checkable=True,
             parent=self.iface.mainWindow(),
         )
+        
         icon_path = ":/plugins/QGISRed-BID/images/iconAddStatusSensor.png"
         self.addStatusSensorButton = self.add_action(
             icon_path,
             text=self.tr("Add status sensor"),
             callback=self.runSelectStatusSensorPoint,
-            menubar=self.dtMenu,
+            menubar=self.meterSubMenu,
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
             checkable=True,
             parent=self.iface.mainWindow(),
         )
+        
         icon_path = ":/plugins/QGISRed-BID/images/iconAddValveOpening.png"
         self.addValveOpeningButton = self.add_action(
             icon_path,
             text=self.tr("Add valve opening"),
             callback=self.runSelectValveOpeningPoint,
-            menubar=self.dtMenu,
+            menubar=self.meterSubMenu,
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
             checkable=True,
             parent=self.iface.mainWindow(),
         )
+        
         icon_path = ":/plugins/QGISRed-BID/images/iconAddTachometer.png"
         self.addTachometerButton = self.add_action(
             icon_path,
             text=self.tr("Add tachometer"),
             callback=self.runSelectTachometerPoint,
-            menubar=self.dtMenu,
+            menubar=self.meterSubMenu,
             toolbar=self.dtToolbar,
             actionBase=self.addMeterDropButton,
             add_to_toolbar=False,
             checkable=True,
             parent=self.iface.mainWindow(),
         )
+        
+        # Add all meter actions to the toolbar submenu
+        for a in [
+            self.addAutoMeterButton,
+            self.addManometerButton,
+            self.addFlowmeterButton,
+            self.addCountermeterButton,
+            self.addLevelSensorButton,
+            self.addDifferentialManometerButton,
+            self.addQualitySensorButton,
+            self.addEnergySensorButton,
+            self.addStatusSensorButton,
+            self.addValveOpeningButton,
+            self.addTachometerButton,
+        ]:
+            self.meterSubMenuToolbar.addAction(a)
+        
         dtDropButton.menu().addSeparator()
         self.dtMenu.addSeparator()
         self.dtToolbar.addSeparator()
+        
         icon_path = ":/plugins/QGISRed-BID/images/iconSetReadings.png"
         self.add_action(
             icon_path,
@@ -1399,6 +1438,7 @@ class QGISRed:
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
+        
         icon_path = ":/plugins/QGISRed-BID/images/iconLoadScada.png"
         self.add_action(
             icon_path,
@@ -1410,9 +1450,11 @@ class QGISRed:
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
+        
         dtDropButton.menu().addSeparator()
         self.dtMenu.addSeparator()
         self.dtToolbar.addSeparator()
+        
         icon_path = ":/plugins/QGISRed-BID/images/iconStatus.png"
         self.add_action(
             icon_path,
@@ -1437,41 +1479,6 @@ class QGISRed:
             parent=self.iface.mainWindow(),
         )
 
-        """ dtDropButton.menu().addSeparator()
-        self.dtMenu.addSeparator()
-        self.dtToolbar.addSeparator()
-        self.add_action(
-            icon_path=None,
-            text=self.tr("Calibrate Model"),
-            callback=self.runAddConnections,
-            menubar=self.dtMenu,
-            toolbar=self.dtToolbar,
-            actionBase=dtDropButton,
-            add_to_toolbar=True,
-            parent=self.iface.mainWindow(),
-        )
-        """
-        """  self.add_action(
-            icon_path=None,
-            text=self.tr("State Estimation"),
-            callback=self.runAddConnections,
-            menubar=self.dtMenu,
-            toolbar=self.dtToolbar,
-            actionBase=dtDropButton,
-            add_to_toolbar=True,
-            parent=self.iface.mainWindow(),
-        ) """
-
-        # icon_path = ':/plugins/QGISRed/images/iconHydrants.png'
-        # self.add_action(icon_path, text=self.tr(u'Add hydrants to the model'), callback=self.runAddHydrants,
-        #                 menubar=self.dtMenu, toolbar=self.dtToolbar,
-        #                 actionBase=dtDropButton, add_to_toolbar=True, parent=self.iface.mainWindow())
-        # icon_path = ':/plugins/QGISRed/images/iconPurges.png'
-        # self.add_action(icon_path, text=self.tr(u'Add washout valves to the model'), callback=self.runAddPurgeValves,
-        #                 menubar=self.dtMenu, toolbar=self.dtToolbar,
-        #                 actionBase=dtDropButton, add_to_toolbar=True, parent=self.iface.mainWindow())
-        pass
-    
     def addQueriesMenu(self):
         #    #Menu
         self.queriesMenu = self.qgisredmenu.addMenu(self.tr("Queries"))
