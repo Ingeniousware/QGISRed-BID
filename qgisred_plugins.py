@@ -1101,7 +1101,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconTree.png"
         self.add_action(
             icon_path,
-            text=self.tr("Minimum Spanning Tree"),
+            text=self.tr("Tree Graph"),
             callback=self.runTree,
             menubar=self.toolsMenu,
             toolbar=self.toolsToolbar,
@@ -4397,7 +4397,7 @@ class QGISRed:
 
         self.processCsharpResult(resMessage, "No Washout Valves to include in the model")
 
-    """Minimum Spanning Tree"""
+    """Tree Graph"""
 
     def runTree(self, point):
         if not self.checkDependencies():
