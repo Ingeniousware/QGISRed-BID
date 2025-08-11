@@ -2726,12 +2726,12 @@ class QGISRed:
                 if isinstance(child, QgsLayerTreeLayer):
                     input_layers.append(child.layer())
 
-            for name in self.ownMainLayers:
-                layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + name + ".shp")
-                for layer in layers:
-                    openedLayerPath = self.getLayerPath(layer)
-                    if openedLayerPath == layerPath and layer in input_layers:
-                        QGISRedUtils.setStyle(None, layer, name.lower())
+            # for name in self.ownMainLayers:
+            #     layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + name + ".shp")
+            #     for layer in layers:
+            #         openedLayerPath = self.getLayerPath(layer)
+            #         if openedLayerPath == layerPath and layer in input_layers:
+            #             QGISRedUtils.setStyle(None, layer, name.lower())
 
     def runSaveProject(self):
         self.defineCurrentProject()
