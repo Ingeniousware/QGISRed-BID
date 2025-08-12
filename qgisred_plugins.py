@@ -369,7 +369,7 @@ class QGISRed:
         )
         self.generalDropButton = generalDropButton
 
-        icon_path = ":/plugins/QGISRed-BID/images/iconUserManager.png"
+        icon_path = ":/plugins/QGISRed-BID/images/iconProjectManager.png"
         self.add_action(
             icon_path,
             text=self.tr("Project manager"),
