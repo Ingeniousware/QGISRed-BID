@@ -1439,6 +1439,18 @@ class QGISRed:
             parent=self.iface.mainWindow(),
         )
         
+        icon_path = ":/plugins/QGISRed-BID/images/iconSetPipeStatusFromValves.png"
+        self.add_action(
+            icon_path,
+            text=self.tr("Set pipe's initial status from isolation valves"),
+            callback=self.runSetPipeStatus,
+            menubar=self.dtMenu,
+            toolbar=self.dtToolbar,
+            actionBase=dtDropButton,
+            add_to_toolbar=True,
+            parent=self.iface.mainWindow(),
+        )
+
         icon_path = ":/plugins/QGISRed-BID/images/iconLoadFieldData.png"
         self.add_action(
             icon_path,
@@ -1454,18 +1466,6 @@ class QGISRed:
         dtDropButton.menu().addSeparator()
         self.dtMenu.addSeparator()
         self.dtToolbar.addSeparator()
-        
-        icon_path = ":/plugins/QGISRed-BID/images/iconSetPipeStatusFromValves.png"
-        self.add_action(
-            icon_path,
-            text=self.tr("Set pipe's initial status from isolation valves"),
-            callback=self.runSetPipeStatus,
-            menubar=self.dtMenu,
-            toolbar=self.dtToolbar,
-            actionBase=dtDropButton,
-            add_to_toolbar=True,
-            parent=self.iface.mainWindow(),
-        )
 
         icon_path = ":/plugins/QGISRed-BID/images/iconIncorporateConnectionsToModel.png"
         self.add_action(
