@@ -112,7 +112,8 @@ class QGISRedUtils:
 
     def isLayerOpened(self, layerName):
         layers = self.getLayers()
-        layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + layerName + ".shp")
+        originalLayerName = self.getOriginalNameFromLayerName(layerName)
+        layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + originalLayerName + ".shp")
 
         for layer in layers:
             openedLayerPath = self.getLayerPath(layer)
@@ -1084,12 +1085,6 @@ class QGISRedUtils:
 
         if self.iface:
             self.iface.mapCanvas().refresh()
-
-    # def isLayerOpened(self, layer_name):
-    #     for layer in QgsProject.instance().mapLayers().values():
-    #         if layer.name() == layer_name:
-    #             return True
-    #     return False
 
     def removeEmptyLayersInGroup(self, group, exceptions=None):
         if exceptions is None:
