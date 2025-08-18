@@ -413,7 +413,7 @@
                  </font>
                 </property>
                 <property name="text">
-                 <string>Demands</string>
+                 <string>Multiple Demands</string>
                 </property>
                 <property name="checkable">
                  <bool>true</bool>
