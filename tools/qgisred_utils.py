@@ -56,6 +56,21 @@ class QGISRedUtils:
             'Meters': 'qgisred_meters'
         }
 
+        self.identifierToElementName = {
+            'qgisred_pipes': 'Pipes',
+            'qgisred_junctions': 'Junctions', 
+            'qgisred_demands': 'Demands',
+            'qgisred_reservoirs': 'Reservoirs',
+            'qgisred_tanks': 'Tanks',
+            'qgisred_pumps': 'Pumps',
+            'qgisred_valves': 'Valves',
+            'qgisred_sources': 'Sources',
+            'qgisred_serviceconnections': 'Service Connections',
+            'qgisred_isolationvalves': 'Isolation Valves',
+            'qgisred_meters': 'Meters'
+        }
+        
+
     """Layers"""
 
     def getLayers(self):
@@ -178,7 +193,8 @@ class QGISRedUtils:
 
     def removeLayer(self, name, ext=".shp"):
         layers = self.getLayers()
-        layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + name + ext)
+        originalLayerName = self.getOriginalNameFromLayerName(name)
+        layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + originalLayerName + ext)
 
         for layer in layers:
             openedLayerPath = self.getLayerPath(layer)
@@ -191,7 +207,7 @@ class QGISRedUtils:
     def orderLayers(self, group):
         if group is None:
             return
-
+        
         desiredOrderIdentifiers = [
             'qgisred_meters',
             'qgisred_serviceconnections', 
@@ -1089,3 +1105,19 @@ class QGISRedUtils:
 
         if self.iface:
             self.iface.mapCanvas().refresh()
+    
+    def getOriginalNameFromLayerName(self, layerName):
+        layersByName = QgsProject.instance().mapLayersByName(layerName)
+        
+        if not layersByName:
+            return layerName
+
+        qgsVectorLayer = layersByName[0]
+        
+        layerIdentifier = qgsVectorLayer.customProperty("qgisred_identifier")
+        print('identifier : ', layerIdentifier)
+
+        if not layerIdentifier:
+            return layerName
+        
+        return self.identifierToElementName.get(layerIdentifier, layerName)
