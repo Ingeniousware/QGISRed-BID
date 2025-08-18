@@ -192,24 +192,33 @@ class QGISRedUtils:
         if group is None:
             return
 
-        mylayersNames = [
-            "Meters", "Service Connections", "Isolation Valves", "Hydrants",
-            "Washout Valves", "Air Release Valves", "Sources", "Reservoirs",
-            "Tanks", "Demands", "Junctions", "Pumps", "Valves", "Pipes"
+        desiredOrderIdentifiers = [
+            'qgisred_meters',
+            'qgisred_serviceconnections', 
+            'qgisred_isolationvalves',
+            'qgisred_sources',
+            'qgisred_reservoirs',
+            'qgisred_tanks',
+            'qgisred_demands',
+            'qgisred_junctions',
+            'qgisred_pumps',
+            'qgisred_valves',
+            'qgisred_pipes'
         ]
 
-        self.elementIdentifiers 
-
-        name_to_node = {}
+        identifierToNode = {}
         for child in group.children():
             if isinstance(child, QgsLayerTreeLayer):
-                name_to_node[child.name()] = child  # legend name
+                layer = child.layer()
+                if layer:
+                    identifier = layer.customProperty("qgisred_identifier")
+                    if identifier:
+                        identifierToNode[identifier] = child
 
-        for base_name in reversed(mylayersNames):
-            pretty = self.getLayerNameToLegend(base_name)
-            node = name_to_node.get(pretty) or name_to_node.get(base_name)
+        for targetIdentifier in reversed(desiredOrderIdentifiers):
+            node = identifierToNode.get(targetIdentifier)
             if not node:
-                continue 
+                continue
 
             cloned = node.clone()
             group.insertChildNode(0, cloned)
