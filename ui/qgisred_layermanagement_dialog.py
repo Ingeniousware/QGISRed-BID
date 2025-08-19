@@ -25,6 +25,7 @@ class QGISRedLayerManagementDialog(QDialog, FORM_CLASS):
         super(QGISRedLayerManagementDialog, self).__init__(parent)
         self.setupUi(self)
         self.btAccept.clicked.connect(self.accept)
+        self.btCancel.clicked.connect(self.reject)
         self.btSelectCRS.clicked.connect(self.selectCRS)
 
         self.btPipes.clicked.connect(lambda: self.createElement("Pipes"))
