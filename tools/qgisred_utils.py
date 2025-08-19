@@ -121,9 +121,11 @@ class QGISRedUtils:
                 return True
         return False
 
-    def openElementsLayers(self, group, ownMainLayers):
-        for fileName in ownMainLayers:
-            self.openLayer(group, fileName)
+    def openElementsLayers(self, group, ownMainLayers,processOnly=False):
+        print("reached 2")
+        if not processOnly:
+            for fileName in ownMainLayers:
+                self.openLayer(group, fileName)
         if len(ownMainLayers) > 0:
             print("true")
             self.orderLayers(group)
@@ -206,6 +208,7 @@ class QGISRedUtils:
 
     """Order Layers"""
     def orderLayers(self, group):
+        print("REACHED HERE")
         if group is None:
             return
         
