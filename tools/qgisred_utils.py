@@ -199,12 +199,15 @@ class QGISRedUtils:
         originalLayerName = self.getOriginalNameFromLayerName(name)
         layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + originalLayerName + ext)
 
+        inputGroup = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
+        if inputGroup:
+            inputLayers = [child.layer() for child in inputGroup.findLayers()]
+            layers = [layer for layer in layers if layer in inputLayers]
+
         for layer in layers:
             openedLayerPath = self.getLayerPath(layer)
             if openedLayerPath == layerPath:
                 QgsProject.instance().removeMapLayer(layer.id())
-        self.iface.mapCanvas().refresh()
-        del layers
 
     """Order Layers"""
     def orderLayers(self, group):
