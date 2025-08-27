@@ -972,3 +972,35 @@ class QGISRedUtils:
             return layerName
         
         return self.identifierToElementName.get(layerIdentifier, layerName)
+
+    def assignLayerIdentifiers(self):
+        element_identifiers = {
+            'Pipes': 'pipes',
+            'Junctions': 'junctions', 
+            'Tanks': 'tanks',
+            'Reservoirs': 'reservoirs',
+            'Valves': 'valves',
+            'Pumps': 'pumps',
+            'Demands': 'demands',
+            'Sources': 'sources',
+            'IsolationValves': 'isolationvalves',
+            'ServiceConnections': 'serviceconnections',
+            'Meters': 'meters'
+        }
+        
+        # Create a dictionary of layers keyed by their paths for O(1) lookup
+        layers_by_path = {self.getLayerPath(layer): layer for layer in self.getLayers()}
+        
+        # Pre-compute common path components
+        base_dir = self.ProjectDirectory
+        network_prefix = f"{self.NetworkName}_"
+        
+        # Process each element type
+        for element_name, identifier in element_identifiers.items():
+            # Construct the expected layer path
+            expected_path = self.generatePath(base_dir, f"{network_prefix}{element_name}.shp")
+            
+            # Check if layer exists and needs identifier assignment
+            if layer := layers_by_path.get(expected_path):
+                if not layer.customProperty("qgisred_identifier"):
+                    self.setLayerIdentifier(layer, identifier)

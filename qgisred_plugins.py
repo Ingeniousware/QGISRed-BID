@@ -2752,6 +2752,9 @@ class QGISRed:
         
         self.readUnits(self.ProjectDirectory, self.NetworkName)
         
+        utils = QGISRedUtils(self.ProjectDirectory, self.NetworkName, self.iface)
+        utils.assignLayerIdentifiers()
+
         file = open(self.gplFile, "a+")
         QGISRedUtils().writeFile(file, self.NetworkName + ";" + self.ProjectDirectory + "\n")
         file.close()
@@ -2766,13 +2769,6 @@ class QGISRed:
             for child in inputs_group.children():
                 if isinstance(child, QgsLayerTreeLayer):
                     input_layers.append(child.layer())
-
-            # for name in self.ownMainLayers:
-            #     layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + name + ".shp")
-            #     for layer in layers:
-            #         openedLayerPath = self.getLayerPath(layer)
-            #         if openedLayerPath == layerPath and layer in input_layers:
-            #             QGISRedUtils.setStyle(None, layer, name.lower())
 
     def runSaveProject(self):
         self.defineCurrentProject()
