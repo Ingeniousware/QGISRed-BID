@@ -43,17 +43,17 @@ class QGISRedUtils:
         self.NetworkName = networkName
 
         self.elementIdentifiers = {
-            'Pipes': 'qgisred_pipes',
-            'Junctions': 'qgisred_junctions',
-            'Demands': 'qgisred_demands',
-            'Reservoirs': 'qgisred_reservoirs',
-            'Tanks': 'qgisred_tanks',
-            'Pumps': 'qgisred_pumps',
-            'Valves': 'qgisred_valves',
-            'Sources': 'qgisred_sources',
-            'Service Connections': 'qgisred_serviceconnections',
-            'Isolation Valves': 'qgisred_isolationvalves',
-            'Meters': 'qgisred_meters'
+            'Pipes': 'pipes',
+            'Junctions': 'junctions', 
+            'Tanks': 'tanks',
+            'Reservoirs': 'reservoirs',
+            'Valves': 'valves',
+            'Pumps': 'pumps',
+            'Demands': 'demands',
+            'Sources': 'sources',
+            'IsolationValves': 'isolationvalves',
+            'ServiceConnections': 'serviceconnections',
+            'Meters': 'meters'
         }
 
         self.identifierToElementName = {
@@ -972,3 +972,21 @@ class QGISRedUtils:
             return layerName
         
         return self.identifierToElementName.get(layerIdentifier, layerName)
+
+    def assignLayerIdentifiers(self):
+        # Create a dictionary of layers keyed by their paths
+        layersByPath = {self.getLayerPath(layer): layer for layer in self.getLayers()}
+        
+        # Pre-compute common path components
+        baseDir = self.ProjectDirectory
+        networkPrefix = f"{self.NetworkName}_"
+        
+        # Process each element type
+        for elementName, identifier in self.elementIdentifiers.items():
+            # Construct the expected layer path
+            expectedPath = self.generatePath(baseDir, f"{networkPrefix}{elementName}.shp")
+            
+            # Check if layer exists and needs identifier assignment
+            if layer := layersByPath.get(expectedPath):
+                if not layer.customProperty("qgisred_identifier"):
+                    self.setLayerIdentifier(layer, identifier)
