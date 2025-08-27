@@ -43,17 +43,17 @@ class QGISRedUtils:
         self.NetworkName = networkName
 
         self.elementIdentifiers = {
-            'Pipes': 'qgisred_pipes',
-            'Junctions': 'qgisred_junctions',
-            'Demands': 'qgisred_demands',
-            'Reservoirs': 'qgisred_reservoirs',
-            'Tanks': 'qgisred_tanks',
-            'Pumps': 'qgisred_pumps',
-            'Valves': 'qgisred_valves',
-            'Sources': 'qgisred_sources',
-            'Service Connections': 'qgisred_serviceconnections',
-            'Isolation Valves': 'qgisred_isolationvalves',
-            'Meters': 'qgisred_meters'
+            'Pipes': 'pipes',
+            'Junctions': 'junctions', 
+            'Tanks': 'tanks',
+            'Reservoirs': 'reservoirs',
+            'Valves': 'valves',
+            'Pumps': 'pumps',
+            'Demands': 'demands',
+            'Sources': 'sources',
+            'IsolationValves': 'isolationvalves',
+            'ServiceConnections': 'serviceconnections',
+            'Meters': 'meters'
         }
 
         self.identifierToElementName = {
@@ -974,33 +974,19 @@ class QGISRedUtils:
         return self.identifierToElementName.get(layerIdentifier, layerName)
 
     def assignLayerIdentifiers(self):
-        element_identifiers = {
-            'Pipes': 'pipes',
-            'Junctions': 'junctions', 
-            'Tanks': 'tanks',
-            'Reservoirs': 'reservoirs',
-            'Valves': 'valves',
-            'Pumps': 'pumps',
-            'Demands': 'demands',
-            'Sources': 'sources',
-            'IsolationValves': 'isolationvalves',
-            'ServiceConnections': 'serviceconnections',
-            'Meters': 'meters'
-        }
-        
-        # Create a dictionary of layers keyed by their paths for O(1) lookup
-        layers_by_path = {self.getLayerPath(layer): layer for layer in self.getLayers()}
+        # Create a dictionary of layers keyed by their paths
+        layersByPath = {self.getLayerPath(layer): layer for layer in self.getLayers()}
         
         # Pre-compute common path components
-        base_dir = self.ProjectDirectory
-        network_prefix = f"{self.NetworkName}_"
+        baseDir = self.ProjectDirectory
+        networkPrefix = f"{self.NetworkName}_"
         
         # Process each element type
-        for element_name, identifier in element_identifiers.items():
+        for elementName, identifier in self.elementIdentifiers.items():
             # Construct the expected layer path
-            expected_path = self.generatePath(base_dir, f"{network_prefix}{element_name}.shp")
+            expectedPath = self.generatePath(baseDir, f"{networkPrefix}{elementName}.shp")
             
             # Check if layer exists and needs identifier assignment
-            if layer := layers_by_path.get(expected_path):
+            if layer := layersByPath.get(expectedPath):
                 if not layer.customProperty("qgisred_identifier"):
                     self.setLayerIdentifier(layer, identifier)
