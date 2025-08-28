@@ -269,7 +269,7 @@
     <message>
         <location filename="../ui/qgisred_element_explorer_dock.ui" line="234"/>
         <source>Element Properties</source>
-        <translation>Propiedades del elemento</translation>
+        <translation>Propiedades de los elementos</translation>
     </message>
     <message>
         <location filename="../ui/qgisred_element_explorer_dock.ui" line="287"/>
@@ -670,7 +670,7 @@
     <message>
         <location filename="../qgisred_plugins.py" line="777"/>
         <source>Edit element properties</source>
-        <translation>Editar propiedades del elemento</translation>
+        <translation>Editar propiedades de los elementos</translation>
     </message>
     <message>
         <location filename="../qgisred_plugins.py" line="789"/>
@@ -960,7 +960,7 @@
     <message>
         <location filename="../qgisred_plugins.py" line="1524"/>
         <source>Element Properties...</source>
-        <translation>Propiedades del elemento...</translation>
+        <translation>Propiedades de los elementos...</translation>
     </message>
     <message>
         <location filename="../qgisred_plugins.py" line="1537"/>
@@ -975,7 +975,7 @@
     <message>
         <location filename="../qgisred_plugins.py" line="1561"/>
         <source>Statistics &amp;&amp; Plots...</source>
-        <translation>Estadísticas &amp;&amp; Gráficas...</translation>
+        <translation>Estadísticas y Gráficos...</translation>
     </message>
 </context>
 <context>
