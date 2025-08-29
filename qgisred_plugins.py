@@ -95,6 +95,7 @@ class QGISRed:
         """
         # Save reference to the QGIS interface
         self.iface = iface
+        self.storeQLRSucess = False
 
         if not platform.system() == "Windows":
             self.iface.messageBar().pushMessage(self.tr("Error"), self.tr("QGISRed only works on Windows"), level=2, duration=5)
