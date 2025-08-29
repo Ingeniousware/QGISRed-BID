@@ -199,10 +199,16 @@ class QGISRedUtils:
         originalLayerName = self.getOriginalNameFromLayerName(name)
         layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + originalLayerName + ext)
 
-        inputGroup = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
-        if inputGroup:
-            inputLayers = [child.layer() for child in inputGroup.findLayers()]
-            layers = [layer for layer in layers if layer in inputLayers]
+        # Check in Inputs, Queries, and Results groups
+        groupLayers = []
+        root = QgsProject.instance().layerTreeRoot()
+        for groupName in ["Inputs", "Queries", "Results"]:
+            group = root.findGroup(groupName)
+            if group:
+                groupLayers.extend([child.layer() for child in group.findLayers()])
+        
+        if groupLayers:
+            layers = [layer for layer in layers if layer in groupLayers]
 
         for layer in layers:
             openedLayerPath = self.getLayerPath(layer)

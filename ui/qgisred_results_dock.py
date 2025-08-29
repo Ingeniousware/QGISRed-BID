@@ -113,6 +113,7 @@ class QGISRedResultsDock(QDockWidget, FORM_CLASS):
             utils.openLayer(group, file, results=True)
 
     def removeResults(self, task):
+        print("test")
         resultPath = os.path.join(self.ProjectDirectory, "Results")
         utils = QGISRedUtils(resultPath, self.NetworkName + "_" + self.Scenario, self.iface)
         utils.removeLayers(self.LabelsToOpRe)
