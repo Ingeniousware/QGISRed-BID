@@ -885,7 +885,6 @@ class QGISRedUtils:
 
     def setLayerIdentifier(self, layer, layerType):
         identifier = f"qgisred_{layerType.lower()}"
-        layer.setId(identifier)
         layer.setCustomProperty("qgisred_identifier", identifier)
         layer_metadata = QgsLayerMetadata()
         layer_metadata.setIdentifier(identifier)
