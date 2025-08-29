@@ -1137,22 +1137,22 @@ class QGISRed:
         )
         self.analysisDropButton = analysisDropButton
 
-        icon_path = ":/plugins/QGISRed-BID/images/iconAnalysisOptions.png"
+        icon_path = ":/plugins/QGISRed-BID/images/iconRunModel.png"
         self.add_action(
             icon_path,
-            text=self.tr("Analysis options"),
-            callback=self.runAnalysisOptions,
+            text=self.tr("Run model"),
+            callback=self.runModel,
             menubar=self.analysisMenu,
             toolbar=self.analysisToolbar,
             actionBase=analysisDropButton,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
-        icon_path = ":/plugins/QGISRed-BID/images/iconRunModel.png"
+        icon_path = ":/plugins/QGISRed-BID/images/iconAnalysisOptions.png"
         self.add_action(
             icon_path,
-            text=self.tr("Run model"),
-            callback=self.runModel,
+            text=self.tr("Analysis options"),
+            callback=self.runAnalysisOptions,
             menubar=self.analysisMenu,
             toolbar=self.analysisToolbar,
             actionBase=analysisDropButton,
