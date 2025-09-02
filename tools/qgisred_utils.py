@@ -636,8 +636,8 @@ class QGISRedUtils:
                     else:
                         request = QMessageBox.question(
                             self.iface.mainWindow(),
-                            "QGISRed project",
-                            "We cannot find the qgis project file. Do you want to find this file manually? If not, we will open only the layers from the Inputs group.",
+                            self.tr("QGISRed project"),
+                            self.tr("We cannot find the qgis project file. Do you want to find this file manually? If not, we will open only the layers from the Inputs group."),
                             QMessageBox.StandardButtons(QMessageBox.Yes | QMessageBox.No),
                         )
                         if request == QMessageBox.Yes:
@@ -814,7 +814,7 @@ class QGISRedUtils:
         material_field_index = layer.fields().indexFromName(field)
         
         if material_field_index == -1:
-            raise ValueError(f'{field} field not found in layer {layer.name()}')
+            raise ValueError(self.tr(f'{field} field not found in layer {layer.name()}'))
 
         unique_values = layer.uniqueValues(material_field_index)
         categories = []
@@ -925,7 +925,7 @@ class QGISRedUtils:
         success = QgsLayerDefinition().loadLayerDefinition(qlr_path, QgsProject.instance(), QgsProject.instance().layerTreeRoot())
 
         if not success:
-            raise RuntimeError(f"Failed to load project QLR: {error_message}")
+            raise RuntimeError(self.tr(f"Failed to load project QLR: {error_message}"))
         return True
 
     def deleteProjectQLR(self):
