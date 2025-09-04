@@ -95,6 +95,7 @@ class QGISRed:
         """
         # Save reference to the QGIS interface
         self.iface = iface
+        self.storeQLRSucess = False
 
         if not platform.system() == "Windows":
             self.iface.messageBar().pushMessage(self.tr("Error"), self.tr("QGISRed only works on Windows"), level=2, duration=5)
@@ -293,7 +294,7 @@ class QGISRed:
         definedCulture = GISRed.SetCulture(ui_language)
         QgsMessageLog.logMessage("Culture set to " + definedCulture, "QGISRed", level=0)
 
-        QgsMessageLog.logMessage("Loaded sucssesfully", "QGISRed", level=0)
+        QgsMessageLog.logMessage(self.tr("Loaded sucssesfully"), "QGISRed", level=0)
 
         
 
@@ -1144,22 +1145,22 @@ class QGISRed:
         )
         self.analysisDropButton = analysisDropButton
 
-        icon_path = ":/plugins/QGISRed-BID/images/iconAnalysisOptions.png"
+        icon_path = ":/plugins/QGISRed-BID/images/iconRunModel.png"
         self.add_action(
             icon_path,
-            text=self.tr("Analysis options"),
-            callback=self.runAnalysisOptions,
+            text=self.tr("Run model"),
+            callback=self.runModel,
             menubar=self.analysisMenu,
             toolbar=self.analysisToolbar,
             actionBase=analysisDropButton,
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
-        icon_path = ":/plugins/QGISRed-BID/images/iconRunModel.png"
+        icon_path = ":/plugins/QGISRed-BID/images/iconAnalysisOptions.png"
         self.add_action(
             icon_path,
-            text=self.tr("Run model"),
-            callback=self.runModel,
+            text=self.tr("Analysis options"),
+            callback=self.runAnalysisOptions,
             menubar=self.analysisMenu,
             toolbar=self.analysisToolbar,
             actionBase=analysisDropButton,
@@ -1771,7 +1772,7 @@ class QGISRed:
         for layer in layers:
             if layer.isEditable():
                 self.iface.messageBar().pushMessage(
-                    "Warning", "Some layer is in Edit Mode. Plase, commit it before continuing.", level=1, duration=5
+                    self.tr("Warning"), self.tr("Some layer is in Edit Mode. Plase, commit it before continuing."), level=1, duration=5
                 )
                 return False
         qgsFilename = QgsProject.instance().fileName()
@@ -1779,15 +1780,15 @@ class QGISRed:
             if QgsProject.instance().isDirty():
                 # Save and continue
                 self.iface.messageBar().pushMessage(
-                    "Warning", "The project has changes. Please save them before continuing.", level=1, duration=5
+                    self.tr("Warning"), self.tr("The project has changes. Please save them before continuing."), level=1, duration=5
                 )
                 return False
             else:
                 # Close project and continue?
                 reply = QMessageBox.question(
                     self.iface.mainWindow(),
-                    "Opened project",
-                    "Do you want to close the current project and continue?",
+                    self.tr("Opened project"),
+                    self.tr("Do you want to close the current project and continue?"),
                     QMessageBox.Yes,
                     QMessageBox.No,
                 )
@@ -1801,8 +1802,8 @@ class QGISRed:
                 # Close files and continue?
                 reply = QMessageBox.question(
                     self.iface.mainWindow(),
-                    "Opened layers",
-                    "Do you want to close the current layers and continue?",
+                    self.tr("Opened layers"),
+                    self.tr("Do you want to close the current layers and continue?"),
                     QMessageBox.Yes,
                     QMessageBox.No,
                 )
@@ -2694,9 +2695,9 @@ class QGISRed:
         if resMessage == "True":
             pass
         elif resMessage == "False":
-            self.iface.messageBar().pushMessage("Warning", "Some issues occurred in the process", level=1, duration=5)
+            self.iface.messageBar().pushMessage(self.tr("Warning"), self.tr("Some issues occurred in the process"), level=1, duration=5)
         else:
-            self.iface.messageBar().pushMessage("Error", resMessage, level=2, duration=5)
+            self.iface.messageBar().pushMessage(self.tr("Error"), resMessage, level=2, duration=5)
 
     """Project"""
 
@@ -2750,7 +2751,7 @@ class QGISRed:
 
         utils = QGISRedUtils(self.ProjectDirectory, self.NetworkName, self.iface)
         path = utils.saveBackup()
-        self.iface.messageBar().pushMessage("QGISRed", "Backup stored in: " + path, level=0, duration=5)
+        self.iface.messageBar().pushMessage("QGISRed", self.tr("Backup stored in: " + path), level=0, duration=5)
 
     def runOpenedQgisProject(self):
         self.defineCurrentProject()
@@ -3749,7 +3750,7 @@ class QGISRed:
             )
             QApplication.restoreOverrideCursor()
 
-            self.processCsharpResult(resMessage, "No one pipe's length out of tolerance")
+            self.processCsharpResult(resMessage, self.tr("No one pipe's length out of tolerance"))
 
     def runCheckDiameters(self):
         if not self.checkDependencies():
@@ -4037,7 +4038,7 @@ class QGISRed:
         resMessage = GISRed.CalculateLengths(self.ProjectDirectory, self.NetworkName, self.tempFolder, ids)
         QApplication.restoreOverrideCursor()
 
-        self.processCsharpResult(resMessage, "No issues ocurred")
+        self.processCsharpResult(resMessage, self.tr("No issues ocurred"))
 
     def runSetRoughness(self):
         if not self.checkDependencies():
@@ -4056,7 +4057,7 @@ class QGISRed:
         resMessage = GISRed.SetRoughness(self.ProjectDirectory, self.NetworkName, self.tempFolder, self.linkIds)
         QApplication.restoreOverrideCursor()
 
-        self.processCsharpResult(resMessage, "No issues ocurred")
+        self.processCsharpResult(resMessage, self.tr("No issues ocurred"))
 
     def runConvertRoughness(self):
         if not self.checkDependencies():
@@ -4075,7 +4076,7 @@ class QGISRed:
         resMessage = GISRed.ConvertRoughness(self.ProjectDirectory, self.NetworkName, self.tempFolder, self.linkIds)
         QApplication.restoreOverrideCursor()
 
-        self.processCsharpResult(resMessage, "No issues ocurred")
+        self.processCsharpResult(resMessage, self.tr("No issues ocurred"))
 
     def runElevationInterpolation(self):
         if not self.checkDependencies():
@@ -4103,7 +4104,7 @@ class QGISRed:
             )
             QApplication.restoreOverrideCursor()
 
-            self.processCsharpResult(resMessage, "Any elevation has been estimated")
+            self.processCsharpResult(resMessage, self.tr("Any elevation has been estimated"))
 
     def runDemandSectors(self):
         if not self.checkDependencies():
