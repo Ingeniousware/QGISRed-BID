@@ -131,10 +131,7 @@ class QGISRedCreateProjectDialog(QDialog, FORM_CLASS):
             if resMessage == "True":
                 self.iface.messageBar().pushMessage(self.tr("Information"), self.tr("Process successfully completed"), level=3, duration=5)
                 # Project manager list
-                file = open(self.gplFile, "a+")
-                QGISRedUtils().writeFile(file, self.NetworkName + ";" + self.ProjectDirectory + "\n")
-                file.close()
-
+                QGISRedUtils().addProjectToGplFile(self.gplFile, self.NetworkName, self.ProjectDirectory)
                 # open layers
                 self.parent.openElementLayers(None, self.NetworkName, self.ProjectDirectory)
             elif resMessage == "False":

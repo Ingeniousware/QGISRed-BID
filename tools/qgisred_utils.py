@@ -266,7 +266,10 @@ class QGISRedUtils:
     """Paths"""
 
     def getUniformedPath(self, path):
-        return path.replace("/", "\\")
+        if path is None:
+            return ""
+        path = os.path.realpath(path)
+        return path.replace("/", os.sep)
 
     def getLayerPath(self, layer):
         try:
@@ -995,3 +998,26 @@ class QGISRedUtils:
             if layer := layersByPath.get(expectedPath):
                 if not layer.customProperty("qgisred_identifier"):
                     self.setLayerIdentifier(layer, identifier)
+
+    def addProjectToGplFile(self, gplFile, networkName, projectDirectory):
+        projectDirectory = self.getUniformedPath(projectDirectory)
+        
+        if not os.path.exists(gplFile):
+            f = open(gplFile, "w+")
+            f.close()
+        
+        existing_entries = set()
+        with open(gplFile, "r") as f:
+            for line in f:
+                line = line.strip()
+                if ";" in line:
+                    parts = line.split(";", 1)
+                    if len(parts) == 2:
+                        name = parts[0]
+                        path = self.getUniformedPath(parts[1])
+                        existing_entries.add((name, path))
+        
+        new_entry = (networkName, projectDirectory)
+        if new_entry not in existing_entries:
+            with open(gplFile, "a") as f:
+                self.writeFile(f, networkName + ";" + projectDirectory + "\n")

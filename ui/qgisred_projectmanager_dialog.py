@@ -174,9 +174,7 @@ class QGISRedProjectManagerDialog(QDialog, FORM_CLASS):
         if isPipes:
             if not isMetadata:
                 self.updateMetadata(net, folder)
-            file = open(self.gplFile, "a+")
-            QGISRedUtils().writeFile(file, net + ";" + folder + "\n")
-            file.close()
+            QGISRedUtils().addProjectToGplFile(self.gplFile, self.NetworkName, self.ProjectDirectory)
             self.fillTable()
             self.twProjectList.setCurrentCell(self.twProjectList.rowCount() - 1, 1)
             self.twProjectList.setFocus()

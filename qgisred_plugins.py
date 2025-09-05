@@ -2596,10 +2596,7 @@ class QGISRed:
             self.NetworkName = dlg.NetworkName
             self.ProjectDirectory = dlg.ProjectDirectory
             # Write .gql file
-            file = open(self.gplFile, "a+")
-            QGISRedUtils().writeFile(file, self.NetworkName + ";" + self.ProjectDirectory + "\n")
-            file.close()
-
+            QGISRedUtils().addProjectToGplFile(self.gplFile, self.NetworkName, self.ProjectDirectory)
             # Open files
             utils = QGISRedUtils(self.ProjectDirectory, self.NetworkName, self.iface)
             utils.openProjectInQgis()
@@ -2756,9 +2753,7 @@ class QGISRed:
         utils = QGISRedUtils(self.ProjectDirectory, self.NetworkName, self.iface)
         utils.assignLayerIdentifiers()
 
-        file = open(self.gplFile, "a+")
-        QGISRedUtils().writeFile(file, self.NetworkName + ";" + self.ProjectDirectory + "\n")
-        file.close()
+        QGISRedUtils().addProjectToGplFile(self.gplFile, self.NetworkName, self.ProjectDirectory)
         
         layers = self.getLayers()
         
