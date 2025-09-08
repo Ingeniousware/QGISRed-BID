@@ -2258,6 +2258,8 @@ class QGISRed:
             layers = self.getLayers()
             root = QgsProject.instance().layerTreeRoot()
             for layer in layers:
+                if not layer:
+                    continue
                 parent = root.findLayer(layer.id())
                 if parent is not None:
                     if parent.parent().name() == groupName:
@@ -2271,7 +2273,7 @@ class QGISRed:
         layers = self.getLayers()
         for layer in layers:
             # Skip non-vector layers (like rasters or annotation layers)
-            if not isinstance(layer, QgsVectorLayer):
+            if not layer or not isinstance(layer, QgsVectorLayer):
                 continue
 
             layer.setReadOnly(readonly)
