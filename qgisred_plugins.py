@@ -1828,6 +1828,10 @@ class QGISRed:
     def isLayerOnEdition(self):
         layers = self.getLayers()
         for layer in layers:
+            # Skip non-vector layers (like rasters or annotation layers)
+            if not isinstance(layer, QgsVectorLayer):
+                continue
+        
             if layer.isEditable():
                 message = "Some layer is in Edit Mode. Please, commit it before continuing."
                 self.iface.messageBar().pushMessage(self.tr("Warning"), self.tr(message), level=1)
