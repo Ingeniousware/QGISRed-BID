@@ -2270,8 +2270,10 @@ class QGISRed:
     def blockLayers(self, readonly):
         layers = self.getLayers()
         for layer in layers:
-            if layer.type() == QgsMapLayer.RasterLayer:
+            # Skip non-vector layers (like rasters or annotation layers)
+            if not isinstance(layer, QgsVectorLayer):
                 continue
+
             layer.setReadOnly(readonly)
 
     def updateMetadata(self, layersNames="", project="", net=""):
