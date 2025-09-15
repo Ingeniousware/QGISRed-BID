@@ -114,7 +114,8 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
             # now ensure Queries → Thematic Maps hierarchy exists
             thematicGroup = self.getOrCreateQueriesGroup(rootGroup, inputsGroup)
 
-            pipesLayer = self.findLayerInGroup(inputsGroup, 'Pipes')
+            pipesLayer = self.findLayerInGroup(inputsGroup, 'Pipes', 'qgisred_pipes')
+            print("pipesLayer : ", pipesLayer)
             if pipesLayer is None:
                 super().accept()
                 return
@@ -200,18 +201,28 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         # Return the subgroup where queries should be inserted
         return thematicGroup
 
-    def findLayerInGroup(self, group, layerName):
+    def findLayerInGroup(self, group, layerName=None, custom_property=None):
         for child in group.children():
-            if child.nodeType() == QgsLayerTreeNode.NodeLayer and child.name() == layerName and child.checkedLayers():
-                return child.checkedLayers()[0]
-            elif isinstance(child, QgsLayerTreeLayer) and child.name() == layerName:
-                return child.layer()
-            elif isinstance(child, QgsLayerTreeGroup):
-                layer = self.findLayerInGroup(child, layerName)
+            if custom_property:
+                # Search by custom property
+                if isinstance(child, QgsLayerTreeLayer):
+                    layer = child.layer()
+                    if layer and layer.customProperty('qgisred_identifier') == custom_property:
+                        return layer
+            else:
+                # Search by layer name (original behavior)
+                if child.nodeType() == QgsLayerTreeNode.NodeLayer and child.name() == layerName and child.checkedLayers():
+                    return child.checkedLayers()[0]
+                elif isinstance(child, QgsLayerTreeLayer) and child.name() == layerName:
+                    return child.layer()
+            
+            # Recursively search in subgroups
+            if isinstance(child, QgsLayerTreeGroup):
+                layer = self.findLayerInGroup(child, layerName, custom_property)
                 if layer is not None:
                     return layer
         return None
-
+    
     def processQuery(self, query, mainLayer, queriesGroup):
         layerName = query['layer_name']
         field = query['field']
