@@ -290,9 +290,9 @@ class QGISRed:
         self.removingLayers = False        
 
 
-        ui_language = QgsApplication.locale()
-        definedCulture = GISRed.SetCulture(ui_language)
-        QgsMessageLog.logMessage("Culture set to " + definedCulture, "QGISRed", level=0)
+        # ui_language = QgsApplication.locale()
+        # definedCulture = GISRed.SetCulture(ui_language)
+        # QgsMessageLog.logMessage("Culture set to " + definedCulture, "QGISRed", level=0)
 
         QgsMessageLog.logMessage(self.tr("Loaded sucssesfully"), "QGISRed", level=0)
 
