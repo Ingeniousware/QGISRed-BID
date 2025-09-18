@@ -154,6 +154,17 @@ class QGISRedUtils:
             original = "Multiple Demands"
         return original
 
+    def getInputGroup(self):
+        # Same method in qgisred_newproject_dialog and qgisred_results_dock
+        inputGroup = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
+        if inputGroup is None:
+            netGroup = QgsProject.instance().layerTreeRoot().findGroup(self.NetworkName)
+            if netGroup is None:
+                root = QgsProject.instance().layerTreeRoot()
+                netGroup = root.insertGroup(0, self.NetworkName)
+            inputGroup = netGroup.addGroup("Inputs")
+        return inputGroup
+    
     """Open Layers"""
 
     def isLayerOpened(self, layerName):
@@ -268,7 +279,6 @@ class QGISRedUtils:
 
     """Order Layers"""
     def orderLayers(self, group):
-        print("REACHED HERE")
         if group is None:
             return
         
