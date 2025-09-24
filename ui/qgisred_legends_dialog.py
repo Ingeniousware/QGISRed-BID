@@ -74,23 +74,33 @@ class QGISRedLegendsDialog(QDialog, formClass):
     
     def setupTableView(self):
         """Setup the table widget with appropriate columns."""
+        # Import QHeaderView and QAbstractItemView from PyQt5.QtWidgets
+        from PyQt5.QtWidgets import QAbstractItemView, QHeaderView
+
         # Note: tableView is actually a QTableWidget after UI fix
         # Setup columns for QTableWidget
         self.tableView.setColumnCount(5)  # Checkbox, Color, Size, Value, Legend
         self.tableView.setHorizontalHeaderLabels(["", "Color", "Size", "Value", "Legend"])
-        
-        # Set column widths
-        self.tableView.setColumnWidth(0, 30)   # Checkbox column
-        self.tableView.setColumnWidth(1, 80)   # Color
-        self.tableView.setColumnWidth(2, 60)   # Size
-        self.tableView.setColumnWidth(3, 100)  # Value
-        self.tableView.setColumnWidth(4, 150)  # Legend
+
+        # --- DELETED ---
+        # self.tableView.setColumnWidth(0, 30)
+        # self.tableView.setColumnWidth(1, 80)
+        # self.tableView.setColumnWidth(2, 60)
+        # self.tableView.setColumnWidth(3, 100)
+        # self.tableView.setColumnWidth(4, 150)
+        # ---------------
+
+        # --- ADDED ---
+        # Get the horizontal header and set the resize mode to stretch
+        header = self.tableView.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+        # -------------
         
         # Hide checkbox column initially (only for categorical with up/down buttons)
+        # Note: When stretched, this column will still take up space unless hidden.
         self.tableView.setColumnHidden(0, True)
-        
-        # Set selection behavior - QTableWidget uses QAbstractItemView enums
-        from PyQt5.QtWidgets import QAbstractItemView
+
+        # Set selection behavior
         self.tableView.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tableView.setAlternatingRowColors(True)
     
