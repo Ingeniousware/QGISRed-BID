@@ -47,7 +47,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.currentFieldName = None
         self.currentLayer = None
         self.pluginFolder = os.path.dirname(os.path.dirname(__file__))
-        self.isEditing = False  # For future implementation
+        self.isEditing = True #False  # For future implementation
         
         # Store original renderer for cancel operations
         self.originalRenderer = None

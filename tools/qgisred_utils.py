@@ -356,7 +356,8 @@ class QGISRedUtils:
             return
 
         # default style
-        qmlPath = os.path.join(stylePath, name + ".qml.bak")
+        defaultStylePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "layerStyles", "defaults")
+        qmlPath = os.path.join(defaultStylePath, name + ".qml.bak")
         if os.path.exists(qmlPath):
             if name == "meters":
                 f = open(qmlPath, "r")
