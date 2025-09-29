@@ -355,8 +355,21 @@ class QGISRedUtils:
             layer.loadNamedStyle(qmlPath)
             return
 
+        # project-specific style
+        projectStylePath = os.path.join(self.ProjectDirectory, "defaults", "layerStyles")
+        qmlPath = os.path.join(projectStylePath, name + ".qml")
+        if os.path.exists(qmlPath):
+            layer.loadNamedStyle(qmlPath)
+            return
+
+        # plugin style
+        qmlPath = os.path.join(stylePath, name + ".qml")
+        if os.path.exists(qmlPath):
+            layer.loadNamedStyle(qmlPath)
+            return
+
         # default style
-        defaultStylePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "layerStyles", "defaults")
+        defaultStylePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "defaults", "layerStyles")
         qmlPath = os.path.join(defaultStylePath, name + ".qml.bak")
         if os.path.exists(qmlPath):
             if name == "meters":
