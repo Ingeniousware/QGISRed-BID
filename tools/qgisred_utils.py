@@ -982,6 +982,10 @@ class QGISRedUtils:
         
         saved_count = 0
         layers = self.getLayers()
+        root = QgsProject.instance().layerTreeRoot()
+        
+        # Dictionary to store layer metadata
+        layer_metadata = {}
         
         for layer in layers:
             # Filter only layers with qgisred_identifier custom property
@@ -989,11 +993,33 @@ class QGISRedUtils:
             if not identifier:
                 continue
                 
-            # Find the layer's tree node
-            root = QgsProject.instance().layerTreeRoot()
+            # Find the layer's tree node and parent group
             layer_node = root.findLayer(layer.id())
             if not layer_node:
                 continue
+            
+            # Get parent group info
+            parent = layer_node.parent()
+            group_path = []
+            current = parent
+            while current and current != root:
+                group_path.insert(0, current.name())
+                current = current.parent()
+            
+            # Get position in parent
+            position = 0
+            if parent:
+                for i, child in enumerate(parent.children()):
+                    if child == layer_node:
+                        position = i
+                        break
+            
+            # Store metadata
+            layer_metadata[identifier] = {
+                "group_path": group_path,
+                "position": position,
+                "name": layer.name()
+            }
             
             # Export single layer QLR with identifier as filename
             qlr_filename = f"{identifier}.qlr"
@@ -1007,8 +1033,14 @@ class QGISRedUtils:
                 if success:
                     saved_count += 1
             except Exception:
-                # Skip this layer if export fails
                 continue
+        
+        # Save metadata file
+        if saved_count > 0:
+            import json
+            metadata_path = os.path.join(qlr_folder, "layer_metadata.json")
+            with open(metadata_path, 'w') as f:
+                json.dump(layer_metadata, f, indent=2)
         
         return (saved_count > 0, qlr_folder)
 
@@ -1024,28 +1056,74 @@ class QGISRedUtils:
         if not qlr_files:
             return False
         
+        # Load metadata
+        layer_metadata = {}
+        metadata_path = os.path.join(qlr_folder, "layer_metadata.json")
+        if os.path.exists(metadata_path):
+            import json
+            with open(metadata_path, 'r') as f:
+                layer_metadata = json.load(f)
+        
         # Remove currently loaded plugin layers first
         self.removePluginLayers()
         
-        # Load each QLR file
-        loaded_count = 0
+        # Prepare to track loaded layers for repositioning
+        loaded_layers = []
         root = QgsProject.instance().layerTreeRoot()
         
+        # First pass: Load all QLR files temporarily to root
         for qlr_file in qlr_files:
             qlr_path = os.path.join(qlr_folder, qlr_file)
+            identifier = qlr_file.replace('.qlr', '')
+            
             try:
+                # Load to a temporary location
                 success = QgsLayerDefinition().loadLayerDefinition(
                     qlr_path,
                     QgsProject.instance(),
                     root
                 )
                 if success:
-                    loaded_count += 1
+                    # Find the newly loaded layer
+                    for layer in self.getLayers():
+                        if layer.customProperty("qgisred_identifier") == identifier:
+                            loaded_layers.append((layer, identifier))
+                            break
             except Exception:
-                # Skip this file if load fails
                 continue
         
-        return loaded_count > 0
+        # Second pass: Move layers to correct groups and positions
+        for layer, identifier in loaded_layers:
+            metadata = layer_metadata.get(identifier, {})
+            group_path = metadata.get("group_path", [])
+            position = metadata.get("position", 0)
+            
+            # Find or create the target group
+            target_group = root
+            for group_name in group_path:
+                existing_group = target_group.findGroup(group_name)
+                if existing_group:
+                    target_group = existing_group
+                else:
+                    # Create group if it doesn't exist
+                    target_group = target_group.addGroup(group_name)
+            
+            # Find the layer's current node
+            layer_node = root.findLayer(layer.id())
+            if layer_node and target_group != root:
+                # Clone the node to the target group at the correct position
+                cloned_node = layer_node.clone()
+                
+                # Insert at the correct position (clamped to valid range)
+                num_children = len(target_group.children())
+                insert_pos = min(position, num_children)
+                target_group.insertChildNode(insert_pos, cloned_node)
+                
+                # Remove the original node from root
+                if layer_node.parent():
+                    layer_node.parent().removeChildNode(layer_node)
+        
+        return len(loaded_layers) > 0
 
     def deleteProjectQLR(self):
         # Build the network-specific folder path
@@ -1056,19 +1134,18 @@ class QGISRedUtils:
         
         deleted_any = False
         
-        # Remove all QLR files in the folder
+        # Remove all QLR files and metadata
         for filename in os.listdir(qlr_folder):
-            if filename.endswith('.qlr'):
+            if filename.endswith('.qlr') or filename == 'layer_metadata.json':
                 try:
                     os.remove(os.path.join(qlr_folder, filename))
                     deleted_any = True
                 except Exception:
-                    # Continue even if one file fails to delete
                     pass
         
         # Remove the now-empty network subfolder
         try:
-            if not os.listdir(qlr_folder):  # Only remove if empty
+            if not os.listdir(qlr_folder):
                 os.rmdir(qlr_folder)
         except Exception:
             pass
@@ -1077,11 +1154,17 @@ class QGISRedUtils:
 
     def removePluginLayers(self):
         project = QgsProject.instance()
+        root = project.layerTreeRoot()
         layers_to_remove = []
         
-        # Collect all layers with qgisred_identifier
+        # Collect all layer nodes with qgisred_identifier
         for layer in self.getLayers():
             if layer.customProperty("qgisred_identifier"):
+                layer_node = root.findLayer(layer.id())
+                if layer_node and layer_node.parent():
+                    # Remove from tree
+                    layer_node.parent().removeChildNode(layer_node)
+                # Add to removal list
                 layers_to_remove.append(layer.id())
         
         # Remove the layers from the project
