@@ -401,9 +401,11 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         self.clearHighlights()
         self.clearAllLayerSelections()
 
-        # Clear caches
+        # Clear all caches
         self.nodeLayerSpatialIndices.clear()
         self.sourcesDemandToNodeCache.clear()
+        if hasattr(self, 'sourceDemandIdCache'):
+            self.sourceDemandIdCache.clear()
 
         if hasattr(self, 'leElementMask'):
             self.leElementMask.clear()
@@ -524,6 +526,8 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         # Clear caches when layer tree changes
         self.nodeLayerSpatialIndices.clear()
         self.sourcesDemandToNodeCache.clear()
+        if hasattr(self, 'sourceDemandIdCache'):
+            self.sourceDemandIdCache.clear()
 
         currentType = self.cbElementType.currentText()
         currentId = self.extractNodeId(self.cbElementId.currentText())
@@ -544,6 +548,8 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         # Clear caches when project changes
         self.nodeLayerSpatialIndices.clear()
         self.sourcesDemandToNodeCache.clear()
+        if hasattr(self, 'sourceDemandIdCache'):
+            self.sourceDemandIdCache.clear()
 
         self.clearAll()
         self.onLayerTreeChanged()
@@ -574,21 +580,126 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         self.initializeElementIdsCache()
 
     def initializeElementIdsCache(self):
-        # Build spatial indices once at the start
+        """Initialize element IDs cache with optimized batch processing"""
+        # Build all spatial indices and caches upfront
         self.buildNodeLayerSpatialIndices()
+        self.buildSourceDemandCacheBatch()
 
         availableTypes = self.getAvailableElementTypes()
         for elementType in availableTypes:
             layer = self.getLayerForElementType(elementType)
-            ids = []
             if layer:
-                for feature in layer.getFeatures():
-                    idVal = self.getFeatureIdValue(feature, layer, True)
-                    if idVal:
-                        ids.append(idVal)
+                identifier = layer.customProperty("qgisred_identifier")
+
+                if identifier in self.sourcesAndDemands:
+                    # Use pre-built cache for sources/demands
+                    ids = self.getCachedSourceDemandIds(identifier)
+                else:
+                    # Regular features - extract IDs directly without special naming
+                    ids = self.extractLayerIdsDirect(layer, identifier)
+
                 self.dictOfElementIds[elementType] = sorted(set(ids))
             else:
                 self.dictOfElementIds[elementType] = []
+
+    def buildSourceDemandCacheBatch(self):
+        """Pre-compute all source/demand to node relationships in batch"""
+        self.sourcesDemandToNodeCache.clear()
+        self.sourceDemandIdCache = {'qgisred_sources': [], 'qgisred_demands': []}
+
+        # Get source and demand layers
+        sourceLayer = self.getLayerByIdentifier("qgisred_sources")
+        demandLayer = self.getLayerByIdentifier("qgisred_demands")
+
+        # Process sources
+        if sourceLayer:
+            for feature in sourceLayer.getFeatures():
+                cacheKey = ('qgisred_sources', feature.id())
+                nodeFeature, nodeLayer = self.findOverlappingNodeOptimized(feature.geometry())
+
+                if nodeFeature and nodeLayer:
+                    nodeId = self.extractNodeId(nodeFeature.attribute("Id"))
+                    nodeLayerName = nodeLayer.name()
+                    self.sourcesDemandToNodeCache[cacheKey] = (nodeId, nodeLayerName)
+
+                    # Build display string for cache
+                    singular = self.singularForms.get(nodeLayerName, nodeLayerName)
+                    displayId = f"{singular} {nodeId} (Source)"
+                    self.sourceDemandIdCache['qgisred_sources'].append(displayId)
+                else:
+                    self.sourcesDemandToNodeCache[cacheKey] = (None, None)
+
+        # Process demands
+        if demandLayer:
+            for feature in demandLayer.getFeatures():
+                cacheKey = ('qgisred_demands', feature.id())
+                nodeFeature, nodeLayer = self.findOverlappingNodeOptimized(feature.geometry())
+
+                if nodeFeature and nodeLayer:
+                    nodeId = self.extractNodeId(nodeFeature.attribute("Id"))
+                    nodeLayerName = nodeLayer.name()
+                    self.sourcesDemandToNodeCache[cacheKey] = (nodeId, nodeLayerName)
+
+                    # Build display string for cache
+                    singular = self.singularForms.get(nodeLayerName, nodeLayerName)
+                    displayId = f"{singular} {nodeId} (Mult.Dem)"
+                    self.sourceDemandIdCache['qgisred_demands'].append(displayId)
+                else:
+                    self.sourcesDemandToNodeCache[cacheKey] = (None, None)
+
+    def getCachedSourceDemandIds(self, identifier):
+        """Get cached IDs for sources/demands without recomputing"""
+        return self.sourceDemandIdCache.get(identifier, [])
+
+    def extractLayerIdsDirect(self, layer, identifier):
+        """Extract IDs directly from layer without special naming logic"""
+        ids = []
+
+        # For node layers that might have source/demand suffixes
+        if identifier in ["qgisred_junctions", "qgisred_reservoirs", "qgisred_tanks"]:
+            # Pre-build sets of geometries for fast lookup
+            sourceGeoms = set()
+            demandGeoms = set()
+
+            sourceLayer = self.getLayerByIdentifier("qgisred_sources")
+            if sourceLayer:
+                for srcFeat in sourceLayer.getFeatures():
+                    if not srcFeat.geometry().isEmpty():
+                        sourceGeoms.add(srcFeat.geometry().asWkt())
+
+            if identifier == "qgisred_junctions":
+                demandLayer = self.getLayerByIdentifier("qgisred_demands")
+                if demandLayer:
+                    for dmndFeat in demandLayer.getFeatures():
+                        if not dmndFeat.geometry().isEmpty():
+                            demandGeoms.add(dmndFeat.geometry().asWkt())
+
+            # Process features with pre-built geometry sets
+            for feature in layer.getFeatures():
+                value = feature.attribute("Id")
+                idStr = str(value) if value is not None else ""
+
+                if not feature.geometry().isEmpty():
+                    featWkt = feature.geometry().asWkt()
+                    suffixes = []
+
+                    if featWkt in sourceGeoms:
+                        suffixes.append("(Source)")
+                    if featWkt in demandGeoms:
+                        suffixes.append("(Mult.Dem)")
+
+                    if suffixes:
+                        idStr += " " + " ".join(suffixes)
+
+                ids.append(idStr)
+        else:
+            # Simple ID extraction for other layers
+            for feature in layer.getFeatures():
+                value = feature.attribute("Id")
+                if value is not None:
+                    ids.append(str(value))
+
+        return ids
 
     def setDefaultValue(self):
         self.clearAll()
