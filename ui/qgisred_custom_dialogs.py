@@ -51,61 +51,118 @@ class RangeEditDialog(QDialog):
     def getValues(self):
         """Returns the current values of the spin boxes."""
         return self.lowerSpinBox.value(), self.upperSpinBox.value()
+    
+# --- NEW: helpers + SymbolColorSelector -------------------------------------------------
+from PyQt5.QtCore import Qt, pyqtSignal, QEvent
+from PyQt5.QtGui import QColor
+from qgis.gui import QgsSymbolButton, QgsColorDialog
+from qgis.core import QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, QgsSymbol
 
-class SymbolAsColorButton(QWidget):
+def rgbaString(c: QColor) -> str:
+    return f"{c.red()},{c.green()},{c.blue()},{c.alpha()}"
+
+def clampGeometry(geom: str) -> str:
+    g = (geom or "").strip().lower()
+    if g in ("point", "marker", "pts"):
+        return "marker"
+    if g in ("line", "polyline", "ln"):
+        return "line"
+    return "fill"
+
+def symbolFromColor(geometryHint: str, color: QColor) -> QgsSymbol:
+    rgba = rgbaString(color)
+    if geometryHint == "marker":
+        return QgsMarkerSymbol.createSimple({
+            "name": "circle",
+            "color": rgba,
+            "outline_color": "0,0,0,255",
+            "outline_width": "0.2"
+        })
+    elif geometryHint == "line":
+        return QgsLineSymbol.createSimple({
+            "color": rgba,
+            "width": "0.8"
+        })
+    else:
+        return QgsFillSymbol.createSimple({
+            "color": rgba,
+            "outline_color": "60,60,60,255",
+            "outline_width": "0.3"
+        })
+
+class SymbolColorSelector(QgsSymbolButton):
     """
-    A custom widget that displays as a QgsSymbolButton but opens a
-    QgsColorButton dialog on click to edit the symbol's color.
+    Looks like a QgsSymbolButton; on click, opens the QGIS color dialog (QgsColorDialog).
+    After choosing a color, the preview updates to reflect the selected color.
+
+    Signals:
+        colorChanged(QColor)
     """
-    def __init__(self, parent=None):
-        """Constructor."""
+    colorChanged = pyqtSignal(QColor)
+
+    def __init__(
+        self,
+        parent=None,
+        geometryHint: str = "fill",
+        initialColor: QColor = QColor(19, 125, 220, 255),
+        allowAlpha: bool = True,
+        dialogTitle: str = "Pick color"
+    ):
         super().__init__(parent)
+        self._geometryHint = clampGeometry(geometryHint)
+        self._allowAlpha = bool(allowAlpha)
+        self._dialogTitle = dialogTitle
+        self._color = QColor(initialColor) if initialColor.isValid() else QColor(19, 125, 220, 255)
 
-        # This internal QgsColorButton handles the color dialog logic.
-        # It's not added to the layout, so it remains hidden from the user.
-        self.colorButton = QgsColorButton()
+        self.applySymbol()
 
-        # This is the button the user will see and interact with.
-        self.symbolButton = QgsSymbolButton()
-        # Ensure the symbol preview is appropriate for a fill symbol
-        self.symbolButton.setSymbolType(QgsSymbolButton.Fill)
+        try:
+            self.setSymbolSize(18)
+        except Exception:
+            pass
 
-        # Set up a layout to hold the visible symbol button
-        layout = QHBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)  # Use all available space
-        layout.addWidget(self.symbolButton)
-        self.setLayout(layout)
+        self.setToolTip("Click to pick a color; preview updates immediately.")
+        self.installEventFilter(self)
 
-        # --- Connections ---
-        # 1. When the visible symbol button is clicked, trigger the hidden color button's dialog.
-        self.symbolButton.clicked.connect(self.colorButton.showColorDialog)
-        # 2. When the color is changed via the dialog, update the symbol's appearance.
-        self.colorButton.colorChanged.connect(self.updateSymbolFromColor)
+    # --- Public API ---
+    def setGeometryHint(self, geometryHint: str):
+        self._geometryHint = clampGeometry(geometryHint)
+        self.applySymbol()
 
-        # Initialize with a default color, which will also set the initial symbol display
-        self.setColor(QColor('red'))
+    def geometryHint(self) -> str:
+        return self._geometryHint
 
-    def updateSymbolFromColor(self, color):
-        """Updates the symbol on the QgsSymbolButton based on the selected color."""
-        # Create a new simple fill symbol using the chosen color
-        symbol = QgsFillSymbol.createSimple({'color': color.name()})
-        self.symbolButton.setSymbol(symbol)
+    def setAllowAlpha(self, allowAlpha: bool):
+        self._allowAlpha = bool(allowAlpha)
 
-    def setColor(self, color):
-        """
-        Public method to set the current color.
-        Accepts a QColor object or a color name string (e.g., 'blue', '#FF0000').
-        """
-        if isinstance(color, str):
-            color = QColor(color)
-        self.colorButton.setColor(color)
-        # Setting the color on the colorButton automatically triggers its
-        # colorChanged signal, which in turn calls our updateSymbolFromColor slot.
+    def color(self) -> QColor:
+        return QColor(self._color)
 
-    def color(self):
-        """Public method to get the current QColor."""
-        return self.colorButton.color()
+    def setColor(self, color: QColor):
+        if not isinstance(color, QColor) or not color.isValid():
+            return
+        if color == self._color:
+            return
+        self._color = QColor(color)
+        self.applySymbol()
+        self.colorChanged.emit(QColor(self._color))
 
-    def symbol(self):
-        """Public method to get the current QgsSymbol."""
-        return self.symbolButton.symbol()
+    # --- Internals ---
+    def applySymbol(self):
+        sym = symbolFromColor(self._geometryHint, self._color)
+        self.setSymbol(sym)
+
+    def openColorDialog(self):
+        chosen = QgsColorDialog.getColor(self._color, self, self._dialogTitle, self._allowAlpha)
+        if chosen.isValid():
+            self.setColor(chosen)
+
+    # --- Event filter replaces default click to open color dialog ---
+    def eventFilter(self, obj, event):
+        if obj is self:
+            if event.type() in (QEvent.MouseButtonPress, QEvent.MouseButtonRelease):
+                if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
+                    self.openColorDialog()
+                return True
+        return super().eventFilter(obj, event)
+# ----------------------------------------------------------------------------------------
