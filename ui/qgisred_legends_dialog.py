@@ -55,7 +55,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
         
         self.config()
         self.setupTableView()
-        
+
+        self.filterThematicMapsLayers()
+
         # Set initial UI state
         self.gbLegends.setEnabled(bool(self.cbLegendLayer.currentLayer()))
         self.gbLegends.setTitle(self.tr("Legend"))
@@ -136,6 +138,16 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Connect cell click for editing numeric ranges
         self.tableView.cellClicked.connect(self.onValueCellClicked)
     
+    def filterThematicMapsLayers(self):
+        """Filter cbLegendLayer to only show layers from Thematic Maps group"""
+        utils = QGISRedUtils()
+        thematicLayers = utils.getThematicMapsLayers()
+        
+        if thematicLayers:
+            # Set the layer combo box to only show these layers
+            self.cbLegendLayer.setExceptedLayerList([layer for layer in QgsProject.instance().mapLayers().values() 
+                                                    if layer not in thematicLayers])
+
     def onValueCellClicked(self, row, column):
         """Handle click on a value cell for numeric fields to open an edit dialog."""
         if self.currentFieldType != self.FIELD_TYPE_NUMERIC or column != 3:
