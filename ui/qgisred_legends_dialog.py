@@ -2,29 +2,18 @@
 
 # Standard library imports
 import os
-import math
 
 # Third-party imports
 from PyQt5.QtGui import QIcon, QColor
-from PyQt5.QtWidgets import (QDialog, QMessageBox, QWidget, QTableWidget, QTableWidgetItem, 
-                           QHeaderView, QComboBox, QLineEdit, QPushButton,
-                           QCheckBox, QHBoxLayout, QAbstractItemView)
+from PyQt5.QtWidgets import QDialog, QMessageBox, QTableWidgetItem, QHeaderView, QComboBox, QLineEdit, QAbstractItemView
+
 from PyQt5 import sip
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import QVariant, Qt
 
 # QGIS imports
-from qgis.core import (QgsLayerTreeGroup, QgsLayerTreeLayer, QgsLayerTreeNode, 
-                       QgsProject, QgsVectorFileWriter, QgsVectorLayer, 
-                       QgsMessageLog, Qgis, QgsPalLayerSettings, 
-                       QgsVectorLayerSimpleLabeling, QgsTextFormat,
-                       QgsFeatureRenderer, QgsGraduatedSymbolRenderer,
-                       QgsCategorizedSymbolRenderer, QgsRendererRange,
-                       QgsRendererCategory, QgsSymbol, QgsClassificationQuantile,
-                       QgsClassificationEqualInterval, QgsClassificationJenks,
-                       QgsFeatureRequest, QgsExpression)
-from qgis.utils import iface
-from qgis.gui import QgsColorButton
+from qgis.core import QgsProject, QgsVectorLayer, QgsMessageLog, Qgis, QgsGraduatedSymbolRenderer
+from qgis.core import QgsCategorizedSymbolRenderer, QgsRendererRange, QgsRendererCategory, QgsSymbol
 
 # Local imports
 from ..tools.qgisred_utils import QGISRedUtils
@@ -76,31 +65,28 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.setWindowIcon(QIcon(iconPath))
     
     def setupTableView(self):
-        """Setup the table widget with appropriate columns."""
-        # Import QHeaderView and QAbstractItemView from PyQt5.QtWidgets
-        from PyQt5.QtWidgets import QAbstractItemView, QHeaderView
-
-        # Note: tableView is actually a QTableWidget after UI fix
-        # Setup columns for QTableWidget
         self.tableView.setColumnCount(5)  # Checkbox, Color, Size, Value, Legend
         self.tableView.setHorizontalHeaderLabels(["", "Color", "Size", "Value", "Legend"])
 
-        # --- DELETED ---
-        # self.tableView.setColumnWidth(0, 30)
-        # self.tableView.setColumnWidth(1, 80)
-        # self.tableView.setColumnWidth(2, 60)
-        # self.tableView.setColumnWidth(3, 100)
-        # self.tableView.setColumnWidth(4, 150)
-        # ---------------
-
-        # --- ADDED ---
-        # Get the horizontal header and set the resize mode to stretch
+        # Get the horizontal header
         header = self.tableView.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-        # -------------
+        
+        # Set column 0 (checkbox) to Fixed size
+        header.setSectionResizeMode(0, QHeaderView.Fixed)
+        self.tableView.setColumnWidth(0, 40)
+        
+        # Set column 1 (Color) to Stretch
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        
+        # Set column 2 (Size) to Fixed size
+        header.setSectionResizeMode(2, QHeaderView.Fixed)
+        self.tableView.setColumnWidth(2, 60)
+        
+        # Set columns 3-4 (Value, Legend) to Stretch
+        for col in range(3, 5):
+            header.setSectionResizeMode(col, QHeaderView.Stretch)
         
         # Hide checkbox column initially (only for categorical with up/down buttons)
-        # Note: When stretched, this column will still take up space unless hidden.
         self.tableView.setColumnHidden(0, True)
 
         # Set selection behavior
