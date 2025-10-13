@@ -472,6 +472,17 @@ class QGISRed:
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
+        icon_path = ":/plugins/QGISRed-BID/images/iconThematicMaps.png"
+        self.add_action(
+            icon_path,
+            text=self.tr("Edit Legends"),
+            callback=self.runLegends,
+            menubar=self.projectMenu,
+            toolbar=self.projectToolbar,
+            actionBase=projectDropButton,
+            add_to_toolbar=True,
+            parent=self.iface.mainWindow(),
+        )
         icon_path = ":/plugins/QGISRed-BID/images/iconAddData.png"
         self.add_action(
             icon_path,
@@ -513,17 +524,6 @@ class QGISRed:
             icon_path,
             text=self.tr("Project materials"),
             callback=self.runMaterials,
-            menubar=self.projectMenu,
-            toolbar=self.projectToolbar,
-            actionBase=projectDropButton,
-            add_to_toolbar=True,
-            parent=self.iface.mainWindow(),
-        )
-        icon_path = ":/plugins/QGISRed-BID/images/iconThematicMaps.png"
-        self.add_action(
-            icon_path,
-            text=self.tr("Legends"),
-            callback=self.runLegends,
             menubar=self.projectMenu,
             toolbar=self.projectToolbar,
             actionBase=projectDropButton,
