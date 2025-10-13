@@ -511,7 +511,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconDefaultValues.png"
         self.add_action(
             icon_path,
-            text=self.tr("Project default values"),
+            text=self.tr("Default values"),
             callback=self.runDefaultValues,
             menubar=self.projectMenu,
             toolbar=self.projectToolbar,
@@ -522,7 +522,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconMaterialsTable.png"
         self.add_action(
             icon_path,
-            text=self.tr("Project materials"),
+            text=self.tr("Materials Table"),
             callback=self.runMaterials,
             menubar=self.projectMenu,
             toolbar=self.projectToolbar,
