@@ -941,8 +941,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
             QMessageBox.warning(self, "Unknown Layer Type", "Unable to determine layer type.")
             return
         
-        # Convert element name to lowercase filename format (e.g., "Pipes" -> "pipes")
-        #fileName = elementName.replace(" ", "").lower()
+        # Remove spaces from element name: Isolation Valves -> IsolationValves
+        fileName = elementName.replace(" ", "")
         
         # Get project directory
         projectDir = utils.ProjectDirectory
@@ -959,8 +959,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if not os.path.exists(stylesDir):
             os.makedirs(stylesDir)
         
-        qmlPath = os.path.join(stylesDir, f"{elementName}.qml")
-        
+        qmlPath = os.path.join(stylesDir, f"{fileName}.qml")
+
         # Check if file exists
         if os.path.exists(qmlPath):
             reply = QMessageBox.question(
@@ -1005,16 +1005,15 @@ class QGISRedLegendsDialog(QDialog, formClass):
             QMessageBox.warning(self, "Unknown Layer Type", "Unable to determine layer type.")
             return
         
-        # Convert element name to lowercase filename format (e.g., "Pipes" -> "pipes")
-        #fileName = elementName.replace(" ", "").lower()
+        fileName = elementName.replace(" ", "")
         
         # Get plugin layerStyles folder
         stylesDir = os.path.join(self.pluginFolder, "layerStyles")
         if not os.path.exists(stylesDir):
             os.makedirs(stylesDir)
         
-        qmlPath = os.path.join(stylesDir, f"{elementName}.qml")
-        
+        qmlPath = os.path.join(stylesDir, f"{fileName}.qml")
+
         # Check if file exists
         if os.path.exists(qmlPath):
             reply = QMessageBox.question(
@@ -1059,14 +1058,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
             QMessageBox.warning(self, "Unknown Layer Type", "Unable to determine layer type.")
             return
         
-        # Convert element name to lowercase filename format (e.g., "Pipes" -> "pipes")
-        fileName = elementName #.replace(" ", "").lower()
+        fileName = elementName.replace(" ", "")
         
         # Get default styles folder
         defaultsDir = os.path.join(self.pluginFolder, "defaults", "layerStyles")
         
         qmlPath = os.path.join(defaultsDir, f"{fileName}.qml.bak")
-        
+
         if not os.path.exists(qmlPath):
             QMessageBox.warning(
                 self, 
@@ -1112,14 +1110,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
             QMessageBox.warning(self, "Unknown Layer Type", "Unable to determine layer type.")
             return
         
-        # Convert element name to lowercase filename format (e.g., "Pipes" -> "pipes")
-        fileName = elementName #.replace(" ", "").lower()
+        fileName = elementName.replace(" ", "")
         
         # Get plugin layerStyles folder
         stylesDir = os.path.join(self.pluginFolder, "layerStyles")
         
         qmlPath = os.path.join(stylesDir, f"{fileName}.qml")
-        
+
         if not os.path.exists(qmlPath):
             QMessageBox.warning(
                 self, 
