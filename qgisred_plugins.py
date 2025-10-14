@@ -46,6 +46,7 @@ from .ui.qgisred_loadproject_dialog import QGISRedImportProjectDialog
 from .ui.qgisred_thematicmaps_dialog import QGISRedThematicMapsDialog
 from .ui.qgisred_element_explorer_dock import QGISRedElementExplorerDock
 from .ui.qgisred_queriesbyattributes_dock import QGISRedQueriesByAttributesDock
+from .ui.qgisred_statisticsandgraphs_dock import QGISRedStatisticsAndPlotsDock
 from .ui.qgisred_legends_dialog import QGISRedLegendsDialog
 from .tools.qgisred_utils import QGISRedUtils
 from .tools.qgisred_dependencies import QGISRedDependencies as GISRed
@@ -4708,9 +4709,8 @@ class QGISRed:
         if self.isLayerOnEdition():
             return
 
-        #dlg = QGISRedFindElementsDialog()
-        # Run the dialog event loop
-        #dlg.exec_()
+        self.statisticsAndPlotsDock = QGISRedStatisticsAndPlotsDock(self.iface)
+        self.iface.addDockWidget(Qt.RightDockWidgetArea, self.statisticsAndPlotsDock)
 
     def runLegends(self):
         if not self.checkDependencies():
