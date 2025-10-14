@@ -65,25 +65,30 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.setWindowIcon(QIcon(iconPath))
     
     def setupTableView(self):
-        self.tableView.setColumnCount(5)  # Checkbox, Color, Size, Value, Legend
-        self.tableView.setHorizontalHeaderLabels(["", "Color", "Size", "Value", "Legend"])
+        self.tableView.setColumnCount(5)  # Checkbox, Symbol, Size, Value, Legend
+        self.tableView.setHorizontalHeaderLabels(["", "Symbol", "Size", "Value", "Legend"])
 
         # Get the horizontal header
         header = self.tableView.horizontalHeader()
         
         # Set column 0 (checkbox) to Fixed size
         header.setSectionResizeMode(0, QHeaderView.Fixed)
-        self.tableView.setColumnWidth(0, 40)
+        self.tableView.setColumnWidth(0, 15)
         
         # Set column 1 (Color) to Stretch
-        header.setSectionResizeMode(1, QHeaderView.Stretch)
-        
+        header.setSectionResizeMode(1, QHeaderView.Fixed)
+        self.tableView.setColumnWidth(1, 60)
+
         # Set column 2 (Size) to Fixed size
         header.setSectionResizeMode(2, QHeaderView.Fixed)
         self.tableView.setColumnWidth(2, 60)
         
+        # Set column 2 (Size) to Fixed size
+        header.setSectionResizeMode(3, QHeaderView.Fixed)
+        self.tableView.setColumnWidth(3, 100)
+
         # Set columns 3-4 (Value, Legend) to Stretch
-        for col in range(3, 5):
+        for col in range(4, 5):
             header.setSectionResizeMode(col, QHeaderView.Stretch)
         
         # Hide checkbox column initially (only for categorical with up/down buttons)
