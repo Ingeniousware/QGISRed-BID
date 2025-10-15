@@ -487,7 +487,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconThematicMaps.png"
         self.add_action(
             icon_path,
-            text=self.tr("Edit Legends"),
+            text=self.tr("Legend editor.."),
             callback=self.runLegends,
             menubar=self.projectMenu,
             toolbar=self.projectToolbar,
