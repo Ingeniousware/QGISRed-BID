@@ -382,7 +382,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconProjectManager.png"
         self.add_action(
             icon_path,
-            text=self.tr("Project manager"),
+            text=self.tr("Project manager..."),
             callback=self.runProjectManager,
             menubar=self.generalMenu,
             toolbar=self.generalToolbar,
@@ -393,7 +393,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconOpenProject.png"
         self.add_action(
             icon_path,
-            text=self.tr("Open project"),
+            text=self.tr("Open project..."),
             callback=self.runCanOpenProject,
             menubar=self.generalMenu,
             toolbar=self.generalToolbar,
@@ -404,7 +404,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconCreateProject.png"
         self.add_action(
             icon_path,
-            text=self.tr("Create project"),
+            text=self.tr("Create project..."),
             callback=self.runCanCreateProject,
             menubar=self.generalMenu,
             toolbar=self.generalToolbar,
@@ -415,7 +415,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconImport.png"
         self.add_action(
             icon_path,
-            text=self.tr("Import project"),
+            text=self.tr("Import project..."),
             callback=self.runCanImportData,
             menubar=self.generalMenu,
             toolbar=self.generalToolbar,
@@ -454,7 +454,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconSummary.png"
         self.add_action(
             icon_path,
-            text=self.tr("Summary"),
+            text=self.tr("Summary..."),
             callback=self.runSummary,
             menubar=self.projectMenu,
             toolbar=self.projectToolbar,
@@ -465,7 +465,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconAddData.png"
         self.add_action(
             icon_path,
-            text=self.tr("Add data by import"),
+            text=self.tr("Add data by import..."),
             callback=self.runCanAddData,
             menubar=self.projectMenu,
             toolbar=self.projectToolbar,
@@ -476,7 +476,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconLayerManagement.png"
         self.add_action(
             icon_path,
-            text=self.tr("Layer manager"),
+            text=self.tr("Layer manager..."),
             callback=self.runEditProject,
             menubar=self.projectMenu,
             toolbar=self.projectToolbar,
@@ -487,7 +487,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconThematicMaps.png"
         self.add_action(
             icon_path,
-            text=self.tr("Legend editor.."),
+            text=self.tr("Legend editor..."),
             callback=self.runLegends,
             menubar=self.projectMenu,
             toolbar=self.projectToolbar,
@@ -501,7 +501,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconSettings.png"
         self.add_action(
             icon_path,
-            text=self.tr("Project settings"),
+            text=self.tr("Project settings..."),
             callback=self.runSettings,
             menubar=self.projectMenu,
             toolbar=self.projectToolbar,
@@ -512,7 +512,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconDefaultValues.png"
         self.add_action(
             icon_path,
-            text=self.tr("Default values"),
+            text=self.tr("Default values..."),
             callback=self.runDefaultValues,
             menubar=self.projectMenu,
             toolbar=self.projectToolbar,
@@ -523,7 +523,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconMaterialsTable.png"
         self.add_action(
             icon_path,
-            text=self.tr("Materials Table"),
+            text=self.tr("Materials Table..."),
             callback=self.runMaterials,
             menubar=self.projectMenu,
             toolbar=self.projectToolbar,
@@ -797,7 +797,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconEditProperties.png"
         self.editElementButton = self.add_action(
             icon_path,
-            text=self.tr("Edit element properties"),
+            text=self.tr("Edit element properties..."),
             callback=self.runSelectPointProperties,
             menubar=self.editionMenu,
             toolbar=self.editionToolbar,
@@ -809,7 +809,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconPatternsAndCurves.png"
         self.add_action(
             icon_path,
-            text=self.tr("Edit patterns and curves"),
+            text=self.tr("Edit patterns and curves..."),
             callback=self.runPatternsCurves,
             menubar=self.editionMenu,
             toolbar=self.editionToolbar,
@@ -820,7 +820,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconControlsAndRules.png"
         self.add_action(
             icon_path,
-            text=self.tr("Edit controls"),
+            text=self.tr("Edit controls..."),
             callback=self.runControls,
             menubar=self.editionMenu,
             toolbar=self.editionToolbar,
@@ -1038,7 +1038,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconInterpolateNodeElevations.png"
         self.add_action(
             icon_path,
-            text=self.tr("Interpolate elevation from .asc files"),
+            text=self.tr("Interpolate elevation from .asc files..."),
             callback=self.runElevationInterpolation,
             menubar=self.toolsMenu,
             toolbar=self.toolsToolbar,
@@ -1074,7 +1074,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconDemandBuilder.png"
         self.add_action(
             icon_path,
-            text=self.tr("Nodal Demand Builder"),
+            text=self.tr("Nodal Demand Builder..."),
             callback=self.runDemandsManager,
             menubar=self.toolsMenu,
             toolbar=self.toolsToolbar,
@@ -1085,7 +1085,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconScenarioBuilder.png"
         self.add_action(
             icon_path,
-            text=self.tr("Scenario Builder"),
+            text=self.tr("Scenario Builder..."),
             callback=self.runScenarioManager,
             menubar=self.toolsMenu,
             toolbar=self.toolsToolbar,
@@ -1172,7 +1172,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconAnalysisOptions.png"
         self.add_action(
             icon_path,
-            text=self.tr("Analysis options"),
+            text=self.tr("Analysis options..."),
             callback=self.runAnalysisOptions,
             menubar=self.analysisMenu,
             toolbar=self.analysisToolbar,
