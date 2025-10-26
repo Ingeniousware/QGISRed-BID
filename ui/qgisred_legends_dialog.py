@@ -61,10 +61,19 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if self.cbLegendLayer.currentLayer():
             self.onLayerChanged(self.cbLegendLayer.currentLayer())
 
+        # Initialize class count
+        self.updateClassCount()
+
     def config(self):
         """Configure dialog window."""
         iconPath = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconThematicMaps.png')
         self.setWindowIcon(QIcon(iconPath))
+
+        # Set QGIS-style icons for plus/minus buttons
+        self.btClassPlus.setIcon(QIcon(":/images/themes/default/symbologyAdd.svg"))
+        self.btClassMinus.setIcon(QIcon(":/images/themes/default/symbologyRemove.svg"))
+        self.btClassPlus.setText("")
+        self.btClassMinus.setText("")
     
     def setupTableView(self):
         self.tableView.setColumnCount(5)  # Checkbox, Symbol, Size, Value, Legend
@@ -72,11 +81,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         # Get the horizontal header
         header = self.tableView.horizontalHeader()
-        
+
         # Set column 0 (checkbox) to Fixed size
         header.setSectionResizeMode(0, QHeaderView.Fixed)
         self.tableView.setColumnWidth(0, 15)
-        
+
         # Set column 1 (Color) to Stretch
         header.setSectionResizeMode(1, QHeaderView.Fixed)
         self.tableView.setColumnWidth(1, 60)
@@ -84,7 +93,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Set column 2 (Size) to Fixed size
         header.setSectionResizeMode(2, QHeaderView.Fixed)
         self.tableView.setColumnWidth(2, 60)
-        
+
         # Set column 2 (Size) to Fixed size
         header.setSectionResizeMode(3, QHeaderView.Fixed)
         self.tableView.setColumnWidth(3, 100)
@@ -92,13 +101,34 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Set columns 3-4 (Value, Legend) to Stretch
         for col in range(4, 5):
             header.setSectionResizeMode(col, QHeaderView.Stretch)
-        
+
         # Hide checkbox column initially (only for categorical with up/down buttons)
         self.tableView.setColumnHidden(0, True)
 
         # Set selection behavior
         self.tableView.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.tableView.setAlternatingRowColors(True)
+
+        # Remove alternating row colors
+        self.tableView.setAlternatingRowColors(False)
+
+        # Hide vertical header (row indexes)
+        self.tableView.verticalHeader().setVisible(False)
+
+        # Remove grid lines
+        self.tableView.setShowGrid(False)
+
+        # Set white background and remove borders
+        self.tableView.setStyleSheet("""
+            QTableWidget {
+                background-color: white;
+                gridline-color: transparent;
+                border: none;
+            }
+            QTableWidget::item {
+                border: none;
+                background-color: white;
+            }
+        """)
     
     def connectSignals(self):
         """Connect all widget signals."""
@@ -335,6 +365,34 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     except (ValueError, IndexError):
                         QgsMessageLog.logMessage(f"Could not parse and adjust next range: {nextItem.text()}", "QGISRed", Qgis.Warning)
 
+    def onSizeChanged(self, row, text):
+        """Handle size field changes and update symbol preview."""
+        if not self.currentLayer or not text:
+            return
+
+        try:
+            size = float(text)
+            if size <= 0:
+                return
+        except ValueError:
+            return
+
+        # Get the color widget in the same row
+        colorWidget = self.tableView.cellWidget(row, 1)
+        if not isinstance(colorWidget, SymbolColorSelector):
+            return
+
+        # Update symbol size
+        if self.currentLayer.geometryType() == 1:  # Line
+            colorWidget.updateSymbolSize(size, isWidth=True)
+        else:  # Point or Polygon
+            colorWidget.updateSymbolSize(size, isWidth=False)
+
+    def updateClassCount(self):
+        """Update the class count display."""
+        count = self.tableView.rowCount()
+        self.leClassCount.setText(str(count))
+
     def initializeUiVisibility(self):
         """Initialize the visibility of UI elements at startup."""
         # Hide all classification-related buttons initially
@@ -478,6 +536,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def clearTable(self):
         """Clear the table view."""
         self.tableView.setRowCount(0)
+        self.updateClassCount()
     
     def populateNumericLegend(self):
         """Populate the legend table for numeric fields."""
@@ -499,6 +558,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             # Checkbox (hidden for numeric)
             checkboxItem = QTableWidgetItem()
             checkboxItem.setCheckState(Qt.Unchecked)
+            checkboxItem.setTextAlignment(Qt.AlignCenter)
             self.tableView.setItem(i, 0, checkboxItem)
 
             # Color (SymbolColorSelector)
@@ -519,6 +579,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
             else:
                 sizeEdit.setText(str(rangeItem.symbol().size()))
             sizeEdit.setEnabled(self.isEditing)
+            sizeEdit.setAlignment(Qt.AlignCenter)
+            sizeEdit.textChanged.connect(lambda text, row=i: self.onSizeChanged(row, text))
             self.tableView.setCellWidget(i, 2, sizeEdit)
 
             # Value (range)
@@ -536,6 +598,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
             f"Populated numeric legend with {len(ranges)} classes",
             "QGISRed", Qgis.Info
         )
+
+        self.updateClassCount()
 
     def populateCategoricalLegend(self):
         """Populate the legend table for categorical fields."""
@@ -557,6 +621,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             # Checkbox
             checkboxItem = QTableWidgetItem()
             checkboxItem.setCheckState(Qt.Unchecked)
+            checkboxItem.setTextAlignment(Qt.AlignCenter)
             self.tableView.setItem(i, 0, checkboxItem)
 
             # Color (SymbolColorSelector)
@@ -577,6 +642,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
             else:
                 sizeEdit.setText(str(category.symbol().size()))
             sizeEdit.setEnabled(self.isEditing)
+            sizeEdit.setAlignment(Qt.AlignCenter)
+            sizeEdit.textChanged.connect(lambda text, row=i: self.onSizeChanged(row, text))
             self.tableView.setCellWidget(i, 2, sizeEdit)
 
             # Value (category value)
@@ -598,6 +665,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
             f"Populated categorical legend with {len(categories)} classes",
             "QGISRed", Qgis.Info
         )
+
+        self.updateClassCount()
 
 
     def onTableItemChanged(self, item):
@@ -717,6 +786,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     item = QTableWidgetItem(data[0])
                     if col == 0 and data[1] is not None:
                         item.setCheckState(data[1])
+                        item.setTextAlignment(Qt.AlignCenter)
                     self.tableView.setItem(row1, col, item)
                 elif dataType == 'color':
                     widget = SymbolColorSelector(parent=self.tableView, geometryHint=self.getGeometryHint(), initialColor=data[0])
@@ -725,6 +795,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 elif dataType == 'text':
                     widget = QLineEdit(data[0])
                     widget.setEnabled(self.isEditing)
+                    if col == 2:  # Size column
+                        widget.setAlignment(Qt.AlignCenter)
                     self.tableView.setCellWidget(row1, col, widget)
                 elif dataType == 'combo':
                     widget = QComboBox()
@@ -738,6 +810,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     item = QTableWidgetItem(data[0])
                     if col == 0 and data[1] is not None:
                         item.setCheckState(data[1])
+                        item.setTextAlignment(Qt.AlignCenter)
                     self.tableView.setItem(row2, col, item)
                 elif dataType == 'color':
                     widget = SymbolColorSelector(parent=self.tableView, geometryHint=self.getGeometryHint(), initialColor=data[0])
@@ -746,6 +819,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 elif dataType == 'text':
                     widget = QLineEdit(data[0])
                     widget.setEnabled(self.isEditing)
+                    if col == 2:  # Size column
+                        widget.setAlignment(Qt.AlignCenter)
                     self.tableView.setCellWidget(row2, col, widget)
                 elif dataType == 'combo':
                     widget = QComboBox()
@@ -765,6 +840,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Checkbox
         checkboxItem = QTableWidgetItem()
         checkboxItem.setCheckState(Qt.Unchecked)
+        checkboxItem.setTextAlignment(Qt.AlignCenter)
         self.tableView.setItem(rowCount, 0, checkboxItem)
 
         # Color
@@ -774,6 +850,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         # Size
         sizeEdit = QLineEdit("1.0")
+        sizeEdit.setAlignment(Qt.AlignCenter)
         self.tableView.setCellWidget(rowCount, 2, sizeEdit)
 
         if self.currentFieldType == self.FIELD_TYPE_NUMERIC:
@@ -794,6 +871,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
             "Added new class" if self.currentFieldType == self.FIELD_TYPE_NUMERIC else "Added new categorical class",
             "QGISRed", Qgis.Info
         )
+
+        self.updateClassCount()
 
     def removeClass(self):
         """Remove selected class from the legend."""
@@ -820,6 +899,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
             # For numeric, remove first class
             self.tableView.removeRow(0)
             QgsMessageLog.logMessage("Removed first class", "QGISRed", Qgis.Info)
+
+        self.updateClassCount()
     
     def classifyEqualInterval(self):
         """Apply equal interval classification (numeric only)."""
