@@ -14,6 +14,7 @@ from qgis.PyQt.QtCore import QVariant, Qt
 # QGIS imports
 from qgis.core import QgsProject, QgsVectorLayer, QgsMessageLog, Qgis, QgsGraduatedSymbolRenderer
 from qgis.core import QgsCategorizedSymbolRenderer, QgsRendererRange, QgsRendererCategory, QgsSymbol
+from qgis.core import QgsLayerTreeGroup, QgsLayerTreeLayer
 
 # Local imports
 from ..tools.qgisred_utils import QGISRedUtils
@@ -45,7 +46,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.config()
         self.setupTableView()
 
-        self.filterThematicMapsLayers()
+        self.populateGroups()
+        self.onGroupChanged()
 
         # Set initial UI state
         self.gbLegends.setEnabled(bool(self.cbLegendLayer.currentLayer()))
@@ -100,6 +102,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
     
     def connectSignals(self):
         """Connect all widget signals."""
+        self.cbGroups.currentIndexChanged.connect(self.onGroupChanged)
+
         self.cbLegendLayer.layerChanged.connect(self.onLayerChanged)
         self.btApplyLegend.clicked.connect(self.applyLegend)
         self.btCancelLegend.clicked.connect(self.cancelAndClose)
@@ -129,15 +133,132 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Connect cell click for editing numeric ranges
         self.tableView.cellClicked.connect(self.onValueCellClicked)
     
-    def filterThematicMapsLayers(self):
-        """Filter cbLegendLayer to only show layers from Thematic Maps group"""
-        utils = QGISRedUtils()
-        thematicLayers = utils.getThematicMapsLayers()
+    def onGroupChanged(self):
+        """
+        When a group is chosen, filter cbLegendLayer to only show layers in that group
+        that have a defined renderer we can edit (Graduated or Categorized).
+        """
+        # compute allowed layers
+        allowedLayers = self.getRenderableLayersInSelectedGroup()
+
+        # whitelist via excepted list (exclude everything NOT allowed)
+        allLayers = list(QgsProject.instance().mapLayers().values())
+        excepted = [lyr for lyr in allLayers if lyr not in allowedLayers]
+
+        # apply filter to the layer combo
+        self.cbLegendLayer.blockSignals(True)
+        self.cbLegendLayer.setExceptedLayerList(excepted)
+        # try to select first valid layer
+        if allowedLayers:
+            self.cbLegendLayer.setLayer(allowedLayers[0])
+        self.cbLegendLayer.blockSignals(False)
+
+        # update legend panel state
+        if self.cbLegendLayer.currentLayer():
+            self.onLayerChanged(self.cbLegendLayer.currentLayer())
+        else:
+            self.onLayerChanged(None)
+
+    def populateGroups(self):
+        """
+        Fill cbGroups with all group/subgroup paths that contain at least one layer.
+        Shows only the group name (not full path). Stores the group's unique path in itemData.
+        Excludes root.
+        """
+        root = QgsProject.instance().layerTreeRoot()
+        self.cbGroups.blockSignals(True)
+        self.cbGroups.clear()
+
+        def groupHasLayers(group: QgsLayerTreeGroup) -> bool:
+            for child in group.children():
+                if isinstance(child, QgsLayerTreeLayer):
+                    return True
+                if isinstance(child, QgsLayerTreeGroup) and groupHasLayers(child):
+                    return True
+            return False
+
+        def walk(group: QgsLayerTreeGroup, pathParts):
+            # Only add if we have a path (skip root)
+            if pathParts and groupHasLayers(group):
+                pathStr = " / ".join(pathParts)
+                # Display only the group name (last part), but store full path in itemData
+                displayName = pathParts[-1]
+                self.cbGroups.addItem(displayName, pathStr)
+            for child in group.children():
+                if isinstance(child, QgsLayerTreeGroup):
+                    walk(child, pathParts + [child.name()])
+
+        # Start walking from root
+        walk(root, [])
+
+        # pick first item if available
+        if self.cbGroups.count() > 0:
+            self.cbGroups.setCurrentIndex(0)
+
+        self.cbGroups.blockSignals(False)
+
+    def getRenderableLayersInSelectedGroup(self):
+        """
+        Return only the layers that are DIRECTLY in the selected group (not in subgroups)
+        and have a Graduated or Categorized renderer.
+        """
+        selectedPath = self.cbGroups.currentData()
+        if not selectedPath:
+            return []
+
+        # Find the group by its path
+        root = QgsProject.instance().layerTreeRoot()
+        pathParts = [part.strip() for part in selectedPath.split("/")]
         
-        if thematicLayers:
-            # Set the layer combo box to only show these layers
-            self.cbLegendLayer.setExceptedLayerList([layer for layer in QgsProject.instance().mapLayers().values() 
-                                                    if layer not in thematicLayers])
+        targetGroup = root
+        for partName in pathParts:
+            found = False
+            for child in targetGroup.children():
+                if isinstance(child, QgsLayerTreeGroup) and child.name() == partName:
+                    targetGroup = child
+                    found = True
+                    break
+            if not found:
+                return []
+
+        # Collect only DIRECT layer children (not in subgroups)
+        renderableLayers = []
+        for child in targetGroup.children():
+            if isinstance(child, QgsLayerTreeLayer):
+                layer = child.layer()
+                if layer and isinstance(layer, QgsVectorLayer):
+                    renderer = layer.renderer()
+                    if renderer and renderer.type() in ("graduatedSymbol", "categorizedSymbol"):
+                        renderableLayers.append(layer)
+
+        return renderableLayers
+
+    def getLayersInGroup(self, groupPath: str):
+        """
+        Collect layers that belong to the group identified by its 'Parent / Child' path.
+        If groupPath is None or empty, treat it as the root.
+        """
+        root = QgsProject.instance().layerTreeRoot()
+        target = root
+        if groupPath:
+            # descend by names split by ' / '
+            for part in groupPath.split(" / "):
+                child = next((c for c in target.children()
+                              if isinstance(c, QgsLayerTreeGroup) and c.name() == part), None)
+                if child is None:
+                    return []
+                target = child
+
+        result = []
+        def collect(group: QgsLayerTreeGroup):
+            for child in group.children():
+                if isinstance(child, QgsLayerTreeLayer):
+                    result.append(child.layer())
+                elif isinstance(child, QgsLayerTreeGroup):
+                    collect(child)
+        collect(target)
+        # Keep only unique, existing layers
+        return [lyr for lyr in result if lyr]
 
     def onValueCellClicked(self, row, column):
         """Handle click on a value cell for numeric fields to open an edit dialog."""
