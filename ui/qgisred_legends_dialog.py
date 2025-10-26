@@ -161,10 +161,17 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def populateGroups(self):
         """
-        Fill cbGroups with all group/subgroup paths that contain at least one layer.
+        Fill cbGroups with only specific groups defined in ALLOWED_GROUPS.
         Shows only the group name (not full path). Stores the group's unique path in itemData.
         Excludes root.
         """
+        # Define which groups to include - easily add or remove groups here
+        ALLOWED_GROUPS = [
+            "Thematic Maps",
+            # "Another Group",  # Uncomment to add more groups
+            # "Yet Another Group",
+        ]
+        
         root = QgsProject.instance().layerTreeRoot()
         self.cbGroups.blockSignals(True)
         self.cbGroups.clear()
@@ -178,12 +185,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
             return False
 
         def walk(group: QgsLayerTreeGroup, pathParts):
-            # Only add if we have a path (skip root)
+            # Only add if we have a path (skip root) and group name is in allowed list
             if pathParts and groupHasLayers(group):
-                pathStr = " / ".join(pathParts)
-                # Display only the group name (last part), but store full path in itemData
-                displayName = pathParts[-1]
-                self.cbGroups.addItem(displayName, pathStr)
+                # Check if the current group name is in the allowed list
+                if pathParts[-1] in ALLOWED_GROUPS:
+                    pathStr = " / ".join(pathParts)
+                    displayName = pathParts[-1]
+                    self.cbGroups.addItem(displayName, pathStr)
             for child in group.children():
                 if isinstance(child, QgsLayerTreeGroup):
                     walk(child, pathParts + [child.name()])
@@ -196,7 +204,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             self.cbGroups.setCurrentIndex(0)
 
         self.cbGroups.blockSignals(False)
-
+    
     def getRenderableLayersInSelectedGroup(self):
         """
         Return only the layers that are DIRECTLY in the selected group (not in subgroups)
