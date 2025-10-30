@@ -1,11 +1,12 @@
 # Third-party imports
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QDoubleSpinBox, QLabel, QVBoxLayout
+from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QDoubleSpinBox, QLabel, QVBoxLayout, QWidget, QHBoxLayout, QCheckBox
 from PyQt5.QtCore import pyqtSignal, Qt, QEvent
 from PyQt5.QtWidgets import QToolButton
 
 from qgis.gui import QgsSymbolButton, QgsColorDialog
 from qgis.core import QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, QgsSymbol
+
 
 class RangeEditDialog(QDialog):
     """A simple dialog for editing a numeric range (lower and upper bounds)."""
@@ -36,6 +37,7 @@ class RangeEditDialog(QDialog):
     def getValues(self):
         """Returns the current values of the spin boxes."""
         return self.lowerSpinBox.value(), self.upperSpinBox.value()
+
 
 class SymbolColorSelector(QgsSymbolButton):
     """
@@ -166,3 +168,100 @@ class SymbolColorSelector(QgsSymbolButton):
                     self.openColorDialog()
                 return True
         return super().eventFilter(obj, event)
+
+
+class SymbolColorSelectorWithCheckbox(QWidget):
+    """
+    A widget combining a checkbox and SymbolColorSelector.
+    Mimics QGIS's native symbology interface with enable/disable checkbox.
+    
+    Signals:
+        colorChanged(QColor)
+        enabledChanged(bool)
+    """
+    colorChanged = pyqtSignal(QColor)
+    enabledChanged = pyqtSignal(bool)
+    
+    def __init__(
+        self,
+        parent=None,
+        geometryHint: str = "fill",
+        initialColor: QColor = QColor(19, 125, 220, 255),
+        allowAlpha: bool = True,
+        dialogTitle: str = "Pick color",
+        checked: bool = True,
+        checkboxLabel: str = ""
+    ):
+        super().__init__(parent)
+        
+        # Create layout
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(2, 2, 2, 2)  # Small margins for table cells
+        layout.setSpacing(4)
+        
+        # Create checkbox
+        self.checkbox = QCheckBox(checkboxLabel, self)
+        self.checkbox.setChecked(checked)
+        self.checkbox.toggled.connect(self._onCheckboxToggled)
+        
+        # Create the symbol color selector
+        self.colorSelector = SymbolColorSelector(
+            parent=self,
+            geometryHint=geometryHint,
+            initialColor=initialColor,
+            allowAlpha=allowAlpha,
+            dialogTitle=dialogTitle
+        )
+        self.colorSelector.colorChanged.connect(self.colorChanged.emit)
+        
+        # Set fixed size for the color selector to ensure it's visible
+        self.colorSelector.setFixedSize(50, 24)
+        
+        # Add to layout
+        layout.addWidget(self.checkbox)
+        layout.addWidget(self.colorSelector)
+        # Don't add stretch in table cells - it causes the color selector to disappear
+        
+        # Initial state
+        self.colorSelector.setEnabled(checked)
+    
+    def _onCheckboxToggled(self, checked: bool):
+        """Enable/disable the color selector based on checkbox state."""
+        self.colorSelector.setEnabled(checked)
+        self.enabledChanged.emit(checked)
+    
+    def isChecked(self) -> bool:
+        """Returns whether the checkbox is checked."""
+        return self.checkbox.isChecked()
+    
+    def setChecked(self, checked: bool):
+        """Set the checkbox state."""
+        self.checkbox.setChecked(checked)
+    
+    def color(self) -> QColor:
+        """Returns the current color."""
+        return self.colorSelector.color()
+    
+    def setColor(self, color: QColor):
+        """Set the color."""
+        self.colorSelector.setColor(color)
+    
+    def setGeometryHint(self, geometryHint: str):
+        """Set the geometry hint (marker, line, or fill)."""
+        self.colorSelector.setGeometryHint(geometryHint)
+    
+    def geometryHint(self) -> str:
+        """Returns the current geometry hint."""
+        return self.colorSelector.geometryHint()
+    
+    def setAllowAlpha(self, allowAlpha: bool):
+        """Set whether alpha channel is allowed."""
+        self.colorSelector.setAllowAlpha(allowAlpha)
+    
+    def updateSymbolSize(self, size: float, isWidth: bool = False):
+        """Update the symbol size/width and refresh the preview."""
+        self.colorSelector.updateSymbolSize(size, isWidth)
+    
+    def setCheckboxLabel(self, label: str):
+        """Set the checkbox label text."""
+        self.checkbox.setText(label)

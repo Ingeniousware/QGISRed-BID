@@ -18,7 +18,7 @@ from qgis.core import QgsLayerTreeGroup, QgsLayerTreeLayer
 
 # Local imports
 from ..tools.qgisred_utils import QGISRedUtils
-from .qgisred_custom_dialogs import RangeEditDialog, SymbolColorSelector
+from .qgisred_custom_dialogs import RangeEditDialog, SymbolColorSelector, SymbolColorSelectorWithCheckbox
 
 formClass, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_legends_dialog.ui"))
 
@@ -86,34 +86,26 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btClassMinus.setText("")
     
     def setupTableView(self):
-        self.tableView.setColumnCount(5)  # Checkbox, Symbol, Size, Value, Legend
-        self.tableView.setHorizontalHeaderLabels(["", "Symbol", "Size", "Value", "Legend"])
+        self.tableView.setColumnCount(4)  # Symbol (with checkbox), Size, Value, Legend
+        self.tableView.setHorizontalHeaderLabels(["Symbol", "Size", "Value", "Legend"])
 
         # Get the horizontal header
         header = self.tableView.horizontalHeader()
 
-        # Set column 0 (checkbox) to Fixed size
+        # Set column 0 (Symbol with checkbox) to Fixed
         header.setSectionResizeMode(0, QHeaderView.Fixed)
-        self.tableView.setColumnWidth(0, 15)
+        self.tableView.setColumnWidth(0, 80)
 
-        # Set column 1 (Color) to Stretch
+        # Set column 1 (Size) to Fixed size
         header.setSectionResizeMode(1, QHeaderView.Fixed)
         self.tableView.setColumnWidth(1, 60)
 
-        # Set column 2 (Size) to Fixed size
+        # Set column 2 (Value) to Fixed size
         header.setSectionResizeMode(2, QHeaderView.Fixed)
-        self.tableView.setColumnWidth(2, 60)
+        self.tableView.setColumnWidth(2, 100)
 
-        # Set column 2 (Size) to Fixed size
-        header.setSectionResizeMode(3, QHeaderView.Fixed)
-        self.tableView.setColumnWidth(3, 100)
-
-        # Set columns 3-4 (Value, Legend) to Stretch
-        for col in range(4, 5):
-            header.setSectionResizeMode(col, QHeaderView.Stretch)
-
-        # Hide checkbox column initially (only for categorical with up/down buttons)
-        self.tableView.setColumnHidden(0, True)
+        # Set column 3 (Legend) to Stretch
+        header.setSectionResizeMode(3, QHeaderView.Stretch)
 
         # Set selection behavior
         self.tableView.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -310,7 +302,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def onValueCellClicked(self, row, column):
         """Handle click on a value cell for numeric fields to open an edit dialog."""
-        if self.currentFieldType != self.FIELD_TYPE_NUMERIC or column != 3:
+        if self.currentFieldType != self.FIELD_TYPE_NUMERIC or column != 2:
             return
 
         valueItem = self.tableView.item(row, column)
@@ -339,13 +331,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
             valueItem.setText(newValueText)
             
             # Update the current row's legend widget if it matches the old value
-            legendWidget = self.tableView.cellWidget(row, 4)
+            legendWidget = self.tableView.cellWidget(row, 3)
             if isinstance(legendWidget, QLineEdit) and legendWidget.text() == originalValueText:
                 legendWidget.setText(newValueText)
 
             # Adjust the PREVIOUS row, if it exists
             if row > 0:
-                prevItem = self.tableView.item(row - 1, 3)
+                prevItem = self.tableView.item(row - 1, 2)
                 if prevItem:
                     try:
                         prevText = prevItem.text()
@@ -353,7 +345,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                         newPrevText = f"{float(prevLowerStr):.2f} - {newLower:.2f}"
                         prevItem.setText(newPrevText)
 
-                        prevLegendWidget = self.tableView.cellWidget(row - 1, 4)
+                        prevLegendWidget = self.tableView.cellWidget(row - 1, 3)
                         if isinstance(prevLegendWidget, QLineEdit) and prevLegendWidget.text() == prevText:
                             prevLegendWidget.setText(newPrevText)
                     except (ValueError, IndexError):
@@ -361,7 +353,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
             # Adjust the NEXT row, if it exists
             if row < self.tableView.rowCount() - 1:
-                nextItem = self.tableView.item(row + 1, 3)
+                nextItem = self.tableView.item(row + 1, 2)
                 if nextItem:
                     try:
                         nextText = nextItem.text()
@@ -369,7 +361,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                         newNextText = f"{newUpper:.2f} - {float(nextUpperStr):.2f}"
                         nextItem.setText(newNextText)
 
-                        nextLegendWidget = self.tableView.cellWidget(row + 1, 4)
+                        nextLegendWidget = self.tableView.cellWidget(row + 1, 3)
                         if isinstance(nextLegendWidget, QLineEdit) and nextLegendWidget.text() == nextText:
                             nextLegendWidget.setText(newNextText)
                     except (ValueError, IndexError):
@@ -388,7 +380,14 @@ class QGISRedLegendsDialog(QDialog, formClass):
             return
 
         # Get the color widget in the same row
-        colorWidget = self.tableView.cellWidget(row, 1)
+        colorWidget = self.tableView.cellWidget(row, 0)
+        if isinstance(colorWidget, (SymbolColorSelector, SymbolColorSelectorWithCheckbox)):
+            # Extract the actual color selector if it's the wrapper
+            if isinstance(colorWidget, SymbolColorSelectorWithCheckbox):
+                colorWidget = colorWidget.colorSelector
+        else:
+            return
+
         if not isinstance(colorWidget, SymbolColorSelector):
             return
 
@@ -491,8 +490,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btUp.setVisible(isCategorical)
         self.btDown.setVisible(isCategorical)
         
-        # Show/hide checkbox column for categorical
-        self.tableView.setColumnHidden(0, not isCategorical)
+        # Note: Checkbox is now integrated into the symbol widget for categorical
         
         # Update label text
         if isNumeric:
@@ -639,13 +637,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         for i, rangeItem in enumerate(ranges):
             self.tableView.insertRow(i)
 
-            # Checkbox (hidden for numeric)
-            checkboxItem = QTableWidgetItem()
-            checkboxItem.setCheckState(Qt.Unchecked)
-            checkboxItem.setTextAlignment(Qt.AlignCenter)
-            self.tableView.setItem(i, 0, checkboxItem)
-
-            # Color (SymbolColorSelector)
+            # Color (SymbolColorSelector without checkbox for numeric)
             colorWidget = SymbolColorSelector(
                 parent=self.tableView,
                 geometryHint=geomHint,
@@ -654,7 +646,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 dialogTitle=self.tr("Pick class color")
             )
             colorWidget.setEnabled(self.isEditing)
-            self.tableView.setCellWidget(i, 1, colorWidget)
+            self.tableView.setCellWidget(i, 0, colorWidget)
 
             # Size (line width or point size; polygons treated like point size as per legacy behavior)
             sizeEdit = QLineEdit()
@@ -665,18 +657,18 @@ class QGISRedLegendsDialog(QDialog, formClass):
             sizeEdit.setEnabled(self.isEditing)
             sizeEdit.setAlignment(Qt.AlignCenter)
             sizeEdit.textChanged.connect(lambda text, row=i: self.onSizeChanged(row, text))
-            self.tableView.setCellWidget(i, 2, sizeEdit)
+            self.tableView.setCellWidget(i, 1, sizeEdit)
 
             # Value (range)
             valueText = f"{rangeItem.lowerValue():.2f} - {rangeItem.upperValue():.2f}"
             valueItem = QTableWidgetItem(valueText)
             valueItem.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-            self.tableView.setItem(i, 3, valueItem)
+            self.tableView.setItem(i, 2, valueItem)
 
             # Legend
             legendEdit = QLineEdit(rangeItem.label())
             legendEdit.setEnabled(self.isEditing)
-            self.tableView.setCellWidget(i, 4, legendEdit)
+            self.tableView.setCellWidget(i, 3, legendEdit)
 
         QgsMessageLog.logMessage(
             f"Populated numeric legend with {len(ranges)} classes",
@@ -686,24 +678,15 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.updateClassCount()
 
     def onTableItemChanged(self, item):
-        """Handle table item changes, particularly for checkbox selection."""
-        # Only handle checkbox column (column 0) for categorical legends
-        if (self.currentFieldType == self.FIELD_TYPE_CATEGORICAL and 
-            item and item.column() == 0 and 
-            item.checkState() == Qt.Checked):
-            
-            # Uncheck all other checkboxes (single selection)
-            for row in range(self.tableView.rowCount()):
-                if row != item.row():
-                    otherItem = self.tableView.item(row, 0)
-                    if otherItem:
-                        otherItem.setCheckState(Qt.Unchecked)
+        """Handle table item changes (now mostly unused as checkboxes are in widgets)."""
+        # Note: Checkbox handling is now done via SymbolColorSelectorWithCheckbox widget signals
+        pass
     
     def getSelectedRow(self):
         """Get the currently selected row (for categorical)."""
         for row in range(self.tableView.rowCount()):
-            item = self.tableView.item(row, 0)
-            if item and item.checkState() == Qt.Checked:
+            widget = self.tableView.cellWidget(row, 0)
+            if isinstance(widget, SymbolColorSelectorWithCheckbox) and widget.isChecked():
                 return row
         return -1
     
@@ -719,9 +702,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Swap rows in table
         self.swapTableRows(selectedRow, selectedRow - 1)
         
-        # Update checkbox selection
-        self.tableView.item(selectedRow, 0).setCheckState(Qt.Unchecked)
-        self.tableView.item(selectedRow - 1, 0).setCheckState(Qt.Checked)
+        # Update checkbox selection in widgets
+        oldWidget = self.tableView.cellWidget(selectedRow, 0)
+        newWidget = self.tableView.cellWidget(selectedRow - 1, 0)
+        if isinstance(oldWidget, SymbolColorSelectorWithCheckbox):
+            oldWidget.setChecked(False)
+        if isinstance(newWidget, SymbolColorSelectorWithCheckbox):
+            newWidget.setChecked(True)
         
         QgsMessageLog.logMessage("Moved class up", "QGISRed", Qgis.Info)
     
@@ -737,9 +724,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Swap rows in table
         self.swapTableRows(selectedRow, selectedRow + 1)
         
-        # Update checkbox selection
-        self.tableView.item(selectedRow, 0).setCheckState(Qt.Unchecked)
-        self.tableView.item(selectedRow + 1, 0).setCheckState(Qt.Checked)
+        # Update checkbox selection in widgets
+        oldWidget = self.tableView.cellWidget(selectedRow, 0)
+        newWidget = self.tableView.cellWidget(selectedRow + 1, 0)
+        if isinstance(oldWidget, SymbolColorSelectorWithCheckbox):
+            oldWidget.setChecked(False)
+        if isinstance(newWidget, SymbolColorSelectorWithCheckbox):
+            newWidget.setChecked(True)
         
         QgsMessageLog.logMessage("Moved class down", "QGISRed", Qgis.Info)
     
@@ -760,9 +751,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
             # Row 1 snapshot
             if item1:
-                row1Data.append(('item', item1.text(), item1.checkState() if col == 0 else None))
+                row1Data.append(('item', item1.text(), None))
             elif widget1:
-                if isinstance(widget1, SymbolColorSelector):
+                if isinstance(widget1, SymbolColorSelectorWithCheckbox):
+                    row1Data.append(('color_with_checkbox', widget1.color(), widget1.isChecked()))
+                elif isinstance(widget1, SymbolColorSelector):
                     row1Data.append(('color', widget1.color()))
                 elif isinstance(widget1, QLineEdit):
                     row1Data.append(('text', widget1.text(), widget1.isReadOnly()))
@@ -775,9 +768,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
             # Row 2 snapshot
             if item2:
-                row2Data.append(('item', item2.text(), item2.checkState() if col == 0 else None))
+                row2Data.append(('item', item2.text(), None))
             elif widget2:
-                if isinstance(widget2, SymbolColorSelector):
+                if isinstance(widget2, SymbolColorSelectorWithCheckbox):
+                    row2Data.append(('color_with_checkbox', widget2.color(), widget2.isChecked()))
+                elif isinstance(widget2, SymbolColorSelector):
                     row2Data.append(('color', widget2.color()))
                 elif isinstance(widget2, QLineEdit):
                     row2Data.append(('text', widget2.text(), widget2.isReadOnly()))
@@ -800,10 +795,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 dataType, *data = row2Data[col]
                 if dataType == 'item':
                     item = QTableWidgetItem(data[0])
-                    if col == 0 and data[1] is not None:
-                        item.setCheckState(data[1])
-                        item.setTextAlignment(Qt.AlignCenter)
                     self.tableView.setItem(row1, col, item)
+                elif dataType == 'color_with_checkbox':
+                    widget = SymbolColorSelectorWithCheckbox(parent=self.tableView, geometryHint=self.getGeometryHint(), initialColor=data[0], checked=data[1])
+                    widget.setEnabled(self.isEditing)
+                    self.tableView.setCellWidget(row1, col, widget)
                 elif dataType == 'color':
                     widget = SymbolColorSelector(parent=self.tableView, geometryHint=self.getGeometryHint(), initialColor=data[0])
                     widget.setEnabled(self.isEditing)
@@ -811,9 +807,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 elif dataType == 'text':
                     widget = QLineEdit(data[0])
                     widget.setEnabled(self.isEditing)
-                    if col == 2:  # Size column
+                    if col == 1:  # Size column (now column 1)
                         widget.setAlignment(Qt.AlignCenter)
-                    elif col == 3:  # Value column - check if should be read-only
+                    elif col == 2:  # Value column (now column 2) - check if should be read-only
                         if len(data) > 1 and data[1]:  # data[1] is isReadOnly
                             widget.setReadOnly(True)
                             widget.setStyleSheet("QLineEdit { background-color: white; }")
@@ -828,10 +824,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 dataType, *data = row1Data[col]
                 if dataType == 'item':
                     item = QTableWidgetItem(data[0])
-                    if col == 0 and data[1] is not None:
-                        item.setCheckState(data[1])
-                        item.setTextAlignment(Qt.AlignCenter)
                     self.tableView.setItem(row2, col, item)
+                elif dataType == 'color_with_checkbox':
+                    widget = SymbolColorSelectorWithCheckbox(parent=self.tableView, geometryHint=self.getGeometryHint(), initialColor=data[0], checked=data[1])
+                    widget.setEnabled(self.isEditing)
+                    self.tableView.setCellWidget(row2, col, widget)
                 elif dataType == 'color':
                     widget = SymbolColorSelector(parent=self.tableView, geometryHint=self.getGeometryHint(), initialColor=data[0])
                     widget.setEnabled(self.isEditing)
@@ -839,9 +836,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 elif dataType == 'text':
                     widget = QLineEdit(data[0])
                     widget.setEnabled(self.isEditing)
-                    if col == 2:  # Size column
+                    if col == 1:  # Size column (now column 1)
                         widget.setAlignment(Qt.AlignCenter)
-                    elif col == 3:  # Value column - check if should be read-only
+                    elif col == 2:  # Value column (now column 2) - check if should be read-only
                         if len(data) > 1 and data[1]:  # data[1] is isReadOnly
                             widget.setReadOnly(True)
                             widget.setStyleSheet("QLineEdit { background-color: white; }")
@@ -868,30 +865,25 @@ class QGISRedLegendsDialog(QDialog, formClass):
         rowCount = self.tableView.rowCount()
         self.tableView.insertRow(rowCount)
 
-        # Checkbox
-        checkboxItem = QTableWidgetItem()
-        checkboxItem.setCheckState(Qt.Unchecked)
-        checkboxItem.setTextAlignment(Qt.AlignCenter)
-        self.tableView.setItem(rowCount, 0, checkboxItem)
-
-        # Color
+        # Color (no checkbox for numeric)
         colorWidget = SymbolColorSelector(parent=self.tableView, geometryHint=geomHint, initialColor=QColor(128, 128, 128))
         colorWidget.setEnabled(self.isEditing)
-        self.tableView.setCellWidget(rowCount, 1, colorWidget)
+        self.tableView.setCellWidget(rowCount, 0, colorWidget)
 
         # Size
         sizeEdit = QLineEdit("1.0")
         sizeEdit.setAlignment(Qt.AlignCenter)
-        self.tableView.setCellWidget(rowCount, 2, sizeEdit)
+        sizeEdit.setEnabled(self.isEditing)
+        self.tableView.setCellWidget(rowCount, 1, sizeEdit)
 
         # Value range
         valueItem = QTableWidgetItem("0.0 - 0.0")
-        self.tableView.setItem(rowCount, 3, valueItem)
+        self.tableView.setItem(rowCount, 2, valueItem)
         
         # Legend
         legendEdit = QLineEdit("New Class")
         legendEdit.setEnabled(self.isEditing)
-        self.tableView.setCellWidget(rowCount, 4, legendEdit)
+        self.tableView.setCellWidget(rowCount, 3, legendEdit)
 
         QgsMessageLog.logMessage("Added new numeric class", "QGISRed", Qgis.Info)
         self.updateClassCount()
@@ -922,37 +914,33 @@ class QGISRedLegendsDialog(QDialog, formClass):
         rowCount = self.tableView.rowCount()
         self.tableView.insertRow(rowCount)
 
-        # Checkbox
-        checkboxItem = QTableWidgetItem()
-        checkboxItem.setCheckState(Qt.Unchecked)
-        checkboxItem.setTextAlignment(Qt.AlignCenter)
-        self.tableView.setItem(rowCount, 0, checkboxItem)
-
-        # Color
-        colorWidget = SymbolColorSelector(
+        # Color with checkbox for categorical
+        colorWidget = SymbolColorSelectorWithCheckbox(
             parent=self.tableView,
             geometryHint=geomHint,
-            initialColor=QColor(128, 128, 128)
+            initialColor=QColor(128, 128, 128),
+            checked=False,
+            checkboxLabel=""
         )
-        colorWidget.setEnabled(self.isEditing)
-        self.tableView.setCellWidget(rowCount, 1, colorWidget)
+        colorWidget.colorSelector.setEnabled(self.isEditing)
+        self.tableView.setCellWidget(rowCount, 0, colorWidget)
 
         # Size
         sizeEdit = QLineEdit("1.0")
         sizeEdit.setAlignment(Qt.AlignCenter)
         sizeEdit.setEnabled(self.isEditing)
-        self.tableView.setCellWidget(rowCount, 2, sizeEdit)
+        self.tableView.setCellWidget(rowCount, 1, sizeEdit)
 
         # Value (non-editable QLineEdit for categorical)
         valueEdit = QLineEdit(displayValue)
         valueEdit.setReadOnly(True)
         valueEdit.setStyleSheet("QLineEdit { background-color: white; }")
-        self.tableView.setCellWidget(rowCount, 3, valueEdit)
+        self.tableView.setCellWidget(rowCount, 2, valueEdit)
 
         # Legend
         legendEdit = QLineEdit(legendText)
         legendEdit.setEnabled(self.isEditing)
-        self.tableView.setCellWidget(rowCount, 4, legendEdit)
+        self.tableView.setCellWidget(rowCount, 3, legendEdit)
 
         QgsMessageLog.logMessage(
             f"Added categorical class with value '{displayValue}'",
@@ -1002,7 +990,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             return
         
         # Get the value from the row before removing
-        valueWidget = self.tableView.cellWidget(selectedRow, 3)
+        valueWidget = self.tableView.cellWidget(selectedRow, 2)
         if isinstance(valueWidget, QLineEdit):
             valueText = valueWidget.text()
             # Convert display value back to actual value
@@ -1071,11 +1059,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
             
             # Update value column
             valueText = f"{lower:.2f} - {upper:.2f}"
-            if self.tableView.item(i, 3):
-                self.tableView.item(i, 3).setText(valueText)
+            if self.tableView.item(i, 2):
+                self.tableView.item(i, 2).setText(valueText)
             
             # Update legend if empty
-            legendWidget = self.tableView.cellWidget(i, 4)
+            legendWidget = self.tableView.cellWidget(i, 3)
             if isinstance(legendWidget, QLineEdit) and not legendWidget.text():
                 legendWidget.setText(valueText)
         
@@ -1126,11 +1114,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
             
             # Update value column
             valueText = f"{lower:.2f} - {upper:.2f}"
-            if self.tableView.item(i, 3):
-                self.tableView.item(i, 3).setText(valueText)
+            if self.tableView.item(i, 2):
+                self.tableView.item(i, 2).setText(valueText)
             
             # Update legend if empty
-            legendWidget = self.tableView.cellWidget(i, 4)
+            legendWidget = self.tableView.cellWidget(i, 3)
             if isinstance(legendWidget, QLineEdit) and not legendWidget.text():
                 legendWidget.setText(valueText)
         
@@ -1181,7 +1169,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         ranges = []
         for row in range(self.tableView.rowCount()):
             # Range values
-            valueText = self.tableView.item(row, 3).text()
+            valueText = self.tableView.item(row, 2).text()
             if " - " not in valueText:
                 continue
             parts = valueText.split(" - ")
@@ -1189,14 +1177,14 @@ class QGISRedLegendsDialog(QDialog, formClass):
             upper = float(parts[1])
 
             # Color
-            colorWidget = self.tableView.cellWidget(row, 1)
+            colorWidget = self.tableView.cellWidget(row, 0)
             if isinstance(colorWidget, SymbolColorSelector):
                 color = colorWidget.color()
             else:
                 color = QColor(128, 128, 128)
 
             # Label
-            legendWidget = self.tableView.cellWidget(row, 4)
+            legendWidget = self.tableView.cellWidget(row, 3)
             label = legendWidget.text() if isinstance(legendWidget, QLineEdit) else valueText
 
             # Symbol
@@ -1204,7 +1192,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             symbol.setColor(color)
 
             # Size
-            sizeWidget = self.tableView.cellWidget(row, 2)
+            sizeWidget = self.tableView.cellWidget(row, 1)
             if isinstance(sizeWidget, QLineEdit):
                 try:
                     size = float(sizeWidget.text())
@@ -1229,7 +1217,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         categories = []
         for row in range(self.tableView.rowCount()):
             # Value
-            valueWidget = self.tableView.cellWidget(row, 3)
+            valueWidget = self.tableView.cellWidget(row, 2)
             if isinstance(valueWidget, QLineEdit):
                 displayValue = valueWidget.text()
                 # Convert display value back to actual value for renderer
@@ -1238,18 +1226,21 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 else:
                     value = displayValue
             else:
-                valueItem = self.tableView.item(row, 3)
+                valueItem = self.tableView.item(row, 2)
                 value = valueItem.text() if valueItem else ""
 
             # Color
-            colorWidget = self.tableView.cellWidget(row, 1)
-            if isinstance(colorWidget, SymbolColorSelector):
+            colorWidget = self.tableView.cellWidget(row, 0)
+            # Handle both SymbolColorSelector and SymbolColorSelectorWithCheckbox
+            if isinstance(colorWidget, SymbolColorSelectorWithCheckbox):
+                color = colorWidget.color()
+            elif isinstance(colorWidget, SymbolColorSelector):
                 color = colorWidget.color()
             else:
                 color = QColor(128, 128, 128)
 
             # Label
-            legendWidget = self.tableView.cellWidget(row, 4)
+            legendWidget = self.tableView.cellWidget(row, 3)
             label = legendWidget.text() if isinstance(legendWidget, QLineEdit) else str(value)
 
             # Symbol
@@ -1257,7 +1248,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             symbol.setColor(color)
 
             # Size
-            sizeWidget = self.tableView.cellWidget(row, 2)
+            sizeWidget = self.tableView.cellWidget(row, 1)
             if isinstance(sizeWidget, QLineEdit):
                 try:
                     size = float(sizeWidget.text())
