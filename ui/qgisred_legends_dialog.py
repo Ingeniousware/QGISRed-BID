@@ -528,7 +528,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             if self.currentFieldType == self.FIELD_TYPE_NUMERIC:
                 self.populateNumericLegend()
             elif self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
-                self.initializeCategoricalLegend()
+                self.populateCategoricalLegend()
             else:
                 self.clearTable()
                 
@@ -646,6 +646,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 dialogTitle=self.tr("Pick class color")
             )
             colorWidget.setEnabled(self.isEditing)
+            
+            # Set initial symbol size from renderer
+            if self.currentLayer.geometryType() == 1:  # Line
+                colorWidget.updateSymbolSize(rangeItem.symbol().width(), isWidth=True)
+            else:  # Point or Polygon
+                colorWidget.updateSymbolSize(rangeItem.symbol().size(), isWidth=False)
+            
             self.tableView.setCellWidget(i, 0, colorWidget)
 
             # Size (line width or point size; polygons treated like point size as per legacy behavior)
@@ -677,6 +684,93 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         self.updateClassCount()
 
+    def populateCategoricalLegend(self):
+        """Populate the legend table for categorical fields from existing renderer."""
+        if not self.currentLayer:
+            return
+
+        renderer = self.currentLayer.renderer()
+        if not isinstance(renderer, QgsCategorizedSymbolRenderer):
+            # If no categorized renderer, just initialize empty
+            self.initializeCategoricalLegend()
+            return
+
+        self.clearTable()
+
+        categories = renderer.categories()
+        geomHint = self.getGeometryHint()
+        
+        # Get all unique values for tracking
+        allUniqueValues = self.getUniqueValuesFromLayer()
+        self.usedUniqueValues = []
+
+        for i, category in enumerate(categories):
+            self.tableView.insertRow(i)
+
+            # Get the category value
+            catValue = category.value()
+            if catValue is None or catValue == QVariant():
+                displayValue = "NULL"
+                actualValue = None
+            else:
+                displayValue = str(catValue)
+                actualValue = displayValue
+            
+            # Track this value as used
+            if actualValue in allUniqueValues:
+                self.usedUniqueValues.append(actualValue)
+
+            # Color with checkbox for categorical
+            colorWidget = SymbolColorSelectorWithCheckbox(
+                parent=self.tableView,
+                geometryHint=geomHint,
+                initialColor=category.symbol().color(),
+                checked=False,
+                checkboxLabel=""
+            )
+            colorWidget.colorSelector.setEnabled(self.isEditing)
+            
+            # Set initial symbol size from renderer
+            if self.currentLayer.geometryType() == 1:  # Line
+                colorWidget.updateSymbolSize(category.symbol().width(), isWidth=True)
+            else:  # Point or Polygon
+                colorWidget.updateSymbolSize(category.symbol().size(), isWidth=False)
+            
+            self.tableView.setCellWidget(i, 0, colorWidget)
+
+            # Size (line width or point size)
+            sizeEdit = QLineEdit()
+            if self.currentLayer.geometryType() == 1:
+                sizeEdit.setText(str(category.symbol().width()))
+            else:
+                sizeEdit.setText(str(category.symbol().size()))
+            sizeEdit.setEnabled(self.isEditing)
+            sizeEdit.setAlignment(Qt.AlignCenter)
+            sizeEdit.textChanged.connect(lambda text, row=i: self.onSizeChanged(row, text))
+            self.tableView.setCellWidget(i, 1, sizeEdit)
+
+            # Value (non-editable QLineEdit for categorical)
+            valueEdit = QLineEdit(displayValue)
+            valueEdit.setReadOnly(True)
+            valueEdit.setStyleSheet("QLineEdit { background-color: white; }")
+            self.tableView.setCellWidget(i, 2, valueEdit)
+
+            # Legend
+            legendEdit = QLineEdit(category.label())
+            legendEdit.setEnabled(self.isEditing)
+            self.tableView.setCellWidget(i, 3, legendEdit)
+
+        # Update available values (those not used)
+        self.availableUniqueValues = [v for v in allUniqueValues if v not in self.usedUniqueValues]
+        
+        QgsMessageLog.logMessage(
+            f"Populated categorical legend with {len(categories)} classes",
+            "QGISRed", Qgis.Info
+        )
+
+        self.updateClassCount()
+        self.updateAddClassButtonState()
+    
     def onTableItemChanged(self, item):
         """Handle table item changes (now mostly unused as checkboxes are in widgets)."""
         # Note: Checkbox handling is now done via SymbolColorSelectorWithCheckbox widget signals

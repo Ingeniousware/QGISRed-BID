@@ -163,6 +163,10 @@ class SymbolColorSelector(QgsSymbolButton):
     # --- Event filter replaces default click to open color dialog ---
     def eventFilter(self, obj, event):
         if obj is self:
+            # Block mouse wheel events to prevent accidental size changes
+            if event.type() == QEvent.Wheel:
+                return True  # Consume the event
+            
             if event.type() in (QEvent.MouseButtonPress, QEvent.MouseButtonRelease):
                 if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
                     self.openColorDialog()
