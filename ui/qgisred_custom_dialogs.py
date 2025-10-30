@@ -69,7 +69,7 @@ class SymbolColorSelector(QgsSymbolButton):
         self.setPopupMode(QToolButton.DelayedPopup)
         self.setStyleSheet("""
             QToolButton::menu-indicator { image: none; width: 0px; }
-            QToolButton { padding-right: 4px; }  /* optional: tighten right padding */
+            QToolButton { padding-right: 4px; background-color: white; }  /* optional: tighten right padding */
         """)
 
         self.setToolTip(self.tr("Click to pick a color."))

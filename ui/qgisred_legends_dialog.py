@@ -54,8 +54,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.onGroupChanged()
 
         # Set initial UI state
-        self.gbLegends.setEnabled(bool(self.cbLegendLayer.currentLayer()))
-        self.gbLegends.setTitle(self.tr("Legend"))
+        self.frameLegends.setEnabled(bool(self.cbLegendLayer.currentLayer()))
+        self.labelFrameLegends.setText(self.tr("Legend"))
         self.initializeUiVisibility()
 
         # Connect signals
@@ -413,7 +413,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btUp.setVisible(False)
         self.btDown.setVisible(False)
         self.labelClass.setVisible(False)  # "Classes" label
-        
+        self.leClassCount.setVisible(False)  # Class count field
+
+        # Hide label initially
+        self.labelFrameLegends.setVisible(False)
+
         # Initially hide Apply button (as per document - read-only first implementation)
         self.btApplyLegend.setVisible(self.isEditing)
     
@@ -475,35 +479,39 @@ class QGISRedLegendsDialog(QDialog, formClass):
         isNumeric = (self.currentFieldType == self.FIELD_TYPE_NUMERIC)
         isCategorical = (self.currentFieldType == self.FIELD_TYPE_CATEGORICAL)
         hasField = isNumeric or isCategorical
-        
+
         # Classification method buttons - visible only for numeric
         self.btIntervals.setVisible(isNumeric)
         self.btQuantiles.setVisible(isNumeric)
         self.btBreaks.setVisible(isNumeric)
-        
-        # Class management buttons - visible for both
+
+        # Class management buttons - visible for both numeric and categorical
         self.btClassPlus.setVisible(hasField)
         self.btClassMinus.setVisible(hasField)
         self.labelClass.setVisible(hasField)
-        
+        self.leClassCount.setVisible(hasField)
+
         # Up/Down buttons - visible only for categorical
         self.btUp.setVisible(isCategorical)
         self.btDown.setVisible(isCategorical)
-        
+
+        # Label visibility
+        self.labelFrameLegends.setVisible(hasField)
+
         # Note: Checkbox is now integrated into the symbol widget for categorical
-        
+
         # Update label text
         if isNumeric:
             self.labelClass.setText(self.tr("Classes"))
         elif isCategorical:
             self.labelClass.setText(self.tr("Classes"))
-        
+
         # Update Plus button state for categorical
         if isCategorical:
             self.updateAddClassButtonState()
-        
+
         QgsMessageLog.logMessage(
-            f"UI updated for field type: {self.currentFieldType}", 
+            f"UI updated for field type: {self.currentFieldType}",
             "QGISRed", Qgis.Info
         )
     
@@ -513,17 +521,17 @@ class QGISRedLegendsDialog(QDialog, formClass):
             # Store current layer and its original renderer
             self.currentLayer = layer
             self.originalRenderer = layer.renderer().clone() if layer.renderer() else None
-            
+
             # Detect field type from current symbology
             self.currentFieldType, self.currentFieldName = self.detectFieldType(layer)
-            
-            # Enable legend group and update title
-            self.gbLegends.setEnabled(True)
-            self.gbLegends.setTitle(self.tr(f"Legend for {layer.name()}"))
-            
+
+            # Enable legend frame and update label
+            self.frameLegends.setEnabled(True)
+            self.labelFrameLegends.setText(self.tr(f"Legend for {layer.name()}"))
+
             # Update UI based on detected field type
             self.updateUIBasedOnFieldType()
-            
+
             # Populate the table view
             if self.currentFieldType == self.FIELD_TYPE_NUMERIC:
                 self.populateNumericLegend()
@@ -531,14 +539,15 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 self.populateCategoricalLegend()
             else:
                 self.clearTable()
-                
+
             QgsMessageLog.logMessage(
                 f"Layer '{layer.name()}' selected. Field type: {self.currentFieldType}, Field name: {self.currentFieldName}",
                 "QGISRed", Qgis.Info
             )
         else:
-            self.gbLegends.setEnabled(False)
-            self.gbLegends.setTitle(self.tr("Legend"))
+            self.frameLegends.setEnabled(False)
+            self.labelFrameLegends.setText(self.tr("Legend"))
+            self.labelFrameLegends.setVisible(False)
             self.currentLayer = None
             self.currentFieldType = self.FIELD_TYPE_UNKNOWN
             self.currentFieldName = None
