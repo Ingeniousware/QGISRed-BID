@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>580</width>
-    <height>349</height>
+    <width>582</width>
+    <height>360</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -60,8 +60,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>578</width>
-        <height>347</height>
+        <width>580</width>
+        <height>358</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_6">
@@ -125,7 +125,7 @@
           <enum>QFrame::StyledPanel</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Raised</enum>
+          <enum>QFrame::Sunken</enum>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_4">
           <item>
@@ -138,7 +138,7 @@
                  <enum>QFrame::StyledPanel</enum>
                 </property>
                 <property name="showGrid">
-                 <bool>false</bool>
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
