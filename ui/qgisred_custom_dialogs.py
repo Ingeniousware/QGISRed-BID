@@ -65,12 +65,18 @@ class SymbolColorSelector(QgsSymbolButton):
 
         self.applySymbol()
 
-        # Remove ▼ QgsSymbolButton Menu
+        # Remove ▼ QgsSymbolButton Menu and remove shadow property
         self.setPopupMode(QToolButton.DelayedPopup)
         self.setStyleSheet("""
             QToolButton::menu-indicator { image: none; width: 0px; }
-            QToolButton { padding-right: 4px; background-color: white; }  /* optional: tighten right padding */
+            QToolButton { padding-right: 4px; background-color: white; border: none; }
         """)
+        
+        # Explicitly remove any drop shadow effect
+        try:
+            self.setGraphicsEffect(None)
+        except:
+            pass
 
         self.setToolTip(self.tr("Click to pick a color."))
         self.installEventFilter(self)
@@ -230,8 +236,6 @@ class SymbolColorSelectorWithCheckbox(QWidget):
         self.colorSelector.setEnabled(checked)
     
     def _onCheckboxToggled(self, checked: bool):
-        """Enable/disable the color selector based on checkbox state."""
-        self.colorSelector.setEnabled(checked)
         self.enabledChanged.emit(checked)
     
     def isChecked(self) -> bool:
