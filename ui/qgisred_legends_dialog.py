@@ -133,9 +133,6 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 background-color: white;
             }
         """)
-
-        # Connect selection changed signal
-        self.tableView.itemSelectionChanged.connect(self.updateButtonStates)
     
     def connectSignals(self):
         """Connect all widget signals."""
@@ -169,6 +166,16 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         # Connect cell click for editing numeric ranges
         self.tableView.cellClicked.connect(self.onValueCellClicked)
+    
+    def connectCheckboxSignal(self, colorWidget):
+        """Connect checkbox state change signal to updateButtonStates.
+        
+        Args:
+            colorWidget: SymbolColorSelectorWithCheckbox instance
+        """
+        if isinstance(colorWidget, SymbolColorSelectorWithCheckbox):
+            # Connect the checkbox toggled signal to updateButtonStates
+            colorWidget.enabledChanged.connect(self.updateButtonStates)
     
     def onGroupChanged(self):
         """
@@ -753,6 +760,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             else:
                 colorWidget.updateSymbolSize(category.symbol().size(), isWidth=False)
 
+            self.connectCheckboxSignal(colorWidget)
             self.tableView.setCellWidget(rowIndex, 0, colorWidget)
 
             sizeEdit = QLineEdit()
@@ -792,6 +800,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             else:
                 colorWidget.updateSymbolSize(otherValuesCategory.symbol().size(), isWidth=False)
 
+            self.connectCheckboxSignal(colorWidget)
             self.tableView.setCellWidget(rowIndex, 0, colorWidget)
 
             sizeEdit = QLineEdit()
@@ -843,9 +852,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if self.currentFieldType != self.FIELD_TYPE_CATEGORICAL:
             return
 
-        selectedRows = []
-        for index in self.tableView.selectionModel().selectedRows():
-            selectedRows.append(index.row())
+        selectedRows = self.getCheckedRows()
 
         if len(selectedRows) != 1:
             return
@@ -877,9 +884,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if self.currentFieldType != self.FIELD_TYPE_CATEGORICAL:
             return
 
-        selectedRows = []
-        for index in self.tableView.selectionModel().selectedRows():
-            selectedRows.append(index.row())
+        selectedRows = self.getCheckedRows()
 
         if len(selectedRows) != 1:
             return
@@ -971,6 +976,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 elif dataType == 'color_with_checkbox':
                     widget = SymbolColorSelectorWithCheckbox(parent=self.tableView, geometryHint=self.getGeometryHint(), initialColor=data[0], checked=data[1])
                     widget.setEnabled(self.isEditing)
+                    self.connectCheckboxSignal(widget)
                     self.tableView.setCellWidget(row1, col, widget)
                 elif dataType == 'color':
                     widget = SymbolColorSelector(parent=self.tableView, geometryHint=self.getGeometryHint(), initialColor=data[0])
@@ -1000,6 +1006,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 elif dataType == 'color_with_checkbox':
                     widget = SymbolColorSelectorWithCheckbox(parent=self.tableView, geometryHint=self.getGeometryHint(), initialColor=data[0], checked=data[1])
                     widget.setEnabled(self.isEditing)
+                    self.connectCheckboxSignal(widget)
                     self.tableView.setCellWidget(row2, col, widget)
                 elif dataType == 'color':
                     widget = SymbolColorSelector(parent=self.tableView, geometryHint=self.getGeometryHint(), initialColor=data[0])
@@ -1102,6 +1109,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 checkboxLabel=""
             )
             colorWidget.colorSelector.setEnabled(self.isEditing)
+            self.connectCheckboxSignal(colorWidget)
             self.tableView.setCellWidget(rowCount, 0, colorWidget)
 
             sizeEdit = QLineEdit("1.0")
@@ -1168,9 +1176,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         """Remove selected categorical classes (supports multi-selection).
         Returns removed values to the available pool.
         Don't allow removing "Other Values" category."""
-        selectedRows = []
-        for index in self.tableView.selectionModel().selectedRows():
-            selectedRows.append(index.row())
+        selectedRows = self.getCheckedRows()
 
         if not selectedRows:
             QMessageBox.information(
@@ -1752,7 +1758,6 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 rows.append(r)
         return rows
 
-
     def updateButtonStates(self):
         """
         Central method to update all button states based on current selection and context.
@@ -1766,33 +1771,41 @@ class QGISRedLegendsDialog(QDialog, formClass):
             return
 
         selectedRows = []
-        for index in self.tableView.selectionModel().selectedRows():
-            selectedRows.append(index.row())
+        if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
+            # For categorical, selection is driven by checkboxes
+            selectedRows = self.getCheckedRows()
+        else:
+            # For numeric, selection is driven by standard table row selection
+            for index in self.tableView.selectionModel().selectedRows():
+                selectedRows.append(index.row())
 
         selectedCount = len(selectedRows)
 
+        # Minus button is enabled if any row is selected (using the correct method)
         self.btClassMinus.setEnabled(selectedCount >= 1)
 
+        # Plus button logic
         if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
             hasOtherValues = self.hasOtherValuesCategory()
             availableCount = len(self.availableUniqueValues)
-
             self.btClassPlus.setEnabled(availableCount > 0 or not hasOtherValues)
         else:
+            # Always enabled for numeric
             self.btClassPlus.setEnabled(True)
 
+        # Up/Down buttons (categorical only)
         if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
+            # Only enable if *exactly one* checkbox is checked
             if selectedCount == 1:
                 selectedRow = selectedRows[0]
                 totalRows = self.tableView.rowCount()
-
                 self.btUp.setEnabled(selectedRow > 0)
-
                 self.btDown.setEnabled(selectedRow < totalRows - 1)
             else:
                 self.btUp.setEnabled(False)
                 self.btDown.setEnabled(False)
         else:
+            # Disabled for numeric
             self.btUp.setEnabled(False)
             self.btDown.setEnabled(False)
 
@@ -1870,6 +1883,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             checkboxLabel=""
         )
         colorWidget.colorSelector.setEnabled(self.isEditing)
+        self.connectCheckboxSignal(colorWidget)
         self.tableView.setCellWidget(rowCount, 0, colorWidget)
 
         sizeEdit = QLineEdit("1.0")

@@ -231,9 +231,6 @@ class SymbolColorSelectorWithCheckbox(QWidget):
         layout.addWidget(self.checkbox)
         layout.addWidget(self.colorSelector)
         # Don't add stretch in table cells - it causes the color selector to disappear
-        
-        # Initial state
-        self.colorSelector.setEnabled(checked)
     
     def _onCheckboxToggled(self, checked: bool):
         self.enabledChanged.emit(checked)
