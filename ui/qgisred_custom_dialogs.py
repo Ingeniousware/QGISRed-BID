@@ -39,6 +39,61 @@ class RangeEditDialog(QDialog):
         return self.lowerSpinBox.value(), self.upperSpinBox.value()
 
 
+class SymbolEditDialog(QDialog):
+    """Dialog for editing symbol color and size together."""
+    def __init__(self, initialColor, initialSize, isWidth=False, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(self.tr("Edit Symbol"))
+        layout = QVBoxLayout(self)
+
+        # Color selection
+        colorLayout = QHBoxLayout()
+        colorLayout.addWidget(QLabel(self.tr("Color:")))
+        self.colorButton = QToolButton()
+        self.colorButton.setFixedSize(60, 30)
+        self.currentColor = QColor(initialColor)
+        self.updateColorButton()
+        self.colorButton.clicked.connect(self.pickColor)
+        colorLayout.addWidget(self.colorButton)
+        colorLayout.addStretch()
+        layout.addLayout(colorLayout)
+
+        # Size/Width field
+        sizeLabel = self.tr("Width:") if isWidth else self.tr("Size:")
+        layout.addWidget(QLabel(sizeLabel))
+        self.sizeSpinBox = QDoubleSpinBox()
+        self.sizeSpinBox.setRange(0.1, 100.0)
+        self.sizeSpinBox.setDecimals(2)
+        self.sizeSpinBox.setValue(initialSize)
+        layout.addWidget(self.sizeSpinBox)
+
+        # Buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def updateColorButton(self):
+        """Update the color button appearance."""
+        self.colorButton.setStyleSheet(f"""
+            QToolButton {{
+                background-color: rgb({self.currentColor.red()}, {self.currentColor.green()}, {self.currentColor.blue()});
+                border: 1px solid #999;
+            }}
+        """)
+
+    def pickColor(self):
+        """Open color picker dialog."""
+        chosen = QgsColorDialog.getColor(self.currentColor, self, self.tr("Pick Color"), True)
+        if chosen.isValid():
+            self.currentColor = chosen
+            self.updateColorButton()
+
+    def getValues(self):
+        """Returns (color, size) tuple."""
+        return self.currentColor, self.sizeSpinBox.value()
+
+
 class SymbolColorSelector(QgsSymbolButton):
     """
     Looks like a QgsSymbolButton; on click, opens the QGIS color dialog (QgsColorDialog).
