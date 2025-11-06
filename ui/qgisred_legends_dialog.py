@@ -19,7 +19,7 @@ from qgis.core import QgsLayerTreeGroup, QgsLayerTreeLayer
 
 # Local imports
 from ..tools.qgisred_utils import QGISRedUtils
-from .qgisred_custom_dialogs import RangeEditDialog, SymbolColorSelector, SymbolColorSelectorWithCheckbox
+from .qgisred_custom_dialogs import RangeEditDialog, SymbolColorSelector, SymbolColorSelectorWithCheckbox, SymbolEditDialog
 
 formClass, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_legends_dialog.ui"))
 
@@ -73,6 +73,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Connect table selection changed signal
         self.tableView.itemSelectionChanged.connect(self.updateButtonStates)
 
+        # Connect item clicked to ensure full row selection
+        self.tableView.itemClicked.connect(self.onTableItemClicked)
+
     def setupClassCountField(self):
         """Configure the class count field to be read-only and greyed out."""
         self.leClassCount.setReadOnly(True)
@@ -117,6 +120,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         # Remove alternating row colors
         self.tableView.setAlternatingRowColors(False)
+        # Set edit trigger to only double-click (not single click)
+        self.tableView.setEditTriggers(QAbstractItemView.DoubleClicked)
 
         # Hide vertical header (row indexes)
         self.tableView.verticalHeader().setVisible(False)
@@ -167,6 +172,12 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Connect double-click for editing
         self.tableView.cellDoubleClicked.connect(self.onCellDoubleClicked)
     
+    def onTableItemClicked(self, item):
+        """Handle item click to ensure entire row is selected."""
+        if item:
+            row = item.row()
+            self.tableView.selectRow(row)
+
     def connectCheckboxSignal(self, colorWidget):
         """Connect checkbox state change signal for visibility changes.
 
@@ -314,19 +325,59 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def onCellDoubleClicked(self, row, column):
         """Handle double-click on cells to open appropriate editors."""
-        # Column 0: Symbol color selector (open color dialog)
+        # Column 0: Symbol editor (open symbol dialog with color and size)
         if column == 0:
-            colorWidget = self.tableView.cellWidget(row, 0)
-            if isinstance(colorWidget, SymbolColorSelectorWithCheckbox):
-                colorWidget.colorSelector.openColorDialog()
-            elif isinstance(colorWidget, SymbolColorSelector):
-                colorWidget.openColorDialog()
+            self.openSymbolEditor(row)
             return
 
         # Column 2: Value editor (only for numeric fields with ranges)
         if column == 2 and self.currentFieldType == self.FIELD_TYPE_NUMERIC:
             self.openRangeEditor(row)
             return
+
+    def openSymbolEditor(self, row):
+        """Open the symbol editor dialog to edit color and size."""
+        if not self.currentLayer:
+            return
+
+        # Get current color
+        colorWidget = self.tableView.cellWidget(row, 0)
+        if isinstance(colorWidget, SymbolColorSelectorWithCheckbox):
+            currentColor = colorWidget.colorSelector.color()
+        elif isinstance(colorWidget, SymbolColorSelector):
+            currentColor = colorWidget.color()
+        else:
+            currentColor = QColor(128, 128, 128)
+
+        # Get current size
+        sizeWidget = self.tableView.cellWidget(row, 1)
+        if isinstance(sizeWidget, QLineEdit):
+            try:
+                currentSize = float(sizeWidget.text())
+            except ValueError:
+                currentSize = 1.0
+        else:
+            currentSize = 1.0
+
+        # Determine if it's width (for lines) or size (for points/polygons)
+        isWidth = (self.currentLayer.geometryType() == 1)
+
+        # Open dialog
+        dialog = SymbolEditDialog(currentColor, currentSize, isWidth, self)
+        if dialog.exec_():
+            newColor, newSize = dialog.getValues()
+
+            # Update color
+            if isinstance(colorWidget, SymbolColorSelectorWithCheckbox):
+                colorWidget.colorSelector.setColor(newColor)
+                colorWidget.colorSelector.updateSymbolSize(newSize, isWidth)
+            elif isinstance(colorWidget, SymbolColorSelector):
+                colorWidget.setColor(newColor)
+                colorWidget.updateSymbolSize(newSize, isWidth)
+
+            # Update size field
+            if isinstance(sizeWidget, QLineEdit):
+                sizeWidget.setText(str(newSize))
 
     def openRangeEditor(self, row):
         """Open the range editor dialog for a numeric row."""
@@ -760,11 +811,14 @@ class QGISRedLegendsDialog(QDialog, formClass):
             if actualValue in allUniqueValues:
                 self.usedUniqueValues.append(actualValue)
 
+            # Get visibility state from category's render state
+            isVisible = category.renderState()
+
             colorWidget = SymbolColorSelectorWithCheckbox(
                 parent=self.tableView,
                 geometryHint=geomHint,
                 initialColor=category.symbol().color(),
-                checked=False,
+                checked=isVisible,
                 checkboxLabel=""
             )
             colorWidget.colorSelector.setEnabled(self.isEditing)
@@ -800,11 +854,14 @@ class QGISRedLegendsDialog(QDialog, formClass):
             rowIndex = self.tableView.rowCount()
             self.tableView.insertRow(rowIndex)
 
+            # Get visibility state from category's render state
+            isVisible = otherValuesCategory.renderState()
+
             colorWidget = SymbolColorSelectorWithCheckbox(
                 parent=self.tableView,
                 geometryHint=geomHint,
                 initialColor=otherValuesCategory.symbol().color(),
-                checked=False,
+                checked=isVisible,
                 checkboxLabel=""
             )
             colorWidget.colorSelector.setEnabled(self.isEditing)
@@ -869,16 +926,6 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if selectedRow <= 0:
             return
 
-        legendWidget = self.tableView.cellWidget(selectedRow, 3)
-        if isinstance(legendWidget, QLineEdit):
-            if legendWidget.text() in [self.tr("Other Values"), "Other Values"]:
-                QMessageBox.information(
-                    self,
-                    "Cannot Move",
-                    "The 'Other Values' category must remain at the end of the list."
-                )
-                return
-
         self.swapTableRows(selectedRow, selectedRow - 1)
 
         self.tableView.clearSelection()
@@ -900,16 +947,6 @@ class QGISRedLegendsDialog(QDialog, formClass):
         selectedRow = selectedRows[0]
         if selectedRow < 0 or selectedRow >= self.tableView.rowCount() - 1:
             return
-
-        nextLegendWidget = self.tableView.cellWidget(selectedRow + 1, 3)
-        if isinstance(nextLegendWidget, QLineEdit):
-            if nextLegendWidget.text() in [self.tr("Other Values"), "Other Values"]:
-                QMessageBox.information(
-                    self,
-                    "Cannot Move",
-                    "Cannot move below the 'Other Values' category."
-                )
-                return
 
         self.swapTableRows(selectedRow, selectedRow + 1)
 
@@ -1077,69 +1114,73 @@ class QGISRedLegendsDialog(QDialog, formClass):
     
     def addCategoricalClass(self):
         """Add a new categorical class from available unique values.
-        Ensures "Other Values" is always the last category."""
-        needsOtherValues = not self.hasOtherValuesCategory()
-
-        if not self.availableUniqueValues and not needsOtherValues:
-            QMessageBox.information(
-                self,
-                "No Available Values",
-                "All unique values from the layer have been used."
-            )
+        Order: First add all unique values (NULL first if present), then Other Values."""
+        # Check if there are available unique values to add
+        if not self.availableUniqueValues:
+            # No more unique values, only add "Other Values" if it doesn't exist
+            if not self.hasOtherValuesCategory():
+                self.ensureOtherValuesCategory()
+                self.updateClassCount()
+                self.updateButtonStates()
+            else:
+                QMessageBox.information(
+                    self,
+                    "No Available Values",
+                    "All unique values from the layer have been used."
+                )
             return
 
-        if self.availableUniqueValues:
-            nextValue = self.availableUniqueValues.pop(0)
-            self.usedUniqueValues.append(nextValue)
+        # Add the next unique value (NULL first if present, since getUniqueValuesFromLayer sorts it that way)
+        nextValue = self.availableUniqueValues.pop(0)
+        self.usedUniqueValues.append(nextValue)
 
-            if nextValue is None:
-                displayValue = "NULL"
-                legendText = self.tr("(null)")
-            else:
-                displayValue = str(nextValue)
-                legendText = str(nextValue)
+        if nextValue is None:
+            displayValue = "NULL"
+            legendText = self.tr("(null)")
+        else:
+            displayValue = str(nextValue)
+            legendText = str(nextValue)
 
-            if self.hasOtherValuesCategory():
-                rowCount = self.tableView.rowCount() - 1
-            else:
-                rowCount = self.tableView.rowCount()
+        # Insert before "Other Values" if it exists, otherwise at the end
+        if self.hasOtherValuesCategory():
+            rowCount = self.tableView.rowCount() - 1
+        else:
+            rowCount = self.tableView.rowCount()
 
-            geomHint = self.getGeometryHint()
-            self.tableView.insertRow(rowCount)
+        geomHint = self.getGeometryHint()
+        self.tableView.insertRow(rowCount)
 
-            randomColor = self.generateRandomColor()
+        randomColor = self.generateRandomColor()
 
-            colorWidget = SymbolColorSelectorWithCheckbox(
-                parent=self.tableView,
-                geometryHint=geomHint,
-                initialColor=randomColor,
-                checked=False,
-                checkboxLabel=""
-            )
-            colorWidget.colorSelector.setEnabled(self.isEditing)
-            self.connectCheckboxSignal(colorWidget)
-            self.tableView.setCellWidget(rowCount, 0, colorWidget)
+        colorWidget = SymbolColorSelectorWithCheckbox(
+            parent=self.tableView,
+            geometryHint=geomHint,
+            initialColor=randomColor,
+            checked=True,  # New categories default to visible
+            checkboxLabel=""
+        )
+        colorWidget.colorSelector.setEnabled(self.isEditing)
+        self.connectCheckboxSignal(colorWidget)
+        self.tableView.setCellWidget(rowCount, 0, colorWidget)
 
-            sizeEdit = QLineEdit("1.0")
-            sizeEdit.setAlignment(Qt.AlignCenter)
-            sizeEdit.setEnabled(self.isEditing)
-            self.tableView.setCellWidget(rowCount, 1, sizeEdit)
+        sizeEdit = QLineEdit("1.0")
+        sizeEdit.setAlignment(Qt.AlignCenter)
+        sizeEdit.setEnabled(self.isEditing)
+        self.tableView.setCellWidget(rowCount, 1, sizeEdit)
 
-            valueEdit = QLineEdit(displayValue)
-            valueEdit.setReadOnly(True)
-            valueEdit.setStyleSheet("QLineEdit { background-color: #F8F8F8; color: #808080; }")
-            self.tableView.setCellWidget(rowCount, 2, valueEdit)
+        valueEdit = QLineEdit(displayValue)
+        valueEdit.setReadOnly(True)
+        valueEdit.setStyleSheet("QLineEdit { background-color: #F8F8F8; color: #808080; }")
+        self.tableView.setCellWidget(rowCount, 2, valueEdit)
 
-            legendEdit = QLineEdit(legendText)
-            legendEdit.setEnabled(self.isEditing)
-            self.tableView.setCellWidget(rowCount, 3, legendEdit)
+        legendEdit = QLineEdit(legendText)
+        legendEdit.setEnabled(self.isEditing)
+        self.tableView.setCellWidget(rowCount, 3, legendEdit)
 
-            QgsMessageLog.logMessage(
-                f"Added categorical class with value '{displayValue}' and random color",
-                "QGISRed", Qgis.Info
-            )
-
-        self.ensureOtherValuesCategory()
+        QgsMessageLog.logMessage(
+            f"Added categorical class with value '{displayValue}' and random color",
+            "QGISRed", Qgis.Info
+        )
 
         self.updateClassCount()
         self.updateButtonStates()
@@ -1182,8 +1223,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
     
     def removeCategoricalClasses(self):
         """Remove selected categorical classes (supports multi-selection).
-        Returns removed values to the available pool.
-        Don't allow removing "Other Values" category."""
+        Returns removed values to the available pool."""
         selectedRows = self.getSelectedRows()
 
         if not selectedRows:
@@ -1194,18 +1234,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             )
             return
 
-        rowsToRemove = []
-        for row in selectedRows:
-            legendWidget = self.tableView.cellWidget(row, 3)
-            if isinstance(legendWidget, QLineEdit):
-                if legendWidget.text() in [self.tr("Other Values"), "Other Values"]:
-                    QMessageBox.warning(
-                        self,
-                        "Cannot Remove",
-                        "The 'Other Values' category cannot be removed as it represents all unspecified values."
-                    )
-                    continue
-            rowsToRemove.append(row)
+        rowsToRemove = selectedRows
 
         if not rowsToRemove:
             return
@@ -1241,8 +1270,6 @@ class QGISRedLegendsDialog(QDialog, formClass):
             f"Removed {len(rowsToRemove)} categorical class(es)",
             "QGISRed", Qgis.Info
         )
-
-        self.ensureOtherValuesCategory()
 
         self.updateClassCount()
     
@@ -1399,8 +1426,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
             lower = float(parts[0])
             upper = float(parts[1])
 
-            # Color
+            # Color and visibility from checkbox widget (numeric fields use SymbolColorSelector without checkbox)
             colorWidget = self.tableView.cellWidget(row, 0)
+            isVisible = True  # Default to visible for numeric fields (no checkbox currently)
             if isinstance(colorWidget, SymbolColorSelector):
                 color = colorWidget.color()
             else:
@@ -1426,7 +1454,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 except Exception:
                     pass
 
-            ranges.append(QgsRendererRange(lower, upper, symbol, label))
+            rangeObj = QgsRendererRange(lower, upper, symbol, label)
+            rangeObj.setRenderState(isVisible)
+            ranges.append(rangeObj)
 
         if ranges:
             renderer = QgsGraduatedSymbolRenderer(self.currentFieldName, ranges)
@@ -1459,9 +1489,12 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 valueItem = self.tableView.item(row, 2)
                 value = valueItem.text() if valueItem else ""
 
+            # Get color and visibility from checkbox widget
             colorWidget = self.tableView.cellWidget(row, 0)
+            isVisible = True  # Default to visible
             if isinstance(colorWidget, SymbolColorSelectorWithCheckbox):
                 color = colorWidget.color()
+                isVisible = colorWidget.isChecked()  # Checkbox controls visibility: checked = visible, unchecked = hidden
             elif isinstance(colorWidget, SymbolColorSelector):
                 color = colorWidget.color()
             else:
@@ -1485,8 +1518,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
             if value == "" and legendText in [self.tr("Other Values"), "Other Values"]:
                 otherValuesCategory = QgsRendererCategory(value, symbol, label)
+                otherValuesCategory.setRenderState(isVisible)
             else:
-                categories.append(QgsRendererCategory(value, symbol, label))
+                category = QgsRendererCategory(value, symbol, label)
+                category.setRenderState(isVisible)
+                categories.append(category)
 
         if otherValuesCategory:
             categories.append(otherValuesCategory)
@@ -1871,7 +1907,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             parent=self.tableView,
             geometryHint=geomHint,
             initialColor=randomColor,
-            checked=False,
+            checked=True,  # New "Other Values" category defaults to visible
             checkboxLabel=""
         )
         colorWidget.colorSelector.setEnabled(self.isEditing)
