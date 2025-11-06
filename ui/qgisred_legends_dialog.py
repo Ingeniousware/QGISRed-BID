@@ -61,7 +61,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         # Connect signals
         self.connectSignals()
-        
+
         # Initialize with current layer if any
         if self.cbLegendLayer.currentLayer():
             self.onLayerChanged(self.cbLegendLayer.currentLayer())
@@ -69,6 +69,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Initialize class count and make it read-only
         self.setupClassCountField()
         self.updateClassCount()
+
+        # Connect table selection changed signal
+        self.tableView.itemSelectionChanged.connect(self.updateButtonStates)
 
     def setupClassCountField(self):
         """Configure the class count field to be read-only and greyed out."""
@@ -146,36 +149,33 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btIntervals.clicked.connect(self.classifyEqualInterval)
         self.btQuantiles.clicked.connect(self.classifyQuantiles)
         self.btBreaks.clicked.connect(self.classifyNaturalBreaks)
-        
+
         # Class management buttons
         self.btClassPlus.clicked.connect(self.addClass)
         self.btClassMinus.clicked.connect(self.removeClass)
-        
+
         # Up/Down buttons (categorical only)
         self.btUp.clicked.connect(self.moveClassUp)
         self.btDown.clicked.connect(self.moveClassDown)
-        
+
         # Save/Load buttons
         self.btSaveProject.clicked.connect(self.saveProjectStyle)
         self.btSaveGlobal.clicked.connect(self.saveGlobalStyle)
         self.btLoadDefault.clicked.connect(self.loadDefaultStyle)
         self.btLoadGlobal.clicked.connect(self.loadGlobalStyle)
-        
-        # Table item changed for single checkbox selection
-        self.tableView.itemChanged.connect(self.onTableItemChanged)
 
-        # Connect cell click for editing numeric ranges
-        self.tableView.cellClicked.connect(self.onValueCellClicked)
+        # Connect double-click for editing
+        self.tableView.cellDoubleClicked.connect(self.onCellDoubleClicked)
     
     def connectCheckboxSignal(self, colorWidget):
-        """Connect checkbox state change signal to updateButtonStates.
-        
+        """Connect checkbox state change signal for visibility changes.
+
         Args:
             colorWidget: SymbolColorSelectorWithCheckbox instance
         """
-        if isinstance(colorWidget, SymbolColorSelectorWithCheckbox):
-            # Connect the checkbox toggled signal to updateButtonStates
-            colorWidget.enabledChanged.connect(self.updateButtonStates)
+        # Checkbox now only represents visibility, not selection
+        # Reserved for future visibility implementation
+        pass
     
     def onGroupChanged(self):
         """
@@ -312,12 +312,25 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Keep only unique, existing layers
         return [lyr for lyr in result if lyr]
 
-    def onValueCellClicked(self, row, column):
-        """Handle click on a value cell for numeric fields to open an edit dialog."""
-        if self.currentFieldType != self.FIELD_TYPE_NUMERIC or column != 2:
+    def onCellDoubleClicked(self, row, column):
+        """Handle double-click on cells to open appropriate editors."""
+        # Column 0: Symbol color selector (open color dialog)
+        if column == 0:
+            colorWidget = self.tableView.cellWidget(row, 0)
+            if isinstance(colorWidget, SymbolColorSelectorWithCheckbox):
+                colorWidget.colorSelector.openColorDialog()
+            elif isinstance(colorWidget, SymbolColorSelector):
+                colorWidget.openColorDialog()
             return
 
-        valueItem = self.tableView.item(row, column)
+        # Column 2: Value editor (only for numeric fields with ranges)
+        if column == 2 and self.currentFieldType == self.FIELD_TYPE_NUMERIC:
+            self.openRangeEditor(row)
+            return
+
+    def openRangeEditor(self, row):
+        """Open the range editor dialog for a numeric row."""
+        valueItem = self.tableView.item(row, 2)
         if not valueItem:
             return
 
@@ -393,21 +406,22 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         # Get the color widget in the same row
         colorWidget = self.tableView.cellWidget(row, 0)
-        if isinstance(colorWidget, (SymbolColorSelector, SymbolColorSelectorWithCheckbox)):
-            # Extract the actual color selector if it's the wrapper
-            if isinstance(colorWidget, SymbolColorSelectorWithCheckbox):
-                colorWidget = colorWidget.colorSelector
-        else:
-            return
 
-        if not isinstance(colorWidget, SymbolColorSelector):
+        # Extract the actual color selector if it's wrapped
+        actualColorSelector = None
+        if isinstance(colorWidget, SymbolColorSelectorWithCheckbox):
+            actualColorSelector = colorWidget.colorSelector
+        elif isinstance(colorWidget, SymbolColorSelector):
+            actualColorSelector = colorWidget
+
+        if not actualColorSelector:
             return
 
         # Update symbol size
         if self.currentLayer.geometryType() == 1:  # Line
-            colorWidget.updateSymbolSize(size, isWidth=True)
+            actualColorSelector.updateSymbolSize(size, isWidth=True)
         else:  # Point or Polygon
-            colorWidget.updateSymbolSize(size, isWidth=False)
+            actualColorSelector.updateSymbolSize(size, isWidth=False)
 
     def updateClassCount(self):
         """Update the class count display."""
@@ -834,25 +848,19 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.updateClassCount()
         self.updateButtonStates()
     
-    def onTableItemChanged(self, item):
-        """Handle table item changes (now mostly unused as checkboxes are in widgets)."""
-        # Note: Checkbox handling is now done via SymbolColorSelectorWithCheckbox widget signals
-        pass
-    
-    def getSelectedRow(self):
-        """Get the currently selected row (for categorical)."""
-        for row in range(self.tableView.rowCount()):
-            widget = self.tableView.cellWidget(row, 0)
-            if isinstance(widget, SymbolColorSelectorWithCheckbox) and widget.isChecked():
-                return row
-        return -1
+    def getSelectedRows(self):
+        """Get the list of currently selected row indices."""
+        selectedRows = []
+        for index in self.tableView.selectionModel().selectedRows():
+            selectedRows.append(index.row())
+        return selectedRows
     
     def moveClassUp(self):
         """Move selected class up (categorical only, single selection required)."""
         if self.currentFieldType != self.FIELD_TYPE_CATEGORICAL:
             return
 
-        selectedRows = self.getCheckedRows()
+        selectedRows = self.getSelectedRows()
 
         if len(selectedRows) != 1:
             return
@@ -884,7 +892,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if self.currentFieldType != self.FIELD_TYPE_CATEGORICAL:
             return
 
-        selectedRows = self.getCheckedRows()
+        selectedRows = self.getSelectedRows()
 
         if len(selectedRows) != 1:
             return
@@ -1176,7 +1184,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         """Remove selected categorical classes (supports multi-selection).
         Returns removed values to the available pool.
         Don't allow removing "Other Values" category."""
-        selectedRows = self.getCheckedRows()
+        selectedRows = self.getSelectedRows()
 
         if not selectedRows:
             QMessageBox.information(
@@ -1749,19 +1757,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
         color.setHsl(hue, saturation * 255 // 100, lightness * 255 // 100)
         return color
 
-    def getCheckedRows(self):
-        """Return indices of rows whose checkbox (col 0) is checked."""
-        rows = []
-        for r in range(self.tableView.rowCount()):
-            w = self.tableView.cellWidget(r, 0)
-            if isinstance(w, SymbolColorSelectorWithCheckbox) and w.isChecked():
-                rows.append(r)
-        return rows
-
     def updateButtonStates(self):
         """
         Central method to update all button states based on current selection and context.
-        Handles both multi-selection for table rows and single selection for operations.
+        Handles both multi-selection for deletion and single selection for move operations.
         """
         if not self.currentLayer:
             self.btClassPlus.setEnabled(False)
@@ -1770,18 +1769,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
             self.btDown.setEnabled(False)
             return
 
-        selectedRows = []
-        if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
-            # For categorical, selection is driven by checkboxes
-            selectedRows = self.getCheckedRows()
-        else:
-            # For numeric, selection is driven by standard table row selection
-            for index in self.tableView.selectionModel().selectedRows():
-                selectedRows.append(index.row())
-
+        # Get selected rows from table selection (works for both numeric and categorical)
+        selectedRows = self.getSelectedRows()
         selectedCount = len(selectedRows)
 
-        # Minus button is enabled if any row is selected (using the correct method)
+        # Minus button is enabled if any row is selected
         self.btClassMinus.setEnabled(selectedCount >= 1)
 
         # Plus button logic
@@ -1795,7 +1787,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         # Up/Down buttons (categorical only)
         if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
-            # Only enable if *exactly one* checkbox is checked
+            # Only enable if exactly one row is selected
             if selectedCount == 1:
                 selectedRow = selectedRows[0]
                 totalRows = self.tableView.rowCount()
