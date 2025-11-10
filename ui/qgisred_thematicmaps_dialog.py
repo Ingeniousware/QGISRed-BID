@@ -22,6 +22,10 @@ from ..tools.qgisred_utils import QGISRedUtils
 FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_thematicmaps_dialog.ui"))
 
 class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
+    iface = None
+    NetworkName = ""
+    ProjectDirectory = ""
+
     def __init__(self, parent=None):
         """Constructor."""
         super(QGISRedThematicMapsDialog, self).__init__(parent)
@@ -31,6 +35,11 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         self.btCancel.clicked.connect(self.reject)
         self.updateCheckboxStates()
         self.tempElementsHide()
+
+    def config(self, iface, projectDirectory, networkName):
+        self.iface = iface
+        self.ProjectDirectory = projectDirectory
+        self.NetworkName = networkName
 
     def tempElementsHide(self):
         self.gbJunctions.hide()
@@ -183,9 +192,9 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         networkName = inputsParent.name() if inputsParent != rootGroup else ""
         utils = QGISRedUtils(self.ProjectDirectory, self.NetworkName, self.iface)
         if networkName:
-            return utils.getOrCreateNestedGroup([networkName, "Queries", "Thematic Maps"], utils)
+            return utils.getOrCreateNestedGroup([networkName, "Queries", "Thematic Maps"])
         else:
-            return utils.getOrCreateNestedGroup(["Queries", "Thematic Maps"], utils)
+            return utils.getOrCreateNestedGroup(["Queries", "Thematic Maps"])
 
     def findLayerInGroup(self, group, layerName=None, custom_property=None):
         for child in group.children():

@@ -227,7 +227,7 @@ class QGISRedImportDialog(QDialog, FORM_CLASS):
 
     def getInputGroup(self):
         utils = QGISRedUtils(self.ProjectDirectory, self.NetworkName, self.iface)
-        return utils.getOrCreateGroup("Inputs", utils)
+        return utils.getOrCreateGroup("Inputs")
 
     def setZoomExtent(self, exception=None, result=None):
         self.iface.mapCanvas().zoomToFullExtent()

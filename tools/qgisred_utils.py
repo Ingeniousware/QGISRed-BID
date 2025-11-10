@@ -200,7 +200,7 @@ class QGISRedUtils:
             netGroup = self.findGroupRecursive(root, self.NetworkName)
             if netGroup is None:
                 netGroup = root.insertGroup(0, self.NetworkName)
-            inputGroup = netGroup.addGroup("Inputs")
+            inputGroup = netGroup.insertGroup(0, "Inputs")
         return inputGroup
 
     @classmethod
@@ -234,27 +234,26 @@ class QGISRedUtils:
             if identifier not in cls.identifierToGroupName:
                 cls.identifierToGroupName[identifier] = keyOrName
 
-    @classmethod
-    def getOrCreateGroup(cls, groupName, utils=None):
+    def getOrCreateGroup(self, groupName):
         root = QgsProject.instance().layerTreeRoot()
-        identifier = cls.groupIdentifiers.get(groupName)
+        identifier = self.groupIdentifiers.get(groupName)
         if identifier:
-            group = cls.findGroupByIdentifier(identifier)
+            group = self.findGroupByIdentifier(identifier)
             if group:
                 return group
-        group = cls._findGroupByNameRecursive(root, groupName)
+        group = self._findGroupByNameRecursive(root, groupName)
         if group:
-            cls.setGroupIdentifier(group, groupName)
+            self.setGroupIdentifier(group, groupName)
             return group
         netGroup = None
-        if utils and utils.NetworkName:
-            netGroup = cls._findGroupByNameRecursive(root, utils.NetworkName)
+        if self.NetworkName:
+            netGroup = self._findGroupByNameRecursive(root, self.NetworkName)
             if not netGroup:
-                netGroup = root.insertGroup(0, utils.NetworkName)
-                cls.setGroupIdentifier(netGroup, utils.NetworkName)
+                netGroup = root.insertGroup(0, self.NetworkName)
+                self.setGroupIdentifier(netGroup, self.NetworkName)
         parent = netGroup if netGroup else root
-        newGroup = parent.addGroup(groupName)
-        cls.setGroupIdentifier(newGroup, groupName)
+        newGroup = parent.insertGroup(0, groupName)
+        self.setGroupIdentifier(newGroup, groupName)
         return newGroup
 
     @classmethod
@@ -268,15 +267,14 @@ class QGISRedUtils:
                     return result
         return None
 
-    @classmethod
-    def getOrCreateNestedGroup(cls, path, utils=None):
+    def getOrCreateNestedGroup(self, path):
         if not path or len(path) == 0:
             return QgsProject.instance().layerTreeRoot()
         root = QgsProject.instance().layerTreeRoot()
         currentParent = root
         for i, groupName in enumerate(path):
             foundGroup = None
-            identifier = cls.groupIdentifiers.get(groupName)
+            identifier = self.groupIdentifiers.get(groupName)
             if identifier:
                 for child in currentParent.children():
                     if isinstance(child, QgsLayerTreeGroup):
@@ -289,27 +287,26 @@ class QGISRedUtils:
                         foundGroup = child
                         break
             if not foundGroup:
-                foundGroup = currentParent.addGroup(groupName)
-                cls.setGroupIdentifier(foundGroup, groupName)
+                foundGroup = currentParent.insertGroup(0, groupName)
+                self.setGroupIdentifier(foundGroup, groupName)
             else:
-                cls.setGroupIdentifier(foundGroup, groupName)
+                self.setGroupIdentifier(foundGroup, groupName)
             currentParent = foundGroup
         return currentParent
 
-    @classmethod
-    def getOrCreateNetworkGroup(cls, networkName):
+    def getOrCreateNetworkGroup(self):
         root = QgsProject.instance().layerTreeRoot()
-        identifier = cls.groupIdentifiers.get(networkName)
+        identifier = self.groupIdentifiers.get(self.NetworkName)
         if identifier:
-            group = cls.findGroupByIdentifier(identifier)
+            group = self.findGroupByIdentifier(identifier)
             if group:
                 return group
-        group = cls._findGroupByNameRecursive(root, networkName)
+        group = self._findGroupByNameRecursive(root, self.NetworkName)
         if group:
-            cls.setGroupIdentifier(group, networkName)
+            self.setGroupIdentifier(group, self.NetworkName)
             return group
-        networkGroup = root.insertGroup(0, networkName)
-        cls.setGroupIdentifier(networkGroup, networkName)
+        networkGroup = root.insertGroup(0, self.NetworkName)
+        self.setGroupIdentifier(networkGroup, self.NetworkName)
         return networkGroup
 
     @classmethod
@@ -920,8 +917,8 @@ class QGISRedUtils:
                         if "[" in lines[i]:
                             groupName = str(lines[i].strip("[").strip("\r\n").strip("]")).replace(self.NetworkName + " ", "")
                             root = QgsProject.instance().layerTreeRoot()
-                            netGroup = root.addGroup(self.NetworkName)
-                            group = netGroup.addGroup(groupName)
+                            netGroup = root.insertGroup(0, self.NetworkName)
+                            group = netGroup.insertGroup(0, groupName)
                         else:
                             layerPath = lines[i].strip("\r\n")
                             if not os.path.exists(layerPath):
@@ -944,8 +941,8 @@ class QGISRedUtils:
 
     def openGroupLayers(self, groupName, layerNames):
         root = QgsProject.instance().layerTreeRoot()
-        netGroup = root.addGroup(self.NetworkName)
-        treeGroup = netGroup.addGroup(groupName)
+        netGroup = root.insertGroup(0, self.NetworkName)
+        treeGroup = netGroup.insertGroup(0, groupName)
         for lay in layerNames:
             layerName = lay
             layerPath = os.path.join(self.ProjectDirectory, self.NetworkName + "_" + layerName + ".shp")
@@ -1273,8 +1270,7 @@ class QGISRedUtils:
                 if existing_group:
                     target_group = existing_group
                 else:
-                    # Create group if it doesn't exist
-                    target_group = target_group.addGroup(group_name)
+                    target_group = target_group.insertGroup(0, group_name)
             
             # Find the layer's current node
             layer_node = root.findLayer(layer.id())
