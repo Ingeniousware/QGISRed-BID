@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import QDialog, QMessageBox, QTableWidgetItem, QHeaderView,
 
 from PyQt5 import sip
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import QVariant, Qt
+from qgis.PyQt.QtCore import QVariant, Qt, QTimer
 
 # QGIS imports
 from qgis.core import QgsProject, QgsVectorLayer, QgsMessageLog, Qgis, QgsGraduatedSymbolRenderer
@@ -41,13 +41,17 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.currentLayer = None
         self.pluginFolder = os.path.dirname(os.path.dirname(__file__))
         self.isEditing = True #False  # For future implementation
-        
+
         # Store original renderer for cancel operations
         self.originalRenderer = None
-        
+
         # Track available unique values for categorical legends
         self.availableUniqueValues = []
         self.usedUniqueValues = []
+
+        # Track double-click state for btClassPlus
+        self.btClassPlusClickTimer = None
+        self.btClassPlusAddBefore = False
         
         self.config()
         self.setupTableView()
@@ -1098,28 +1102,74 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     self.tableView.setCellWidget(row2, col, widget)
 
     def addClass(self):
-        """Add a new class to the legend with random colors."""
+        """Add a new class to the legend with random colors.
+        For numeric classes: single-click adds after selected row, double-click adds before.
+        """
         if not self.currentLayer:
             QMessageBox.warning(self, "No Layer", "Please select a layer first.")
             return
 
         if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
             self.addCategoricalClass()
+            self.updateButtonStates()
         else:
-            self.addNumericClass()
-            # If a classification mode is selected, reapply it with the new class count
-            if self.currentFieldType == self.FIELD_TYPE_NUMERIC:
+            # Handle double-click detection for numeric classes
+            if self.btClassPlusClickTimer is not None and self.btClassPlusClickTimer.isActive():
+                # This is a double-click - add before
+                self.btClassPlusClickTimer.stop()
+                self.btClassPlusClickTimer = None
+                self.btClassPlusAddBefore = True
+                self.addNumericClass()
+                self.btClassPlusAddBefore = False
+                # If a classification mode is selected, reapply it with the new class count
                 methodId = self.cbMode.currentData()
                 if methodId is not None:
                     self.applyClassificationMethod(methodId)
+                self.updateButtonStates()
+            else:
+                # This is a single-click - wait to see if another click comes
+                self.btClassPlusClickTimer = QTimer()
+                self.btClassPlusClickTimer.setSingleShot(True)
+                self.btClassPlusClickTimer.timeout.connect(self.onClassPlusSingleClick)
+                self.btClassPlusClickTimer.start(400)  # 250ms double-click interval
+                return  # Don't add yet, wait for timer
 
+    def onClassPlusSingleClick(self):
+        """Handle single-click on btClassPlus (add after selected row)."""
+        self.btClassPlusClickTimer = None
+        self.btClassPlusAddBefore = False
+        self.addNumericClass()
+        # If a classification mode is selected, reapply it with the new class count
+        if self.currentFieldType == self.FIELD_TYPE_NUMERIC:
+            methodId = self.cbMode.currentData()
+            if methodId is not None:
+                self.applyClassificationMethod(methodId)
         self.updateButtonStates()
 
     def addNumericClass(self):
-        """Add a new numeric class with random color."""
+        """Add a new numeric class with random color.
+        Position depends on selection and btClassPlusAddBefore flag:
+        - If btClassPlusAddBefore is True (double-click): insert before selected row
+        - If btClassPlusAddBefore is False (single-click): insert after selected row
+        - If no selection: add at end
+        """
         geomHint = self.getGeometryHint()
-        rowCount = self.tableView.rowCount()
-        self.tableView.insertRow(rowCount)
+
+        # Determine insertion position based on selection
+        selectedRows = self.getSelectedRows()
+        if selectedRows and len(selectedRows) == 1:
+            selectedRow = selectedRows[0]
+            if self.btClassPlusAddBefore:
+                # Double-click: insert before selected row
+                insertRow = selectedRow
+            else:
+                # Single-click: insert after selected row
+                insertRow = selectedRow + 1
+        else:
+            # No selection or multiple selections: add at end
+            insertRow = self.tableView.rowCount()
+
+        self.tableView.insertRow(insertRow)
 
         randomColor = self.generateRandomColor()
 
@@ -1132,21 +1182,32 @@ class QGISRedLegendsDialog(QDialog, formClass):
         )
         colorWidget.colorSelector.setEnabled(self.isEditing)
         self.connectCheckboxSignal(colorWidget)
-        self.tableView.setCellWidget(rowCount, 0, colorWidget)
+        self.tableView.setCellWidget(insertRow, 0, colorWidget)
 
         sizeEdit = QLineEdit("1.0")
         sizeEdit.setAlignment(Qt.AlignCenter)
         sizeEdit.setEnabled(self.isEditing)
-        self.tableView.setCellWidget(rowCount, 1, sizeEdit)
+        self.tableView.setCellWidget(insertRow, 1, sizeEdit)
 
         valueItem = QTableWidgetItem("0.0 - 0.0")
-        self.tableView.setItem(rowCount, 2, valueItem)
+        self.tableView.setItem(insertRow, 2, valueItem)
 
         legendEdit = QLineEdit("New Class")
         legendEdit.setEnabled(self.isEditing)
-        self.tableView.setCellWidget(rowCount, 3, legendEdit)
+        self.tableView.setCellWidget(insertRow, 3, legendEdit)
 
-        QgsMessageLog.logMessage("Added new numeric class with random color", "QGISRed", Qgis.Info)
+        # Clear selection and select the newly added row
+        self.tableView.clearSelection()
+        self.tableView.selectRow(insertRow)
+
+        positionMsg = "at end"
+        if selectedRows and len(selectedRows) == 1:
+            if self.btClassPlusAddBefore:
+                positionMsg = f"before row {selectedRows[0]}"
+            else:
+                positionMsg = f"after row {selectedRows[0]}"
+
+        QgsMessageLog.logMessage(f"Added new numeric class {positionMsg} with random color", "QGISRed", Qgis.Info)
         self.updateClassCount()
     
     def addCategoricalClass(self):
