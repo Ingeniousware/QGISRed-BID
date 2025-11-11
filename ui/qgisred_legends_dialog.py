@@ -250,17 +250,18 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def populateGroups(self):
         """
-        Fill cbGroups with only specific groups defined in ALLOWED_GROUPS.
+        Fill cbGroups with only specific groups defined in ALLOWED_GROUP_IDENTIFIERS.
         Shows only the group name (not full path). Stores the group's unique path in itemData.
         Excludes root.
         """
-        # Define which groups to include - easily add or remove groups here
-        ALLOWED_GROUPS = [
-            "Thematic Maps",
-            # "Another Group",  # Uncomment to add more groups
-            # "Yet Another Group",
+        # Define which groups to include by their qgisred_identifier custom property
+        # Easily add or remove identifiers here
+        ALLOWED_GROUP_IDENTIFIERS = [
+            "qgisred_thematicmaps",
+            # "qgisred_results",  # Uncomment to add more groups
+            # "qgisred_queries",
         ]
-        
+
         root = QgsProject.instance().layerTreeRoot()
         self.cbGroups.blockSignals(True)
         self.cbGroups.clear()
@@ -274,10 +275,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
             return False
 
         def walk(group: QgsLayerTreeGroup, pathParts):
-            # Only add if we have a path (skip root) and group name is in allowed list
+            # Only add if we have a path (skip root) and group identifier is in allowed list
             if pathParts and groupHasLayers(group):
-                # Check if the current group name is in the allowed list
-                if pathParts[-1] in ALLOWED_GROUPS:
+                # Check if the current group has a matching qgisred_identifier
+                groupIdentifier = group.customProperty("qgisred_identifier")
+                if groupIdentifier in ALLOWED_GROUP_IDENTIFIERS:
                     pathStr = " / ".join(pathParts)
                     displayName = pathParts[-1]
                     self.cbGroups.addItem(displayName, pathStr)
