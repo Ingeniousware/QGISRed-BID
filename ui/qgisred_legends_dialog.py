@@ -16,6 +16,7 @@ from qgis.PyQt.QtCore import QVariant, Qt
 from qgis.core import QgsProject, QgsVectorLayer, QgsMessageLog, Qgis, QgsGraduatedSymbolRenderer
 from qgis.core import QgsCategorizedSymbolRenderer, QgsRendererRange, QgsRendererCategory, QgsSymbol
 from qgis.core import QgsLayerTreeGroup, QgsLayerTreeLayer
+from qgis.core import QgsGradientColorRamp, QgsClassificationJenks, QgsClassificationPrettyBreaks
 
 # Local imports
 from ..tools.qgisred_utils import QGISRedUtils
@@ -50,6 +51,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         
         self.config()
         self.setupTableView()
+        self.populateClassificationModes()
 
         self.populateGroups()
         self.onGroupChanged()
@@ -147,6 +149,34 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 color: white;
             }
         """)
+
+    def populateClassificationModes(self):
+        """Populate cbMode with available QGIS classification methods."""
+        self.cbMode.blockSignals(True)
+        self.cbMode.clear()
+
+        # Add blank option for manual mode (no automatic classification)
+        self.cbMode.addItem("", None)
+
+        # Manually add the standard QGIS classification methods
+        # These are the most commonly used methods in QGIS
+        methods = [
+            ("EqualInterval", "Equal Interval"),
+            ("Quantile", "Quantile (Equal Count)"),
+            ("Jenks", "Natural Breaks (Jenks)"),
+            ("StdDev", "Standard Deviation"),
+            ("Pretty", "Pretty Breaks")
+        ]
+
+        for methodId, displayName in methods:
+            self.cbMode.addItem(displayName, methodId)
+
+        self.cbMode.blockSignals(False)
+
+        QgsMessageLog.logMessage(
+            f"Populated classification modes with {self.cbMode.count()} options",
+            "QGISRed", Qgis.Info
+        )
     
     def connectSignals(self):
         """Connect all widget signals."""
@@ -156,10 +186,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btApplyLegend.clicked.connect(self.applyLegend)
         self.btCancelLegend.clicked.connect(self.cancelAndClose)
 
-        # Classification buttons (numeric only)
-        self.btIntervals.clicked.connect(self.classifyEqualInterval)
-        self.btQuantiles.clicked.connect(self.classifyQuantiles)
-        self.btBreaks.clicked.connect(self.classifyNaturalBreaks)
+        # Classification mode selector (numeric only)
+        self.cbMode.currentIndexChanged.connect(self.onModeChanged)
 
         # Class management buttons
         self.btClassPlus.clicked.connect(self.addClass)
@@ -488,15 +516,16 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def initializeUiVisibility(self):
         """Initialize the visibility of UI elements at startup."""
         # Hide all classification-related buttons initially
-        self.btIntervals.setVisible(False)
-        self.btQuantiles.setVisible(False)
-        self.btBreaks.setVisible(False)
         self.btClassPlus.setVisible(False)
         self.btClassMinus.setVisible(False)
         self.btUp.setVisible(False)
         self.btDown.setVisible(False)
         self.labelClass.setVisible(False)  # "Classes" label
         self.leClassCount.setVisible(False)  # Class count field
+
+        # Hide mode selector initially (shown only for numeric fields)
+        self.cbMode.setVisible(False)
+        self.labelMode.setVisible(False)
 
         # Hide label initially
         self.labelFrameLegends.setVisible(False)
@@ -563,10 +592,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
         isCategorical = (self.currentFieldType == self.FIELD_TYPE_CATEGORICAL)
         hasField = isNumeric or isCategorical
 
-        # Classification method buttons - visible only for numeric
-        self.btIntervals.setVisible(isNumeric)
-        self.btQuantiles.setVisible(isNumeric)
-        self.btBreaks.setVisible(isNumeric)
+        # Classification mode selector - visible only for numeric
+        self.cbMode.setVisible(isNumeric)
+        self.labelMode.setVisible(isNumeric)
 
         # Class management buttons - visible for both numeric and categorical
         self.btClassPlus.setVisible(hasField)
@@ -614,6 +642,12 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
             # Update UI based on detected field type
             self.updateUIBasedOnFieldType()
+
+            # Reset mode selector to blank (manual mode) for numeric fields
+            if self.currentFieldType == self.FIELD_TYPE_NUMERIC:
+                self.cbMode.blockSignals(True)
+                self.cbMode.setCurrentIndex(0)  # Select blank option
+                self.cbMode.blockSignals(False)
 
             # Populate the table view
             if self.currentFieldType == self.FIELD_TYPE_NUMERIC:
@@ -1088,6 +1122,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
             self.addCategoricalClass()
         else:
             self.addNumericClass()
+            # If a classification mode is selected, reapply it with the new class count
+            if self.currentFieldType == self.FIELD_TYPE_NUMERIC:
+                methodId = self.cbMode.currentData()
+                if methodId is not None:
+                    self.applyClassificationMethod(methodId)
 
         self.updateButtonStates()
 
@@ -1198,6 +1237,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
             self.removeCategoricalClasses()
         else:
             self.removeNumericClasses()
+            # If a classification mode is selected, reapply it with the new class count
+            if self.currentFieldType == self.FIELD_TYPE_NUMERIC:
+                methodId = self.cbMode.currentData()
+                if methodId is not None:
+                    self.applyClassificationMethod(methodId)
 
         self.updateButtonStates()
     
@@ -1279,124 +1323,197 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         self.updateClassCount()
     
-    def classifyEqualInterval(self):
-        """Apply equal interval classification (numeric only)."""
+    def onModeChanged(self):
+        """Handle classification mode change."""
         if self.currentFieldType != self.FIELD_TYPE_NUMERIC or not self.currentLayer:
             return
-        
-        # Get min/max values from field
-        fieldName = self.currentFieldName
-        if not fieldName:
+
+        # Get the selected method ID
+        methodId = self.cbMode.currentData()
+
+        if methodId is None:
+            # Blank option selected - manual mode, no automatic reclassification
+            QgsMessageLog.logMessage(
+                "Manual mode selected - no automatic classification",
+                "QGISRed", Qgis.Info
+            )
             return
-            
-        # Calculate statistics
-        fieldIdx = self.currentLayer.fields().indexOf(fieldName)
-        if fieldIdx < 0:
+
+        # Apply the selected classification method
+        self.applyClassificationMethod(methodId)
+
+    def applyClassificationMethod(self, methodId):
+        """Apply a classification method to the current numeric layer.
+
+        Args:
+            methodId: The QGIS classification method ID (e.g., 'EqualInterval', 'Quantile', 'Jenks')
+        """
+        if not self.currentLayer or not self.currentFieldName:
             return
-            
-        minVal = self.currentLayer.minimumValue(fieldIdx)
-        maxVal = self.currentLayer.maximumValue(fieldIdx)
-        
-        if minVal is None or maxVal is None:
-            return
-            
-        # Get number of classes from table
+
+        # Get number of classes from current table
         numClasses = self.tableView.rowCount()
         if numClasses < 2:
             numClasses = 5  # Default
-            
-        # Calculate equal intervals
-        interval = (maxVal - minVal) / numClasses
-        
-        # Update table with new ranges
-        for i in range(numClasses):
-            lower = minVal + (i * interval)
-            upper = minVal + ((i + 1) * interval)
-            
-            # Update value column
-            valueText = f"{lower:.2f} - {upper:.2f}"
-            if self.tableView.item(i, 2):
-                self.tableView.item(i, 2).setText(valueText)
-            
-            # Update legend if empty
-            legendWidget = self.tableView.cellWidget(i, 3)
-            if isinstance(legendWidget, QLineEdit) and not legendWidget.text():
-                legendWidget.setText(valueText)
-        
-        QgsMessageLog.logMessage(
-            f"Applied equal interval classification with {numClasses} classes", 
-            "QGISRed", Qgis.Info
-        )
-    
-    def classifyQuantiles(self):
-        """Apply quantile classification (numeric only)."""
-        if self.currentFieldType != self.FIELD_TYPE_NUMERIC or not self.currentLayer:
+
+        # Get field index
+        fieldIdx = self.currentLayer.fields().indexOf(self.currentFieldName)
+        if fieldIdx < 0:
             return
-            
-        fieldName = self.currentFieldName
-        if not fieldName:
-            return
-            
-        # Get all values
+
+        # Get all values from the field
         values = []
         for feature in self.currentLayer.getFeatures():
-            val = feature[fieldName]
+            val = feature[self.currentFieldName]
             if val is not None:
-                values.append(val)
-        
+                try:
+                    values.append(float(val))
+                except (ValueError, TypeError):
+                    pass
+
         if not values:
+            QgsMessageLog.logMessage(
+                "No valid numeric values found in field",
+                "QGISRed", Qgis.Warning
+            )
             return
-            
+
         values.sort()
-        
-        # Get number of classes
-        numClasses = self.tableView.rowCount()
-        if numClasses < 2:
-            numClasses = 5
-            
-        # Calculate quantiles
-        quantileSize = len(values) / numClasses
-        
-        # Update table with quantile ranges
+        minVal = min(values)
+        maxVal = max(values)
+
+        # Calculate class breaks based on the selected method
+        breaks = []
+        try:
+            if methodId == "EqualInterval":
+                # Equal Interval
+                interval = (maxVal - minVal) / numClasses
+                breaks = [minVal + (i * interval) for i in range(numClasses + 1)]
+
+            elif methodId == "Quantile":
+                # Quantile (Equal Count)
+                breaks = [minVal]
+                for i in range(1, numClasses):
+                    idx = int((i / numClasses) * len(values))
+                    if idx < len(values):
+                        breaks.append(values[idx])
+                breaks.append(maxVal)
+
+            elif methodId == "Jenks":
+                # Natural Breaks - Use QGIS's implementation
+                method = QgsClassificationJenks()
+                method.setLabelFormat("%1 - %2")
+                classes = method.classes(self.currentLayer, self.currentFieldName, numClasses)
+                breaks = [minVal] + [cls.upperBound() for cls in classes]
+
+            elif methodId == "StdDev":
+                # Standard Deviation
+                import statistics
+                mean = statistics.mean(values)
+                stddev = statistics.stdev(values) if len(values) > 1 else 0
+
+                # Create breaks at mean ± stddev intervals
+                breaks = [minVal]
+                halfClasses = numClasses // 2
+                for i in range(-halfClasses, halfClasses + 1):
+                    val = mean + (i * stddev)
+                    if minVal < val < maxVal:
+                        breaks.append(val)
+                breaks.append(maxVal)
+                breaks = sorted(set(breaks))[:numClasses + 1]
+
+            elif methodId == "Pretty":
+                # Pretty Breaks - Use QGIS's implementation
+                method = QgsClassificationPrettyBreaks()
+                method.setLabelFormat("%1 - %2")
+                classes = method.classes(self.currentLayer, self.currentFieldName, numClasses)
+                breaks = [minVal] + [cls.upperBound() for cls in classes]
+
+            else:
+                QgsMessageLog.logMessage(
+                    f"Unknown classification method: {methodId}",
+                    "QGISRed", Qgis.Warning
+                )
+                return
+
+        except Exception as e:
+            QgsMessageLog.logMessage(
+                f"Error calculating breaks: {str(e)}",
+                "QGISRed", Qgis.Warning
+            )
+            return
+
+        # Ensure we have the right number of breaks
+        if len(breaks) < numClasses + 1:
+            QgsMessageLog.logMessage(
+                f"Not enough breaks generated: {len(breaks)} < {numClasses + 1}",
+                "QGISRed", Qgis.Warning
+            )
+            return
+
+        # Create Blue to Red gradient color ramp
+        blueColor = QColor(0, 0, 255)  # Blue for low values
+        redColor = QColor(255, 0, 0)   # Red for high values
+        colorRamp = QgsGradientColorRamp(blueColor, redColor)
+
+        # Update table with new ranges and colors
+        currentRowCount = self.tableView.rowCount()
+        neededRowCount = numClasses
+
+        # Adjust row count if needed
+        if neededRowCount > currentRowCount:
+            # Add rows
+            for i in range(currentRowCount, neededRowCount):
+                self.addNumericClass()
+        elif neededRowCount < currentRowCount:
+            # Remove rows from the end
+            for i in range(currentRowCount - 1, neededRowCount - 1, -1):
+                self.tableView.removeRow(i)
+
+        # Apply classification to table rows
         for i in range(numClasses):
-            lowerIdx = int(i * quantileSize)
-            upperIdx = int((i + 1) * quantileSize) - 1
-            
-            if upperIdx >= len(values):
-                upperIdx = len(values) - 1
-                
-            lower = values[lowerIdx]
-            upper = values[upperIdx]
-            
+            lower = breaks[i]
+            upper = breaks[i + 1]
+
             # Update value column
             valueText = f"{lower:.2f} - {upper:.2f}"
             if self.tableView.item(i, 2):
                 self.tableView.item(i, 2).setText(valueText)
-            
-            # Update legend if empty
+            else:
+                valueItem = QTableWidgetItem(valueText)
+                valueItem.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+                self.tableView.setItem(i, 2, valueItem)
+
+            # Calculate color from gradient (0.0 to 1.0 across the range)
+            ratio = i / max(1, numClasses - 1)
+            color = colorRamp.color(ratio)
+
+            # Update color widget
+            colorWidget = self.tableView.cellWidget(i, 0)
+            if isinstance(colorWidget, SymbolColorSelector):
+                colorWidget.setColor(color)
+
+            # Update legend text
             legendWidget = self.tableView.cellWidget(i, 3)
-            if isinstance(legendWidget, QLineEdit) and not legendWidget.text():
+            if isinstance(legendWidget, QLineEdit):
                 legendWidget.setText(valueText)
-        
+
+        self.updateClassCount()
+
+        # Get method display name
+        methodNames = {
+            "EqualInterval": "Equal Interval",
+            "Quantile": "Quantile",
+            "Jenks": "Natural Breaks (Jenks)",
+            "StdDev": "Standard Deviation",
+            "Pretty": "Pretty Breaks"
+        }
+        methodName = methodNames.get(methodId, methodId)
+
         QgsMessageLog.logMessage(
-            f"Applied quantile classification with {numClasses} classes", 
+            f"Applied {methodName} classification with {numClasses} classes",
             "QGISRed", Qgis.Info
         )
-    
-    def classifyNaturalBreaks(self):
-        """Apply natural breaks (Jenks) classification (numeric only)."""
-        if self.currentFieldType != self.FIELD_TYPE_NUMERIC or not self.currentLayer:
-            return
-        
-        # This would require implementing Jenks natural breaks algorithm
-        # For now, just log the action
-        QgsMessageLog.logMessage(
-            "Natural breaks classification not fully implemented yet", 
-            "QGISRed", Qgis.Warning
-        )
-        
-        # Could use QgsClassificationJenks from QGIS API
-        # Implementation would be similar to quantiles but using Jenks algorithm
     
     def applyLegend(self):
         """Apply the legend from the table to the layer."""
