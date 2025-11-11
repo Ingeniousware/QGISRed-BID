@@ -96,7 +96,8 @@ class SymbolEditDialog(QDialog):
 
 class SymbolColorSelector(QgsSymbolButton):
     """
-    Looks like a QgsSymbolButton; on click, opens the QGIS color dialog (QgsColorDialog).
+    Internal color selector component used by SymbolColorSelectorWithCheckbox.
+    Opens the QGIS color dialog (QgsColorDialog) on click.
     After choosing a color, the preview updates to reflect the selected color.
 
     Signals:
@@ -126,7 +127,7 @@ class SymbolColorSelector(QgsSymbolButton):
             QToolButton::menu-indicator { image: none; width: 0px; }
             QToolButton { padding-right: 4px; background-color: white; border: none; }
         """)
-        
+
         # Explicitly remove any drop shadow effect
         try:
             self.setGraphicsEffect(None)
@@ -227,7 +228,7 @@ class SymbolColorSelector(QgsSymbolButton):
             # Block mouse wheel events to prevent accidental size changes
             if event.type() == QEvent.Wheel:
                 return True  # Consume the event
-            
+
             if event.type() in (QEvent.MouseButtonPress, QEvent.MouseButtonRelease):
                 if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
                     self.openColorDialog()

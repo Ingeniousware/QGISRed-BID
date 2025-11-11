@@ -20,7 +20,7 @@ from qgis.core import QgsGradientColorRamp, QgsClassificationJenks, QgsClassific
 
 # Local imports
 from ..tools.qgisred_utils import QGISRedUtils
-from .qgisred_custom_dialogs import RangeEditDialog, SymbolColorSelector, SymbolColorSelectorWithCheckbox, SymbolEditDialog
+from .qgisred_custom_dialogs import RangeEditDialog, SymbolColorSelectorWithCheckbox, SymbolEditDialog
 
 formClass, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_legends_dialog.ui"))
 
@@ -378,8 +378,6 @@ class QGISRedLegendsDialog(QDialog, formClass):
         colorWidget = self.tableView.cellWidget(row, 0)
         if isinstance(colorWidget, SymbolColorSelectorWithCheckbox):
             currentColor = colorWidget.colorSelector.color()
-        elif isinstance(colorWidget, SymbolColorSelector):
-            currentColor = colorWidget.color()
         else:
             currentColor = QColor(128, 128, 128)
 
@@ -405,9 +403,6 @@ class QGISRedLegendsDialog(QDialog, formClass):
             if isinstance(colorWidget, SymbolColorSelectorWithCheckbox):
                 colorWidget.colorSelector.setColor(newColor)
                 colorWidget.colorSelector.updateSymbolSize(newSize, isWidth)
-            elif isinstance(colorWidget, SymbolColorSelector):
-                colorWidget.setColor(newColor)
-                colorWidget.updateSymbolSize(newSize, isWidth)
 
             # Update size field
             if isinstance(sizeWidget, QLineEdit):
@@ -493,13 +488,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
         colorWidget = self.tableView.cellWidget(row, 0)
 
         # Extract the actual color selector if it's wrapped
-        actualColorSelector = None
         if isinstance(colorWidget, SymbolColorSelectorWithCheckbox):
             actualColorSelector = colorWidget.colorSelector
-        elif isinstance(colorWidget, SymbolColorSelector):
-            actualColorSelector = colorWidget
-
-        if not actualColorSelector:
+        else:
             return
 
         # Update symbol size
@@ -760,22 +751,26 @@ class QGISRedLegendsDialog(QDialog, formClass):
         for i, rangeItem in enumerate(ranges):
             self.tableView.insertRow(i)
 
-            # Color (SymbolColorSelector without checkbox for numeric)
-            colorWidget = SymbolColorSelector(
+            # Get visibility state from range's render state
+            isVisible = rangeItem.renderState()
+
+            # Color (SymbolColorSelectorWithCheckbox for numeric)
+            colorWidget = SymbolColorSelectorWithCheckbox(
                 parent=self.tableView,
                 geometryHint=geomHint,
                 initialColor=rangeItem.symbol().color(),
-                allowAlpha=True,
-                dialogTitle=self.tr("Pick class color")
+                checked=isVisible,
+                checkboxLabel=""
             )
-            colorWidget.setEnabled(self.isEditing)
-            
+            colorWidget.colorSelector.setEnabled(self.isEditing)
+
             # Set initial symbol size from renderer
             if self.currentLayer.geometryType() == 1:  # Line
                 colorWidget.updateSymbolSize(rangeItem.symbol().width(), isWidth=True)
             else:  # Point or Polygon
                 colorWidget.updateSymbolSize(rangeItem.symbol().size(), isWidth=False)
-            
+
+            self.connectCheckboxSignal(colorWidget)
             self.tableView.setCellWidget(i, 0, colorWidget)
 
             # Size (line width or point size; polygons treated like point size as per legacy behavior)
@@ -1017,8 +1012,6 @@ class QGISRedLegendsDialog(QDialog, formClass):
             elif widget1:
                 if isinstance(widget1, SymbolColorSelectorWithCheckbox):
                     row1Data.append(('color_with_checkbox', widget1.color(), widget1.isChecked()))
-                elif isinstance(widget1, SymbolColorSelector):
-                    row1Data.append(('color', widget1.color()))
                 elif isinstance(widget1, QLineEdit):
                     row1Data.append(('text', widget1.text(), widget1.isReadOnly()))
                 elif isinstance(widget1, QComboBox):
@@ -1034,8 +1027,6 @@ class QGISRedLegendsDialog(QDialog, formClass):
             elif widget2:
                 if isinstance(widget2, SymbolColorSelectorWithCheckbox):
                     row2Data.append(('color_with_checkbox', widget2.color(), widget2.isChecked()))
-                elif isinstance(widget2, SymbolColorSelector):
-                    row2Data.append(('color', widget2.color()))
                 elif isinstance(widget2, QLineEdit):
                     row2Data.append(('text', widget2.text(), widget2.isReadOnly()))
                 elif isinstance(widget2, QComboBox):
@@ -1060,12 +1051,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     self.tableView.setItem(row1, col, item)
                 elif dataType == 'color_with_checkbox':
                     widget = SymbolColorSelectorWithCheckbox(parent=self.tableView, geometryHint=self.getGeometryHint(), initialColor=data[0], checked=data[1])
-                    widget.setEnabled(self.isEditing)
+                    widget.colorSelector.setEnabled(self.isEditing)
                     self.connectCheckboxSignal(widget)
-                    self.tableView.setCellWidget(row1, col, widget)
-                elif dataType == 'color':
-                    widget = SymbolColorSelector(parent=self.tableView, geometryHint=self.getGeometryHint(), initialColor=data[0])
-                    widget.setEnabled(self.isEditing)
                     self.tableView.setCellWidget(row1, col, widget)
                 elif dataType == 'text':
                     widget = QLineEdit(data[0])
@@ -1090,12 +1077,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     self.tableView.setItem(row2, col, item)
                 elif dataType == 'color_with_checkbox':
                     widget = SymbolColorSelectorWithCheckbox(parent=self.tableView, geometryHint=self.getGeometryHint(), initialColor=data[0], checked=data[1])
-                    widget.setEnabled(self.isEditing)
+                    widget.colorSelector.setEnabled(self.isEditing)
                     self.connectCheckboxSignal(widget)
-                    self.tableView.setCellWidget(row2, col, widget)
-                elif dataType == 'color':
-                    widget = SymbolColorSelector(parent=self.tableView, geometryHint=self.getGeometryHint(), initialColor=data[0])
-                    widget.setEnabled(self.isEditing)
                     self.tableView.setCellWidget(row2, col, widget)
                 elif dataType == 'text':
                     widget = QLineEdit(data[0])
@@ -1138,8 +1121,15 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         randomColor = self.generateRandomColor()
 
-        colorWidget = SymbolColorSelector(parent=self.tableView, geometryHint=geomHint, initialColor=randomColor)
-        colorWidget.setEnabled(self.isEditing)
+        colorWidget = SymbolColorSelectorWithCheckbox(
+            parent=self.tableView,
+            geometryHint=geomHint,
+            initialColor=randomColor,
+            checked=True,  # New classes default to visible
+            checkboxLabel=""
+        )
+        colorWidget.colorSelector.setEnabled(self.isEditing)
+        self.connectCheckboxSignal(colorWidget)
         self.tableView.setCellWidget(rowCount, 0, colorWidget)
 
         sizeEdit = QLineEdit("1.0")
@@ -1490,7 +1480,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
             # Update color widget
             colorWidget = self.tableView.cellWidget(i, 0)
-            if isinstance(colorWidget, SymbolColorSelector):
+            if isinstance(colorWidget, SymbolColorSelectorWithCheckbox):
                 colorWidget.setColor(color)
 
             # Update legend text
@@ -1549,11 +1539,12 @@ class QGISRedLegendsDialog(QDialog, formClass):
             lower = float(parts[0])
             upper = float(parts[1])
 
-            # Color and visibility from checkbox widget (numeric fields use SymbolColorSelector without checkbox)
+            # Color and visibility from checkbox widget
             colorWidget = self.tableView.cellWidget(row, 0)
-            isVisible = True  # Default to visible for numeric fields (no checkbox currently)
-            if isinstance(colorWidget, SymbolColorSelector):
+            isVisible = True  # Default to visible
+            if isinstance(colorWidget, SymbolColorSelectorWithCheckbox):
                 color = colorWidget.color()
+                isVisible = colorWidget.isChecked()  # Checkbox controls visibility
             else:
                 color = QColor(128, 128, 128)
 
