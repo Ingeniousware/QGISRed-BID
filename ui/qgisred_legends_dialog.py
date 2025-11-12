@@ -1103,47 +1103,52 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def addClass(self):
         """Add a new class to the legend with random colors.
-        For numeric classes: single-click adds after selected row, double-click adds before.
+        Single-click adds after selected row, double-click adds before.
         """
         if not self.currentLayer:
             QMessageBox.warning(self, "No Layer", "Please select a layer first.")
             return
 
-        if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
-            self.addCategoricalClass()
-            self.updateButtonStates()
-        else:
-            # Handle double-click detection for numeric classes
-            if self.btClassPlusClickTimer is not None and self.btClassPlusClickTimer.isActive():
-                # This is a double-click - add before
-                self.btClassPlusClickTimer.stop()
-                self.btClassPlusClickTimer = None
-                self.btClassPlusAddBefore = True
+        # Handle double-click detection for both numeric and categorical classes
+        if self.btClassPlusClickTimer is not None and self.btClassPlusClickTimer.isActive():
+            # This is a double-click - add before
+            self.btClassPlusClickTimer.stop()
+            self.btClassPlusClickTimer = None
+            self.btClassPlusAddBefore = True
+
+            if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
+                self.addCategoricalClass()
+            else:
                 self.addNumericClass()
-                self.btClassPlusAddBefore = False
                 # If a classification mode is selected, reapply it with the new class count
                 methodId = self.cbMode.currentData()
                 if methodId is not None:
                     self.applyClassificationMethod(methodId)
-                self.updateButtonStates()
-            else:
-                # This is a single-click - wait to see if another click comes
-                self.btClassPlusClickTimer = QTimer()
-                self.btClassPlusClickTimer.setSingleShot(True)
-                self.btClassPlusClickTimer.timeout.connect(self.onClassPlusSingleClick)
-                self.btClassPlusClickTimer.start(400)  # 250ms double-click interval
-                return  # Don't add yet, wait for timer
+
+            self.btClassPlusAddBefore = False
+            self.updateButtonStates()
+        else:
+            # This is a single-click - wait to see if another click comes
+            self.btClassPlusClickTimer = QTimer()
+            self.btClassPlusClickTimer.setSingleShot(True)
+            self.btClassPlusClickTimer.timeout.connect(self.onClassPlusSingleClick)
+            self.btClassPlusClickTimer.start(400)  # 400ms double-click interval
+            return  # Don't add yet, wait for timer
 
     def onClassPlusSingleClick(self):
         """Handle single-click on btClassPlus (add after selected row)."""
         self.btClassPlusClickTimer = None
         self.btClassPlusAddBefore = False
-        self.addNumericClass()
-        # If a classification mode is selected, reapply it with the new class count
-        if self.currentFieldType == self.FIELD_TYPE_NUMERIC:
+
+        if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
+            self.addCategoricalClass()
+        else:
+            self.addNumericClass()
+            # If a classification mode is selected, reapply it with the new class count
             methodId = self.cbMode.currentData()
             if methodId is not None:
                 self.applyClassificationMethod(methodId)
+
         self.updateButtonStates()
 
     def addNumericClass(self):
@@ -1212,7 +1217,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
     
     def addCategoricalClass(self):
         """Add a new categorical class from available unique values.
-        Order: First add all unique values (NULL first if present), then Other Values."""
+        Position depends on selection and btClassPlusAddBefore flag:
+        - If btClassPlusAddBefore is True (double-click): insert before selected row
+        - If btClassPlusAddBefore is False (single-click): insert after selected row
+        - If no selection: add before "Other Values" if it exists, otherwise at end
+        """
         # Check if there are available unique values to add
         if not self.availableUniqueValues:
             # No more unique values, only add "Other Values" if it doesn't exist
@@ -1239,14 +1248,31 @@ class QGISRedLegendsDialog(QDialog, formClass):
             displayValue = str(nextValue)
             legendText = str(nextValue)
 
-        # Insert before "Other Values" if it exists, otherwise at the end
-        if self.hasOtherValuesCategory():
-            rowCount = self.tableView.rowCount() - 1
+        # Determine insertion position based on selection and btClassPlusAddBefore flag
+        selectedRows = self.getSelectedRows()
+        if selectedRows and len(selectedRows) == 1:
+            selectedRow = selectedRows[0]
+            # Check if selected row is "Other Values" - if so, insert before it
+            legendWidget = self.tableView.cellWidget(selectedRow, 3)
+            if isinstance(legendWidget, QLineEdit) and legendWidget.text() in [self.tr("Other Values"), "Other Values"]:
+                # Selected row is "Other Values", insert before it
+                insertRow = selectedRow
+            elif self.btClassPlusAddBefore:
+                # Double-click: insert before selected row
+                insertRow = selectedRow
+            else:
+                # Single-click: insert after selected row, but before "Other Values" if it comes after
+                insertRow = selectedRow + 1
+                # If "Other Values" is at the position where we want to insert, that's fine
         else:
-            rowCount = self.tableView.rowCount()
+            # No selection or multiple selections: insert before "Other Values" if it exists, otherwise at end
+            if self.hasOtherValuesCategory():
+                insertRow = self.tableView.rowCount() - 1
+            else:
+                insertRow = self.tableView.rowCount()
 
         geomHint = self.getGeometryHint()
-        self.tableView.insertRow(rowCount)
+        self.tableView.insertRow(insertRow)
 
         randomColor = self.generateRandomColor()
 
@@ -1259,24 +1285,35 @@ class QGISRedLegendsDialog(QDialog, formClass):
         )
         colorWidget.colorSelector.setEnabled(self.isEditing)
         self.connectCheckboxSignal(colorWidget)
-        self.tableView.setCellWidget(rowCount, 0, colorWidget)
+        self.tableView.setCellWidget(insertRow, 0, colorWidget)
 
         sizeEdit = QLineEdit("1.0")
         sizeEdit.setAlignment(Qt.AlignCenter)
         sizeEdit.setEnabled(self.isEditing)
-        self.tableView.setCellWidget(rowCount, 1, sizeEdit)
+        self.tableView.setCellWidget(insertRow, 1, sizeEdit)
 
         valueEdit = QLineEdit(displayValue)
         valueEdit.setReadOnly(True)
         valueEdit.setStyleSheet("QLineEdit { background-color: #F8F8F8; color: #808080; }")
-        self.tableView.setCellWidget(rowCount, 2, valueEdit)
+        self.tableView.setCellWidget(insertRow, 2, valueEdit)
 
         legendEdit = QLineEdit(legendText)
         legendEdit.setEnabled(self.isEditing)
-        self.tableView.setCellWidget(rowCount, 3, legendEdit)
+        self.tableView.setCellWidget(insertRow, 3, legendEdit)
+
+        # Clear selection and select the newly added row
+        self.tableView.clearSelection()
+        self.tableView.selectRow(insertRow)
+
+        positionMsg = "before 'Other Values'"
+        if selectedRows and len(selectedRows) == 1:
+            if self.btClassPlusAddBefore:
+                positionMsg = f"before row {selectedRows[0]}"
+            else:
+                positionMsg = f"after row {selectedRows[0]}"
 
         QgsMessageLog.logMessage(
-            f"Added categorical class with value '{displayValue}' and random color",
+            f"Added categorical class with value '{displayValue}' {positionMsg} with random color",
             "QGISRed", Qgis.Info
         )
 
