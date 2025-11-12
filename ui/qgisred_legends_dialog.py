@@ -433,14 +433,20 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if dialog.exec_():
             newLower, newUpper = dialog.getValues()
 
-            if newLower >= newUpper:
-                QMessageBox.warning(self, self.tr("Invalid Range"), self.tr("Lower value must be less than upper value."))
-                return
+            # Validate and clamp to maintain monotonicity
+            clampedLower, clampedUpper, wasClamped = self.validateAndClampRange(row, newLower, newUpper)
+
+            if wasClamped:
+                QMessageBox.warning(
+                    self,
+                    self.tr("Range Adjusted"),
+                    self.tr(f"Range was adjusted to [{clampedLower:.2f}, {clampedUpper:.2f}] to maintain ordered, consecutive ranges.")
+                )
 
             # Update the current row's value item
-            newValueText = f"{newLower:.2f} - {newUpper:.2f}"
+            newValueText = f"{clampedLower:.2f} - {clampedUpper:.2f}"
             valueItem.setText(newValueText)
-            
+
             # Update the current row's legend widget if it matches the old value
             legendWidget = self.tableView.cellWidget(row, 3)
             if isinstance(legendWidget, QLineEdit) and legendWidget.text() == originalValueText:
@@ -453,7 +459,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     try:
                         prevText = prevItem.text()
                         prevLowerStr, _ = prevText.split(' - ')
-                        newPrevText = f"{float(prevLowerStr):.2f} - {newLower:.2f}"
+                        newPrevText = f"{float(prevLowerStr):.2f} - {clampedLower:.2f}"
                         prevItem.setText(newPrevText)
 
                         prevLegendWidget = self.tableView.cellWidget(row - 1, 3)
@@ -469,7 +475,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     try:
                         nextText = nextItem.text()
                         _, nextUpperStr = nextText.split(' - ')
-                        newNextText = f"{newUpper:.2f} - {float(nextUpperStr):.2f}"
+                        newNextText = f"{clampedUpper:.2f} - {float(nextUpperStr):.2f}"
                         nextItem.setText(newNextText)
 
                         nextLegendWidget = self.tableView.cellWidget(row + 1, 3)
@@ -477,6 +483,223 @@ class QGISRedLegendsDialog(QDialog, formClass):
                             nextLegendWidget.setText(newNextText)
                     except (ValueError, IndexError):
                         QgsMessageLog.logMessage(f"Could not parse and adjust next range: {nextItem.text()}", "QGISRed", Qgis.Warning)
+
+    def calculateInitialRangeForNewRow(self, insertRow):
+        """Calculate initial range values for a new row to maintain contiguity.
+
+        Args:
+            insertRow: Position where new row will be inserted (before insertRow is called)
+
+        Returns:
+            tuple: (newLower, newUpper)
+        """
+        # If inserting at the beginning (insertRow == 0)
+        if insertRow == 0:
+            if self.tableView.rowCount() > 0:
+                # Get the first existing row's range
+                firstItem = self.tableView.item(0, 2)
+                if firstItem:
+                    try:
+                        firstText = firstItem.text()
+                        firstLower, firstUpper = firstText.split(' - ')
+                        firstLower = float(firstLower)
+                        # New range ends where first row begins, spans 1 unit by default
+                        return firstLower - 1.0, firstLower
+                    except (ValueError, IndexError):
+                        pass
+            # Default if no existing rows or parsing failed
+            return 0.0, 1.0
+
+        # If inserting at the end
+        if insertRow >= self.tableView.rowCount():
+            if self.tableView.rowCount() > 0:
+                # Get the last existing row's range
+                lastItem = self.tableView.item(self.tableView.rowCount() - 1, 2)
+                if lastItem:
+                    try:
+                        lastText = lastItem.text()
+                        lastLower, lastUpper = lastText.split(' - ')
+                        lastUpper = float(lastUpper)
+                        # New range starts where last row ends, spans 1 unit by default
+                        return lastUpper, lastUpper + 1.0
+                    except (ValueError, IndexError):
+                        pass
+            return 0.0, 1.0
+
+        # Inserting in the middle - split the gap between previous and next row
+        prevItem = self.tableView.item(insertRow - 1, 2)
+        nextItem = self.tableView.item(insertRow, 2)  # This will become insertRow + 1 after insertion
+
+        if prevItem and nextItem:
+            try:
+                prevText = prevItem.text()
+                _, prevUpper = prevText.split(' - ')
+                prevUpper = float(prevUpper)
+
+                nextText = nextItem.text()
+                nextLower, _ = nextText.split(' - ')
+                nextLower = float(nextLower)
+
+                # Split the gap in half
+                midpoint = (prevUpper + nextLower) / 2.0
+                return prevUpper, midpoint
+            except (ValueError, IndexError):
+                pass
+
+        # Fallback
+        return 0.0, 1.0
+
+    def updateAdjacentRowsAfterInsertion(self, insertedRow, newLower, newUpper):
+        """Update adjacent rows to maintain contiguity after inserting a new row.
+
+        Args:
+            insertedRow: The row that was just inserted
+            newLower: Lower bound of the inserted row
+            newUpper: Upper bound of the inserted row
+        """
+        # Update previous row's upper bound to match new row's lower bound
+        if insertedRow > 0:
+            prevItem = self.tableView.item(insertedRow - 1, 2)
+            if prevItem:
+                try:
+                    prevText = prevItem.text()
+                    prevLower, _ = prevText.split(' - ')
+                    newPrevText = f"{float(prevLower):.2f} - {newLower:.2f}"
+                    prevItem.setText(newPrevText)
+
+                    # Update legend if it matches the old value
+                    prevLegendWidget = self.tableView.cellWidget(insertedRow - 1, 3)
+                    if isinstance(prevLegendWidget, QLineEdit) and prevLegendWidget.text() == prevText:
+                        prevLegendWidget.setText(newPrevText)
+                except (ValueError, IndexError):
+                    QgsMessageLog.logMessage(
+                        f"Could not update previous row after insertion",
+                        "QGISRed", Qgis.Warning
+                    )
+
+        # Update next row's lower bound to match new row's upper bound
+        if insertedRow < self.tableView.rowCount() - 1:
+            nextItem = self.tableView.item(insertedRow + 1, 2)
+            if nextItem:
+                try:
+                    nextText = nextItem.text()
+                    _, nextUpper = nextText.split(' - ')
+                    newNextText = f"{newUpper:.2f} - {float(nextUpper):.2f}"
+                    nextItem.setText(newNextText)
+
+                    # Update legend if it matches the old value
+                    nextLegendWidget = self.tableView.cellWidget(insertedRow + 1, 3)
+                    if isinstance(nextLegendWidget, QLineEdit) and nextLegendWidget.text() == nextText:
+                        nextLegendWidget.setText(newNextText)
+                except (ValueError, IndexError):
+                    QgsMessageLog.logMessage(
+                        f"Could not update next row after insertion",
+                        "QGISRed", Qgis.Warning
+                    )
+
+    def mergeAdjacentRowsAfterDeletion(self, deletedRowPosition):
+        """Merge adjacent rows after deletion to maintain contiguity.
+
+        Args:
+            deletedRowPosition: The position where row(s) were deleted
+        """
+        # After deletion, we need to connect the row before the deleted position
+        # with the row at the deleted position (which moved up)
+
+        # If there's a row before and a row after the deletion point, merge them
+        if deletedRowPosition > 0 and deletedRowPosition < self.tableView.rowCount():
+            prevItem = self.tableView.item(deletedRowPosition - 1, 2)
+            currentItem = self.tableView.item(deletedRowPosition, 2)
+
+            if prevItem and currentItem:
+                try:
+                    prevText = prevItem.text()
+                    prevLower, _ = prevText.split(' - ')
+
+                    currentText = currentItem.text()
+                    currentLower, currentUpper = currentText.split(' - ')
+
+                    # Update previous row's upper to match current row's lower
+                    newPrevText = f"{float(prevLower):.2f} - {float(currentLower):.2f}"
+                    prevItem.setText(newPrevText)
+
+                    # Update legend if it matches the old value
+                    prevLegendWidget = self.tableView.cellWidget(deletedRowPosition - 1, 3)
+                    if isinstance(prevLegendWidget, QLineEdit) and prevLegendWidget.text() == prevText:
+                        prevLegendWidget.setText(newPrevText)
+
+                except (ValueError, IndexError):
+                    QgsMessageLog.logMessage(
+                        f"Could not merge rows after deletion",
+                        "QGISRed", Qgis.Warning
+                    )
+
+    def validateAndClampRange(self, row, newLower, newUpper):
+        """Validate and clamp a range to maintain monotonicity and contiguity.
+
+        Args:
+            row: The row index being edited
+            newLower: Proposed lower bound
+            newUpper: Proposed upper bound
+
+        Returns:
+            tuple: (clampedLower, clampedUpper, wasClamped)
+        """
+        wasClamped = False
+        clampedLower = newLower
+        clampedUpper = newUpper
+
+        # Ensure min < max
+        if clampedLower >= clampedUpper:
+            # Keep them ordered with a small gap
+            clampedUpper = clampedLower + 0.01
+            wasClamped = True
+
+        # Get constraints from previous row
+        if row > 0:
+            prevItem = self.tableView.item(row - 1, 2)
+            if prevItem:
+                try:
+                    prevText = prevItem.text()
+                    prevLowerStr, _ = prevText.split(' - ')
+                    prevLower = float(prevLowerStr)
+
+                    # Enforce: newLower >= prevLower
+                    if clampedLower < prevLower:
+                        clampedLower = prevLower
+                        wasClamped = True
+
+                    # If we adjusted lower, ensure upper is still greater
+                    if clampedLower >= clampedUpper:
+                        clampedUpper = clampedLower + 0.01
+                        wasClamped = True
+
+                except (ValueError, IndexError):
+                    pass
+
+        # Get constraints from next row
+        if row < self.tableView.rowCount() - 1:
+            nextItem = self.tableView.item(row + 1, 2)
+            if nextItem:
+                try:
+                    nextText = nextItem.text()
+                    _, nextUpperStr = nextText.split(' - ')
+                    nextUpper = float(nextUpperStr)
+
+                    # Enforce: newUpper <= nextUpper
+                    if clampedUpper > nextUpper:
+                        clampedUpper = nextUpper
+                        wasClamped = True
+
+                    # If we adjusted upper, ensure lower is still less
+                    if clampedLower >= clampedUpper:
+                        clampedLower = clampedUpper - 0.01
+                        wasClamped = True
+
+                except (ValueError, IndexError):
+                    pass
+
+        return clampedLower, clampedUpper, wasClamped
 
     def onSizeChanged(self, row, text):
         """Handle size field changes and update symbol preview."""
@@ -1157,6 +1380,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         - If btClassPlusAddBefore is True (double-click): insert before selected row
         - If btClassPlusAddBefore is False (single-click): insert after selected row
         - If no selection: add at end
+
+        New row ranges are calculated to maintain contiguity with neighbors.
         """
         geomHint = self.getGeometryHint()
 
@@ -1173,6 +1398,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
         else:
             # No selection or multiple selections: add at end
             insertRow = self.tableView.rowCount()
+
+        # Calculate initial range values based on neighbors
+        newLower, newUpper = self.calculateInitialRangeForNewRow(insertRow)
 
         self.tableView.insertRow(insertRow)
 
@@ -1194,12 +1422,17 @@ class QGISRedLegendsDialog(QDialog, formClass):
         sizeEdit.setEnabled(self.isEditing)
         self.tableView.setCellWidget(insertRow, 1, sizeEdit)
 
-        valueItem = QTableWidgetItem("0.0 - 0.0")
+        valueText = f"{newLower:.2f} - {newUpper:.2f}"
+        valueItem = QTableWidgetItem(valueText)
+        valueItem.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
         self.tableView.setItem(insertRow, 2, valueItem)
 
-        legendEdit = QLineEdit("New Class")
+        legendEdit = QLineEdit(valueText)
         legendEdit.setEnabled(self.isEditing)
         self.tableView.setCellWidget(insertRow, 3, legendEdit)
+
+        # Update adjacent rows to maintain contiguity
+        self.updateAdjacentRowsAfterInsertion(insertRow, newLower, newUpper)
 
         # Clear selection and select the newly added row
         self.tableView.clearSelection()
@@ -1336,7 +1569,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.updateButtonStates()
     
     def removeNumericClasses(self):
-        """Remove selected numeric classes (supports multi-selection)."""
+        """Remove selected numeric classes (supports multi-selection).
+        After deletion, adjacent rows are merged to maintain contiguity."""
         selectedRows = []
         for index in self.tableView.selectionModel().selectedRows():
             selectedRows.append(index.row())
@@ -1349,10 +1583,18 @@ class QGISRedLegendsDialog(QDialog, formClass):
             )
             return
 
+        # Store the lowest selected row to know where to merge after deletion
+        lowestSelectedRow = min(selectedRows)
         selectedRows.sort(reverse=True)
 
+        # Remove rows from bottom to top to preserve indices
         for row in selectedRows:
             self.tableView.removeRow(row)
+
+        # After deletion, merge the gap between the row before and after the deleted range
+        # The row that needs updating is at position lowestSelectedRow - 1 (if it exists)
+        # and lowestSelectedRow (which is now the row after the deleted range)
+        self.mergeAdjacentRowsAfterDeletion(lowestSelectedRow)
 
         QgsMessageLog.logMessage(
             f"Removed {len(selectedRows)} numeric class(es)",
