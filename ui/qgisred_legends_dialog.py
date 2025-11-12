@@ -107,7 +107,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         # Set column 0 (Symbol with checkbox) to Fixed
         header.setSectionResizeMode(0, QHeaderView.Fixed)
-        self.tableView.setColumnWidth(0, 80)
+        self.tableView.setColumnWidth(0, 50)
 
         # Set column 1 (Size) to Fixed size
         header.setSectionResizeMode(1, QHeaderView.Fixed)
