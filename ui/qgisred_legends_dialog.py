@@ -17,6 +17,7 @@ from qgis.core import QgsProject, QgsVectorLayer, QgsMessageLog, Qgis, QgsGradua
 from qgis.core import QgsCategorizedSymbolRenderer, QgsRendererRange, QgsRendererCategory, QgsSymbol
 from qgis.core import QgsLayerTreeGroup, QgsLayerTreeLayer
 from qgis.core import QgsGradientColorRamp, QgsClassificationJenks, QgsClassificationPrettyBreaks
+from qgis.core import QgsClassificationFixedInterval
 
 # Local imports
 from ..tools.qgisred_utils import QGISRedUtils
@@ -166,6 +167,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # These are the most commonly used methods in QGIS
         methods = [
             ("EqualInterval", self.tr("Equal Interval")),
+            ("FixedInterval", self.tr("Fixed Interval")),
             ("Quantile", self.tr("Quantile (Equal Count)")),
             ("Jenks", self.tr("Natural Breaks (Jenks)")),
             ("StdDev", self.tr("Standard Deviation")),
@@ -1722,6 +1724,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 interval = (maxVal - minVal) / numClasses
                 breaks = [minVal + (i * interval) for i in range(numClasses + 1)]
 
+            elif methodId == "FixedInterval":
+                # Fixed Interval - Use QGIS's implementation
+                method = QgsClassificationFixedInterval()
+                method.setLabelFormat("%1 - %2")
+                classes = method.classes(self.currentLayer, self.currentFieldName, numClasses)
+                breaks = [minVal] + [cls.upperBound() for cls in classes]
+
             elif methodId == "Quantile":
                 # Quantile (Equal Count)
                 breaks = [minVal]
@@ -1835,6 +1844,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Get method display name
         methodNames = {
             "EqualInterval": "Equal Interval",
+            "FixedInterval": "Fixed Interval",
             "Quantile": "Quantile",
             "Jenks": "Natural Breaks (Jenks)",
             "StdDev": "Standard Deviation",
