@@ -160,16 +160,16 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.cbMode.clear()
 
         # Add blank option for manual mode (no automatic classification)
-        self.cbMode.addItem("", None)
+        self.cbMode.addItem("Manual", None)
 
         # Manually add the standard QGIS classification methods
         # These are the most commonly used methods in QGIS
         methods = [
-            ("EqualInterval", "Equal Interval"),
-            ("Quantile", "Quantile (Equal Count)"),
-            ("Jenks", "Natural Breaks (Jenks)"),
-            ("StdDev", "Standard Deviation"),
-            ("Pretty", "Pretty Breaks")
+            ("EqualInterval", self.tr("Equal Interval")),
+            ("Quantile", self.tr("Quantile (Equal Count)")),
+            ("Jenks", self.tr("Natural Breaks (Jenks)")),
+            ("StdDev", self.tr("Standard Deviation")),
+            ("Pretty", self.tr("Pretty Breaks"))
         ]
 
         for methodId, displayName in methods:
