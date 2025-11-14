@@ -17,7 +17,6 @@ from qgis.core import QgsProject, QgsVectorLayer, QgsMessageLog, Qgis, QgsGradua
 from qgis.core import QgsCategorizedSymbolRenderer, QgsRendererRange, QgsRendererCategory, QgsSymbol
 from qgis.core import QgsLayerTreeGroup, QgsLayerTreeLayer
 from qgis.core import QgsGradientColorRamp, QgsClassificationJenks, QgsClassificationPrettyBreaks
-from qgis.core import QgsClassificationFixedInterval
 
 # Local imports
 from ..tools.qgisred_utils import QGISRedUtils
@@ -76,6 +75,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Initialize class count and make it read-only
         self.setupClassCountField()
         self.updateClassCount()
+
+        # Initialize interval range controls visibility
+        self.labelIntervalRange.setVisible(False)
+        self.spinIntervalRange.setVisible(False)
 
         # Connect table selection changed signal
         self.tableView.itemSelectionChanged.connect(self.updateButtonStates)
@@ -194,6 +197,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         # Classification mode selector (numeric only)
         self.cbMode.currentIndexChanged.connect(self.onModeChanged)
+
+        # Interval range spin box (for Fixed Interval mode)
+        self.spinIntervalRange.valueChanged.connect(self.onIntervalRangeChanged)
 
         # Class management buttons
         self.btClassPlus.clicked.connect(self.addClass)
@@ -814,15 +820,25 @@ class QGISRedLegendsDialog(QDialog, formClass):
         isCategorical = (self.currentFieldType == self.FIELD_TYPE_CATEGORICAL)
         hasField = isNumeric or isCategorical
 
+        # Check if Fixed Interval mode is active
+        isFixedInterval = False
+        if isNumeric:
+            methodId = self.cbMode.currentData()
+            isFixedInterval = (methodId == "FixedInterval")
+
         # Classification mode selector - visible only for numeric
         self.cbMode.setVisible(isNumeric)
         self.labelMode.setVisible(isNumeric)
 
-        # Class management buttons - visible for both numeric and categorical
-        self.btClassPlus.setVisible(hasField)
-        self.btClassMinus.setVisible(hasField)
-        self.labelClass.setVisible(hasField)
-        self.leClassCount.setVisible(hasField)
+        # Interval range controls - visible only for numeric Fixed Interval mode
+        self.labelIntervalRange.setVisible(isNumeric and isFixedInterval)
+        self.spinIntervalRange.setVisible(isNumeric and isFixedInterval)
+
+        # Class management buttons - visible for categorical, and for numeric only when NOT in Fixed Interval mode
+        self.btClassPlus.setVisible((isCategorical) or (isNumeric and not isFixedInterval))
+        self.btClassMinus.setVisible((isCategorical) or (isNumeric and not isFixedInterval))
+        self.labelClass.setVisible((isCategorical) or (isNumeric and not isFixedInterval))
+        self.leClassCount.setVisible((isCategorical) or (isNumeric and not isFixedInterval))
 
         # Up/Down buttons - visible only for categorical
         self.btUp.setVisible(isCategorical)
@@ -844,7 +860,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             self.updateAddClassButtonState()
 
         QgsMessageLog.logMessage(
-            f"UI updated for field type: {self.currentFieldType}",
+            f"UI updated for field type: {self.currentFieldType}, Fixed Interval: {isFixedInterval}",
             "QGISRed", Qgis.Info
         )
     
@@ -1662,6 +1678,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if self.currentFieldType != self.FIELD_TYPE_NUMERIC or not self.currentLayer:
             return
 
+        # Update UI visibility based on the selected mode
+        self.updateUIBasedOnFieldType()
+
         # Get the selected method ID
         methodId = self.cbMode.currentData()
 
@@ -1674,6 +1693,23 @@ class QGISRedLegendsDialog(QDialog, formClass):
             return
 
         # Apply the selected classification method
+        self.applyClassificationMethod(methodId)
+
+    def onIntervalRangeChanged(self):
+        """Handle interval range value change for Fixed Interval mode."""
+        if self.currentFieldType != self.FIELD_TYPE_NUMERIC or not self.currentLayer:
+            return
+
+        # Check if we're in Fixed Interval mode
+        methodId = self.cbMode.currentData()
+        if methodId != "FixedInterval":
+            return
+
+        # Reapply Fixed Interval classification with the new interval value
+        QgsMessageLog.logMessage(
+            f"Interval range changed to {self.spinIntervalRange.value()}, reclassifying...",
+            "QGISRed", Qgis.Info
+        )
         self.applyClassificationMethod(methodId)
 
     def applyClassificationMethod(self, methodId):
@@ -1725,11 +1761,27 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 breaks = [minVal + (i * interval) for i in range(numClasses + 1)]
 
             elif methodId == "FixedInterval":
-                # Fixed Interval - Use QGIS's implementation
-                method = QgsClassificationFixedInterval()
-                method.setLabelFormat("%1 - %2")
-                classes = method.classes(self.currentLayer, self.currentFieldName, numClasses)
-                breaks = [minVal] + [cls.upperBound() for cls in classes]
+                # Fixed Interval - Use the interval range from spinIntervalRange
+                intervalSize = self.spinIntervalRange.value()
+
+                # Calculate number of classes needed to cover the range
+                numClasses = int((maxVal - minVal) / intervalSize) + 1
+
+                # Generate breaks using the fixed interval
+                breaks = []
+                currentValue = minVal
+                while currentValue <= maxVal:
+                    breaks.append(currentValue)
+                    currentValue += intervalSize
+
+                # Ensure the last break covers maxVal
+                if breaks[-1] < maxVal:
+                    breaks.append(breaks[-1] + intervalSize)
+
+                QgsMessageLog.logMessage(
+                    f"Fixed Interval: interval={intervalSize}, classes={numClasses}, min={minVal:.2f}, max={maxVal:.2f}",
+                    "QGISRed", Qgis.Info
+                )
 
             elif methodId == "Quantile":
                 # Quantile (Equal Count)
