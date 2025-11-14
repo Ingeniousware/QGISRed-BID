@@ -2616,6 +2616,7 @@ class QGISRed:
             # Open files
             utils = QGISRedUtils(self.ProjectDirectory, self.NetworkName, self.iface)
             utils.openProjectInQgis()
+            utils.enforceAllIdentifiers()
 
             self.readUnits()
 
