@@ -17,6 +17,7 @@ from qgis.core import QgsProject, QgsVectorLayer, QgsMessageLog, Qgis, QgsGradua
 from qgis.core import QgsCategorizedSymbolRenderer, QgsRendererRange, QgsRendererCategory, QgsSymbol
 from qgis.core import QgsLayerTreeGroup, QgsLayerTreeLayer
 from qgis.core import QgsGradientColorRamp, QgsClassificationJenks, QgsClassificationPrettyBreaks
+from qgis.utils import iface
 
 # Local imports
 from ..tools.qgisred_utils import QGISRedUtils
@@ -58,7 +59,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.populateClassificationModes()
 
         self.populateGroups()
-        self.onGroupChanged()
+
+        # Preselect group and layer based on active layer or first visible
+        self.preselectGroupAndLayer()
 
         # Set initial UI state
         self.frameLegends.setEnabled(bool(self.cbLegendLayer.currentLayer()))
@@ -263,6 +266,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def populateGroups(self):
         """
         Fill cbGroups with only specific groups defined in ALLOWED_GROUP_IDENTIFIERS.
+        Shows only visible groups that have at least one visible direct child layer.
+        Groups are ordered as they appear in the layer panel (top to bottom).
         Shows only the group name (not full path). Stores the group's unique path in itemData.
         Excludes root.
         """
@@ -278,40 +283,125 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.cbGroups.blockSignals(True)
         self.cbGroups.clear()
 
-        def groupHasLayers(group: QgsLayerTreeGroup) -> bool:
+        def groupHasVisibleDirectLayers(group: QgsLayerTreeGroup) -> bool:
+            """Check if group has at least one visible direct child layer."""
             for child in group.children():
                 if isinstance(child, QgsLayerTreeLayer):
-                    return True
-                if isinstance(child, QgsLayerTreeGroup) and groupHasLayers(child):
-                    return True
+                    if child.isVisible():
+                        return True
             return False
 
-        def walk(group: QgsLayerTreeGroup, pathParts):
-            # Only add if we have a path (skip root) and group identifier is in allowed list
-            if pathParts and groupHasLayers(group):
-                # Check if the current group has a matching qgisred_identifier
-                groupIdentifier = group.customProperty("qgisred_identifier")
-                if groupIdentifier in ALLOWED_GROUP_IDENTIFIERS:
-                    pathStr = " / ".join(pathParts)
-                    displayName = pathParts[-1]
-                    self.cbGroups.addItem(displayName, pathStr)
-            for child in group.children():
+        # Collect all groups in layer panel order (breadth-first traversal)
+        groupsToAdd = []
+
+        def collectGroups(parentGroup: QgsLayerTreeGroup, pathParts):
+            """Recursively collect groups in layer panel order."""
+            for child in parentGroup.children():
                 if isinstance(child, QgsLayerTreeGroup):
-                    walk(child, pathParts + [child.name()])
+                    childPath = pathParts + [child.name()]
+                    # Check if this group should be included
+                    if child.isVisible():
+                        groupIdentifier = child.customProperty("qgisred_identifier")
+                        if groupIdentifier in ALLOWED_GROUP_IDENTIFIERS:
+                            if groupHasVisibleDirectLayers(child):
+                                pathStr = " / ".join(childPath)
+                                displayName = childPath[-1]
+                                groupsToAdd.append((displayName, pathStr, child))
+                    # Continue recursing into subgroups
+                    collectGroups(child, childPath)
 
-        # Start walking from root
-        walk(root, [])
+        # Start collecting from root
+        collectGroups(root, [])
 
-        # pick first item if available
-        if self.cbGroups.count() > 0:
-            self.cbGroups.setCurrentIndex(0)
+        # Add groups to combo box in the order they were collected
+        for displayName, pathStr, group in groupsToAdd:
+            self.cbGroups.addItem(displayName, pathStr)
 
         self.cbGroups.blockSignals(False)
-    
+
+    def preselectGroupAndLayer(self):
+        """
+        Preselect group and layer based on active layer in QGIS layer panel.
+        If there's an active layer, select its group and the layer itself.
+        Otherwise, select the first visible group and its first visible layer.
+        """
+        if self.cbGroups.count() == 0:
+            return
+
+        activeLayer = None
+
+        # Try to get the currently selected layer from the layer tree view
+        if iface and iface.layerTreeView():
+            selectedLayers = iface.layerTreeView().selectedLayers()
+            if selectedLayers:
+                activeLayer = QgsProject.instance().layerTreeRoot().findLayer(selectedLayers[0])
+
+        targetGroupPath = None
+        targetLayer = None
+
+        if activeLayer and activeLayer.layer():
+            # Found an active layer, find its parent group
+            parent = activeLayer.parent()
+            while parent and not isinstance(parent, QgsLayerTreeGroup):
+                parent = parent.parent()
+
+            if parent and isinstance(parent, QgsLayerTreeGroup):
+                # Check if this group is in our combo box
+                groupPath = self.getGroupPath(parent)
+                for i in range(self.cbGroups.count()):
+                    if self.cbGroups.itemData(i) == groupPath:
+                        targetGroupPath = groupPath
+                        targetLayer = activeLayer.layer()
+                        break
+
+        # If no active layer found or its group is not in combo, select first visible group
+        if targetGroupPath is None:
+            if self.cbGroups.count() > 0:
+                targetGroupPath = self.cbGroups.itemData(0)
+
+        # Select the target group
+        if targetGroupPath:
+            for i in range(self.cbGroups.count()):
+                if self.cbGroups.itemData(i) == targetGroupPath:
+                    self.cbGroups.blockSignals(True)
+                    self.cbGroups.setCurrentIndex(i)
+                    self.cbGroups.blockSignals(False)
+                    break
+
+            # Trigger group change to populate layers
+            self.onGroupChanged()
+
+            # Select the target layer or first visible layer
+            if targetLayer:
+                # Try to select the target layer
+                layerToSelect = targetLayer
+            else:
+                # Select first visible layer in the group
+                renderableLayers = self.getRenderableLayersInSelectedGroup()
+                layerToSelect = renderableLayers[0] if renderableLayers else None
+
+            if layerToSelect:
+                self.cbLegendLayer.blockSignals(True)
+                self.cbLegendLayer.setLayer(layerToSelect)
+                self.cbLegendLayer.blockSignals(False)
+
+    def getGroupPath(self, group: QgsLayerTreeGroup) -> str:
+        """
+        Get the full path of a group as 'Parent / Child' format.
+        """
+        pathParts = []
+        current = group
+        while current and not current.parent() is None:
+            if isinstance(current, QgsLayerTreeGroup):
+                pathParts.insert(0, current.name())
+            current = current.parent()
+        return " / ".join(pathParts)
+
     def getRenderableLayersInSelectedGroup(self):
         """
-        Return only the layers that are DIRECTLY in the selected group (not in subgroups)
+        Return only the visible layers that are DIRECTLY in the selected group (not in subgroups)
         and have a Graduated or Categorized renderer.
+        Layers are returned in the order they appear in the layer panel.
         """
         selectedPath = self.cbGroups.currentData()
         if not selectedPath:
@@ -320,7 +410,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Find the group by its path
         root = QgsProject.instance().layerTreeRoot()
         pathParts = [part.strip() for part in selectedPath.split("/")]
-        
+
         targetGroup = root
         for partName in pathParts:
             found = False
@@ -332,15 +422,18 @@ class QGISRedLegendsDialog(QDialog, formClass):
             if not found:
                 return []
 
-        # Collect only DIRECT layer children (not in subgroups)
+        # Collect only DIRECT layer children (not in subgroups) that are visible
+        # Maintain layer panel order by iterating children in order
         renderableLayers = []
         for child in targetGroup.children():
             if isinstance(child, QgsLayerTreeLayer):
-                layer = child.layer()
-                if layer and isinstance(layer, QgsVectorLayer):
-                    renderer = layer.renderer()
-                    if renderer and renderer.type() in ("graduatedSymbol", "categorizedSymbol"):
-                        renderableLayers.append(layer)
+                # Only include visible layers
+                if child.isVisible():
+                    layer = child.layer()
+                    if layer and isinstance(layer, QgsVectorLayer):
+                        renderer = layer.renderer()
+                        if renderer and renderer.type() in ("graduatedSymbol", "categorizedSymbol"):
+                            renderableLayers.append(layer)
 
         return renderableLayers
 
