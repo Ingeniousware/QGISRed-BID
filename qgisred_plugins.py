@@ -1122,7 +1122,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconGraphTree.png"
         self.add_action(
             icon_path,
-            text=self.tr("Tree Graph"),
+            text=self.tr("Tree Graph..."),
             callback=self.runTree,
             menubar=self.toolsMenu,
             toolbar=self.toolsToolbar,
@@ -1451,7 +1451,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconLoadMeterReadings.png"
         self.add_action(
             icon_path,
-            text=self.tr("Load meter readings"),
+            text=self.tr("Load meter readings..."),
             callback=self.runLoadReadings,
             menubar=self.dtMenu,
             toolbar=self.dtToolbar,
@@ -1475,7 +1475,7 @@ class QGISRed:
         icon_path = ":/plugins/QGISRed-BID/images/iconLoadFieldData.png"
         self.add_action(
             icon_path,
-            text=self.tr("Load field data"),
+            text=self.tr("Load field data..."),
             callback=self.runLoadScada,
             menubar=self.dtMenu,
             toolbar=self.dtToolbar,
