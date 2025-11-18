@@ -4705,6 +4705,9 @@ class QGISRed:
         if self.isLayerOnEdition():
             return
 
-        dlg = QGISRedLegendsDialog()
-        # Run the dialog event loop
-        dlg.exec_()
+        # Store reference to prevent garbage collection
+        self.legendsDialog = QGISRedLegendsDialog()
+        # Show the dialog as non-modal (semi-modal)
+        self.legendsDialog.show()
+        self.legendsDialog.raise_()
+        self.legendsDialog.activateWindow()
