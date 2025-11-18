@@ -1050,11 +1050,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         return valuesList
     
     def initializeCategoricalLegend(self):
-        """Initialize an empty categorical legend with "Other Values" as default."""
+        """Initialize an empty categorical legend without any categories."""
         self.clearTable()
-
-        # Add "Other Values" as the default category
-        self.ensureOtherValuesCategory()
 
         # Get all unique values
         allUniqueValues = self.getUniqueValuesFromLayer()
@@ -1062,7 +1059,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.usedUniqueValues = []
 
         QgsMessageLog.logMessage(
-            "Initialized categorical legend with 'Other Values' category",
+            "Initialized empty categorical legend",
             "QGISRed", Qgis.Info
         )
 
@@ -1073,11 +1070,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
         """Enable or disable the Add Class button based on available values."""
         if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
             hasAvailableValues = len(self.availableUniqueValues) > 0
-            self.btClassPlus.setEnabled(hasAvailableValues)
-            
-            if not hasAvailableValues:
+            hasOtherValues = self.hasOtherValuesCategory()
+            # Enable if there are available values OR if "Other Values" doesn't exist yet
+            self.btClassPlus.setEnabled(hasAvailableValues or not hasOtherValues)
+
+            if not hasAvailableValues and hasOtherValues:
                 QgsMessageLog.logMessage(
-                    "All unique values have been used - Add Class button disabled",
+                    "All unique values have been used and 'Other Values' exists - Add Class button disabled",
                     "QGISRed", Qgis.Info
                 )
     
@@ -1274,13 +1273,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
             legendEdit = QLineEdit(otherValuesCategory.label())
             legendEdit.setEnabled(self.isEditing)
             self.tableView.setCellWidget(rowIndex, 3, legendEdit)
-        else:
-            self.ensureOtherValuesCategory()
 
         self.availableUniqueValues = [v for v in allUniqueValues if v not in self.usedUniqueValues]
 
         QgsMessageLog.logMessage(
-            f"Populated categorical legend with {self.tableView.rowCount()} classes (including Other Values)",
+            f"Populated categorical legend with {self.tableView.rowCount()} classes",
             "QGISRed", Qgis.Info
         )
 
@@ -1594,7 +1591,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         if nextValue is None:
             displayValue = "NULL"
-            legendText = self.tr("(null)")
+            legendText = self.tr("Null")
         else:
             displayValue = str(nextValue)
             legendText = str(nextValue)
