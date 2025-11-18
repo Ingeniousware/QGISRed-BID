@@ -834,11 +834,18 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.labelIntervalRange.setVisible(isNumeric and isFixedInterval)
         self.spinIntervalRange.setVisible(isNumeric and isFixedInterval)
 
-        # Class management buttons - visible for categorical, and for numeric only when NOT in Fixed Interval mode
-        self.btClassPlus.setVisible((isCategorical) or (isNumeric and not isFixedInterval))
-        self.btClassMinus.setVisible((isCategorical) or (isNumeric and not isFixedInterval))
-        self.labelClass.setVisible((isCategorical) or (isNumeric and not isFixedInterval))
-        self.leClassCount.setVisible((isCategorical) or (isNumeric and not isFixedInterval))
+        # Class management buttons - visible for categorical and all numeric modes
+        self.btClassPlus.setVisible(isCategorical or isNumeric)
+        self.btClassMinus.setVisible(isCategorical or isNumeric)
+
+        # Disable plus/minus buttons in Fixed Interval mode (interval controls the class count)
+        if isNumeric and isFixedInterval:
+            self.btClassPlus.setEnabled(False)
+            self.btClassMinus.setEnabled(False)
+
+        # Class count - visible for categorical and all numeric modes (including Fixed Interval)
+        self.labelClass.setVisible(isCategorical or isNumeric)
+        self.leClassCount.setVisible(isCategorical or isNumeric)
 
         # Up/Down buttons - visible only for categorical
         self.btUp.setVisible(isCategorical)
@@ -1672,7 +1679,77 @@ class QGISRedLegendsDialog(QDialog, formClass):
         )
 
         self.updateClassCount()
-    
+
+    def calculateOptimalInterval(self):
+        """Calculate optimal interval for Fixed Interval mode to result in approximately 5 classes.
+
+        This method gets the min/max values from the field and calculates an interval
+        that will create approximately 5 classes (default target).
+        """
+        if not self.currentLayer or not self.currentFieldName:
+            return
+
+        # Target number of classes (default)
+        targetClasses = 5
+
+        # Get all values from the field
+        values = []
+        for feature in self.currentLayer.getFeatures():
+            val = feature[self.currentFieldName]
+            if val is not None:
+                try:
+                    values.append(float(val))
+                except (ValueError, TypeError):
+                    pass
+
+        if not values:
+            QgsMessageLog.logMessage(
+                "No valid numeric values found in field",
+                "QGISRed", Qgis.Warning
+            )
+            return
+
+        minVal = min(values)
+        maxVal = max(values)
+        dataRange = maxVal - minVal
+
+        if dataRange == 0:
+            # All values are the same, use a default interval
+            self.spinIntervalRange.blockSignals(True)
+            self.spinIntervalRange.setValue(1.0)
+            self.spinIntervalRange.blockSignals(False)
+            return
+
+        # Calculate interval for target number of classes
+        optimalInterval = dataRange / targetClasses
+
+        # Round to a "nice" number (power of 10, or 2*10^n, or 5*10^n)
+        import math
+        magnitude = math.floor(math.log10(optimalInterval))
+        mantissa = optimalInterval / (10 ** magnitude)
+
+        # Round mantissa to nice values: 1, 2, 5, or 10
+        if mantissa <= 1.5:
+            niceMantissa = 1
+        elif mantissa <= 3:
+            niceMantissa = 2
+        elif mantissa <= 7:
+            niceMantissa = 5
+        else:
+            niceMantissa = 10
+
+        niceInterval = niceMantissa * (10 ** magnitude)
+
+        # Set the spin box value without triggering the signal
+        self.spinIntervalRange.blockSignals(True)
+        self.spinIntervalRange.setValue(niceInterval)
+        self.spinIntervalRange.blockSignals(False)
+
+        QgsMessageLog.logMessage(
+            f"Calculated optimal interval: {niceInterval:.6f} (range: {dataRange:.2f}, target classes: {targetClasses})",
+            "QGISRed", Qgis.Info
+        )
+
     def onModeChanged(self):
         """Handle classification mode change."""
         if self.currentFieldType != self.FIELD_TYPE_NUMERIC or not self.currentLayer:
@@ -1691,6 +1768,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 "QGISRed", Qgis.Info
             )
             return
+
+        # If Fixed Interval mode, calculate optimal interval before applying
+        if methodId == "FixedInterval":
+            self.calculateOptimalInterval()
 
         # Apply the selected classification method
         self.applyClassificationMethod(methodId)
