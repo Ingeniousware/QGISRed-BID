@@ -739,7 +739,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def updateClassCount(self):
         """Update the class count display."""
         count = self.tableView.rowCount()
-        self.leClassCount.setText(str(count))
+        self.leClassCount.setValue(count)
 
     def initializeUiVisibility(self):
         """Initialize the visibility of UI elements at startup."""
