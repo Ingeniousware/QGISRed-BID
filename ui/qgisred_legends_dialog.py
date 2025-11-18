@@ -5,8 +5,8 @@ import os
 import random
 
 # Third-party imports
-from PyQt5.QtGui import QIcon, QColor
-from PyQt5.QtWidgets import QDialog, QMessageBox, QTableWidgetItem, QHeaderView, QComboBox, QLineEdit, QAbstractItemView
+from PyQt5.QtGui import QIcon, QColor, QFont
+from PyQt5.QtWidgets import QDialog, QMessageBox, QTableWidgetItem, QHeaderView, QComboBox, QLineEdit, QAbstractItemView, QLabel
 
 from PyQt5 import sip
 from qgis.PyQt import uic
@@ -99,12 +99,99 @@ class QGISRedLegendsDialog(QDialog, formClass):
         iconPath = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconThematicMaps.png')
         self.setWindowIcon(QIcon(iconPath))
 
+        # Remove native title bar and apply custom styling
+        self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)
+
+        # Create custom title bar with specified styling
+        self.setupCustomTitleBar()
+
         # Set QGIS-style icons for plus/minus buttons
         self.btClassPlus.setIcon(QIcon(":/images/themes/default/symbologyAdd.svg"))
         self.btClassMinus.setIcon(QIcon(":/images/themes/default/symbologyRemove.svg"))
         self.btClassPlus.setText("")
         self.btClassMinus.setText("")
-    
+
+    def setupCustomTitleBar(self):
+        """Create and configure custom title bar with specified styling."""
+        from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton, QVBoxLayout
+
+        # Create title bar widget
+        titleBar = QWidget(self)
+        titleBar.setFixedHeight(40)
+        titleBar.setStyleSheet("background-color: rgb(215, 215, 215);")
+
+        # Create title label with specified styling
+        titleLabel = QLabel("QGISRed Legend Editor", titleBar)
+        titleFont = QFont()
+        titleFont.setBold(True)
+        titleFont.setPointSize(14)
+        titleLabel.setFont(titleFont)
+        titleLabel.setStyleSheet("color: rgb(25, 64, 75); background-color: transparent;")
+
+        # Create close button
+        closeButton = QPushButton("×", titleBar)
+        closeButton.setFixedSize(30, 30)
+        closeButton.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: rgb(25, 64, 75);
+                font-size: 12px;
+                font-weight: bold;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: rgb(195, 195, 195);
+            }
+        """)
+        closeButton.clicked.connect(self.close)
+
+        # Layout for title bar
+        titleLayout = QHBoxLayout(titleBar)
+        titleLayout.setContentsMargins(5, 0, 5, 0)
+        titleLayout.addWidget(titleLabel)
+        titleLayout.addStretch()
+        titleLayout.addWidget(closeButton)
+
+        # Insert title bar at the top of the dialog's main layout
+        mainLayout = self.layout()
+        if mainLayout:
+            # Get the scroll area (first item)
+            scrollArea = mainLayout.itemAt(0).widget()
+            mainLayout.removeWidget(scrollArea)
+
+            # Create new vertical layout to hold title bar and scroll area
+            newLayout = QVBoxLayout()
+            newLayout.setContentsMargins(0, 0, 0, 0)
+            newLayout.setSpacing(0)
+            newLayout.addWidget(titleBar)
+            newLayout.addWidget(scrollArea)
+
+            # Clear and set new layout
+            while mainLayout.count():
+                mainLayout.takeAt(0)
+
+            containerWidget = QWidget()
+            containerWidget.setLayout(newLayout)
+            mainLayout.addWidget(containerWidget)
+
+        # Enable dragging the window by the title bar
+        self.titleBar = titleBar
+        self.titleBar.mousePressEvent = self.titleBarMousePressEvent
+        self.titleBar.mouseMoveEvent = self.titleBarMouseMoveEvent
+        self.dragPosition = None
+
+    def titleBarMousePressEvent(self, event):
+        """Handle mouse press on custom title bar for window dragging."""
+        if event.button() == Qt.LeftButton:
+            self.dragPosition = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def titleBarMouseMoveEvent(self, event):
+        """Handle mouse move on custom title bar for window dragging."""
+        if event.buttons() == Qt.LeftButton and self.dragPosition is not None:
+            self.move(event.globalPos() - self.dragPosition)
+            event.accept()
+
     def setupTableView(self):
         self.tableView.setColumnCount(4)  # Symbol (with checkbox), Size, Value, Legend
         self.tableView.setHorizontalHeaderLabels(["Symbol", "Size", "Value", "Legend"])
