@@ -117,20 +117,20 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         # Create title bar widget
         titleBar = QWidget(self)
-        titleBar.setFixedHeight(40)
+        #titleBar.setFixedHeight(40)
         titleBar.setStyleSheet("background-color: rgb(215, 215, 215);")
 
         # Create title label with specified styling
         titleLabel = QLabel("QGISRed Legend Editor", titleBar)
         titleFont = QFont()
         titleFont.setBold(True)
-        titleFont.setPointSize(14)
+        titleFont.setPointSize(9)
         titleLabel.setFont(titleFont)
         titleLabel.setStyleSheet("color: rgb(25, 64, 75); background-color: transparent;")
 
         # Create close button
-        closeButton = QPushButton("×", titleBar)
-        closeButton.setFixedSize(30, 30)
+        closeButton = QPushButton("x", titleBar)
+        closeButton.setFixedSize(25, 25)
         closeButton.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
@@ -147,7 +147,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         # Layout for title bar
         titleLayout = QHBoxLayout(titleBar)
-        titleLayout.setContentsMargins(5, 0, 5, 0)
+        titleLayout.setContentsMargins(10, 0, 5, 0)
         titleLayout.addWidget(titleLabel)
         titleLayout.addStretch()
         titleLayout.addWidget(closeButton)
@@ -1678,7 +1678,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         if nextValue is None:
             displayValue = "NULL"
-            legendText = self.tr("Null")
+            legendText = self.tr("Not Defined")
         else:
             displayValue = str(nextValue)
             legendText = str(nextValue)
