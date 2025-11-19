@@ -137,8 +137,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.tableView.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.tableView.setAlternatingRowColors(False)
         self.tableView.verticalHeader().setVisible(False)
-        self.tableView.setShowGrid(False)
-        self.tableView.setStyleSheet("QTableWidget { background-color: white; border: none; selection-background-color: #3399ff; selection-color: white; } QTableWidget::item { border: none; }")
+        self.tableView.setShowGrid(True)
+        self.tableView.setStyleSheet("QTableWidget { background-color: white; border: none; selection-background-color: #3399ff; selection-color: white; gridline-color: #e0e0e0; } QTableWidget::item { border: none; }")
 
     def setupClassCountField(self):
         """Configure read-only class count field."""
@@ -522,9 +522,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
         vw.setReadOnly(True)
         vw.setAlignment(Qt.AlignCenter)
         if isReadOnlyVal:
-            vw.setStyleSheet("QLineEdit { background-color: white; color: #808080; border: none; }")
+            vw.setStyleSheet("QLineEdit { background-color: white; color: #808080; border: 1px inset #696969; }")
         else:
-            vw.setStyleSheet("QLineEdit { background-color: white; color: #404040; border: none; }")
+            vw.setStyleSheet("QLineEdit { background-color: white; color: #404040; border: 1px inset #696969; }")
             vw.mouseDoubleClickEvent = lambda _event, r=row: self.openRangeEditor(r)
         self.tableView.setCellWidget(row, 2, vw)
 
@@ -719,10 +719,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     if c == 2:  # Value column
                         le.setAlignment(Qt.AlignCenter)
                         if hasDoubleClick:  # Numeric - editable via double-click
-                            le.setStyleSheet("QLineEdit { background-color: white; color: #404040; border: none; }")
+                            le.setStyleSheet("QLineEdit { background-color: white; color: #404040; border: 1px solid #e0e0e0; }")
                             le.mouseDoubleClickEvent = lambda _event, r=row: self.openRangeEditor(r)
                         else:  # Categorical - truly read-only
-                            le.setStyleSheet("QLineEdit { background-color: white; color: #808080; border: none; }")
+                            le.setStyleSheet("QLineEdit { background-color: white; color: #808080; border: 1px solid #e0e0e0; }")
                     else:  # Other read-only columns
                         le.setStyleSheet("QLineEdit { background-color: #F8F8F8; color: #808080; }")
                 if c == 1:
