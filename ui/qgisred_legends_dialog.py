@@ -8,8 +8,8 @@ import statistics
 
 # Third-party imports
 from PyQt5.QtGui import QIcon, QColor, QFont
-from PyQt5.QtWidgets import (QDialog, QMessageBox, QTableWidgetItem, QHeaderView, 
-                             QComboBox, QLineEdit, QAbstractItemView, QLabel, 
+from PyQt5.QtWidgets import (QDialog, QMessageBox, QHeaderView,
+                             QComboBox, QLineEdit, QAbstractItemView, QLabel,
                              QWidget, QHBoxLayout, QPushButton, QVBoxLayout)
 from PyQt5.QtCore import QVariant, Qt, QTimer
 from qgis.PyQt import uic
@@ -518,15 +518,15 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.tableView.setCellWidget(row, 1, sw)
         
         # Value
+        vw = QLineEdit(valText)
+        vw.setReadOnly(True)
+        vw.setAlignment(Qt.AlignCenter)
         if isReadOnlyVal:
-            vw = QLineEdit(valText)
-            vw.setReadOnly(True)
-            vw.setStyleSheet("QLineEdit { background-color: #F8F8F8; color: #808080; }")
-            self.tableView.setCellWidget(row, 2, vw)
+            vw.setStyleSheet("QLineEdit { background-color: white; color: #808080; border: none; }")
         else:
-            vi = QTableWidgetItem(valText)
-            vi.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-            self.tableView.setItem(row, 2, vi)
+            vw.setStyleSheet("QLineEdit { background-color: white; color: #404040; border: none; }")
+            vw.mouseDoubleClickEvent = lambda _event, r=row: self.openRangeEditor(r)
+        self.tableView.setCellWidget(row, 2, vw)
 
         # Legend
         lw = QLineEdit(legendText)
@@ -689,13 +689,12 @@ class QGISRedLegendsDialog(QDialog, formClass):
         data = []
         for c in range(4):
             w = self.tableView.cellWidget(row, c)
-            i = self.tableView.item(row, c)
             if isinstance(w, SymbolColorSelectorWithCheckbox):
                 data.append(('cw', w.color(), w.isChecked(), w.colorSelector.symbolSize))
             elif isinstance(w, QLineEdit):
-                data.append(('le', w.text(), w.isReadOnly()))
-            elif i:
-                data.append(('it', i.text()))
+                # For column 2 (Value), check if it has double-click handler (numeric) or not (categorical)
+                hasDoubleClick = c == 2 and hasattr(w, 'mouseDoubleClickEvent') and w.mouseDoubleClickEvent.__name__ == '<lambda>'
+                data.append(('le', w.text(), w.isReadOnly(), hasDoubleClick))
             else:
                 data.append(None)
         return data
@@ -714,17 +713,22 @@ class QGISRedLegendsDialog(QDialog, formClass):
             elif dtype == 'le':
                 le = QLineEdit(d[1])
                 le.setEnabled(self.isEditing)
-                if d[2]: 
+                hasDoubleClick = d[3] if len(d) > 3 else False
+                if d[2]:
                     le.setReadOnly(True)
-                    le.setStyleSheet("QLineEdit { background-color: #F8F8F8; color: #808080; }")
-                if c == 1: 
+                    if c == 2:  # Value column
+                        le.setAlignment(Qt.AlignCenter)
+                        if hasDoubleClick:  # Numeric - editable via double-click
+                            le.setStyleSheet("QLineEdit { background-color: white; color: #404040; border: none; }")
+                            le.mouseDoubleClickEvent = lambda _event, r=row: self.openRangeEditor(r)
+                        else:  # Categorical - truly read-only
+                            le.setStyleSheet("QLineEdit { background-color: white; color: #808080; border: none; }")
+                    else:  # Other read-only columns
+                        le.setStyleSheet("QLineEdit { background-color: #F8F8F8; color: #808080; }")
+                if c == 1:
                     le.setAlignment(Qt.AlignCenter)
                     le.textChanged.connect(lambda t, r=row: self.onSizeChanged(r, t))
                 self.tableView.setCellWidget(row, c, le)
-            elif dtype == 'it':
-                it = QTableWidgetItem(d[1])
-                it.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-                self.tableView.setItem(row, c, it)
 
     # --- Numeric Logic & Classification ---
 
@@ -749,10 +753,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def getRangeValues(self, row):
         """Parse range string from table."""
-        item = self.tableView.item(row, 2)
-        if not item: return None
+        widget = self.tableView.cellWidget(row, 2)
+        if not isinstance(widget, QLineEdit): return None
         try:
-            parts = item.text().split(' - ')
+            parts = widget.text().split(' - ')
             return float(parts[0]), float(parts[1])
         except: return None
 
@@ -774,9 +778,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
         l, u = curr
         if newLower is not None: l = newLower
         if newUpper is not None: u = newUpper
-        
+
         txt = f"{l:.2f} - {u:.2f}"
-        self.tableView.item(row, 2).setText(txt)
+        vw = self.tableView.cellWidget(row, 2)
+        if isinstance(vw, QLineEdit):
+            vw.setText(txt)
         # Update legend if it matched old range
         lw = self.tableView.cellWidget(row, 3)
         if isinstance(lw, QLineEdit) and lw.text().replace(" ","") == f"{curr[0]:.2f}-{curr[1]:.2f}".replace(" ",""):
@@ -852,12 +858,14 @@ class QGISRedLegendsDialog(QDialog, formClass):
         for i in range(num):
             l, u = breaks[i], breaks[i+1]
             txt = f"{l:.2f} - {u:.2f}"
-            if self.tableView.item(i, 2): self.tableView.item(i, 2).setText(txt)
-            
+            vw = self.tableView.cellWidget(i, 2)
+            if isinstance(vw, QLineEdit):
+                vw.setText(txt)
+
             col = ramp.color(i / max(1, num - 1))
             cw = self.tableView.cellWidget(i, 0)
             if isinstance(cw, SymbolColorSelectorWithCheckbox): cw.setColor(col)
-            
+
             lw = self.tableView.cellWidget(i, 3)
             if isinstance(lw, QLineEdit): lw.setText(txt)
         
