@@ -57,6 +57,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btClassPlusClickTimer = None
         self.btClassPlusAddBefore = False
         self.dragPosition = None
+        self.layerTreeViewConnection = None
 
     def initUi(self):
         """Initialize UI components."""
@@ -164,6 +165,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.tableView.itemSelectionChanged.connect(self.updateButtonStates)
         self.tableView.itemClicked.connect(lambda item: self.tableView.selectRow(item.row()) if item else None)
 
+        # Connect to layer tree view to track layer selection changes
+        if iface and iface.layerTreeView():
+            self.layerTreeViewConnection = iface.layerTreeView().currentLayerChanged.connect(self.onQgisLayerSelectionChanged)
+
     def loadInitialState(self):
         """Preselect group/layer and set initial state."""
         self.preselectGroupAndLayer()
@@ -184,6 +189,34 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if event.buttons() == Qt.LeftButton and self.dragPosition:
             self.move(event.globalPos() - self.dragPosition)
             event.accept()
+
+    def onQgisLayerSelectionChanged(self, layer):
+        """Handle layer selection change from QGIS layer tree."""
+        if not layer or not isinstance(layer, QgsVectorLayer):
+            return
+
+        # Check if the layer is in an allowed group and has the right renderer type
+        layerNode = QgsProject.instance().layerTreeRoot().findLayer(layer)
+        if not layerNode:
+            return
+
+        groupPath = self.findGroupPathForLayer(layerNode)
+        if not groupPath:
+            return
+
+        # Check if layer has graduated or categorized renderer
+        if layer.renderer().type() not in ("graduatedSymbol", "categorizedSymbol"):
+            return
+
+        # Update the group selection if needed
+        currentGroupPath = self.cbGroups.currentData()
+        if currentGroupPath != groupPath:
+            self.setGroupByPath(groupPath)
+            self.onGroupChanged()
+
+        # Update the layer selection if needed
+        if self.cbLegendLayer.currentLayer() != layer:
+            self.cbLegendLayer.setLayer(layer)
 
     def onGroupChanged(self):
         """Filter layer combo when group selection changes."""
@@ -1053,3 +1086,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
             self.currentLayer.setRenderer(self.originalRenderer.clone())
             self.currentLayer.triggerRepaint()
         self.reject()
+
+    def closeEvent(self, event):
+        """Clean up connections when dialog is closed."""
+        # Disconnect layer tree view signal
+        if self.layerTreeViewConnection and iface and iface.layerTreeView():
+            try:
+                iface.layerTreeView().currentLayerChanged.disconnect(self.onQgisLayerSelectionChanged)
+            except:
+                pass
+        super().closeEvent(event)
