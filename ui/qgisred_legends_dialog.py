@@ -24,7 +24,7 @@ from qgis.utils import iface
 
 # Local imports
 from ..tools.qgisred_utils import QGISRedUtils
-from .qgisred_custom_dialogs import RangeEditDialog, SymbolColorSelectorWithCheckbox, SymbolEditDialog
+from .qgisred_custom_dialogs import RangeEditDialog, SymbolColorSelectorWithCheckbox
 
 # Load UI
 formClass, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_legends_dialog.ui"))
@@ -239,9 +239,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def onCellDoubleClicked(self, row, column):
         """Route double click to specific editors."""
-        if column == 0:
-            self.openSymbolEditor(row)
-        elif column == 2 and self.currentFieldType == self.FIELD_TYPE_NUMERIC:
+        if column == 2 and self.currentFieldType == self.FIELD_TYPE_NUMERIC:
             self.openRangeEditor(row)
 
     # --- Layer & Group Logic ---
@@ -842,21 +840,6 @@ class QGISRedLegendsDialog(QDialog, formClass):
         return sorted(vals)
 
     # --- Editing Logic ---
-
-    def openSymbolEditor(self, row):
-        """Open symbol dialog."""
-        cw = self.tableView.cellWidget(row, 0)
-        if not isinstance(cw, SymbolColorSelectorWithCheckbox): return
-        sw = self.tableView.cellWidget(row, 1)
-        size = float(sw.text()) if isinstance(sw, QLineEdit) else 1.0
-        isLine = self.currentLayer.geometryType() == 1
-        
-        dlg = SymbolEditDialog(cw.colorSelector.color(), size, isLine, self)
-        if dlg.exec_():
-            c, s = dlg.getValues()
-            cw.colorSelector.setColor(c)
-            cw.updateSymbolSize(s, isLine)
-            if isinstance(sw, QLineEdit): sw.setText(str(s))
 
     def openRangeEditor(self, row):
         """Open range dialog."""
