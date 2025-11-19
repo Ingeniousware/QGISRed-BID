@@ -83,7 +83,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         """Build custom title bar."""
         titleBar = QWidget(self)
         titleBar.setStyleSheet("background-color: rgb(215, 215, 215);")
-        
+        titleBar.setMaximumHeight(30)
+
         titleLabel = QLabel("QGISRed Legend Editor", titleBar)
         titleFont = QFont()
         titleFont.setBold(True)
@@ -131,7 +132,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         header.setSectionResizeMode(3, QHeaderView.Stretch)
         self.tableView.setColumnWidth(0, 50)
         self.tableView.setColumnWidth(1, 60)
-        self.tableView.setColumnWidth(2, 100)
+        self.tableView.setColumnWidth(2, 120)
         
         self.tableView.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tableView.setSelectionMode(QAbstractItemView.ExtendedSelection)
