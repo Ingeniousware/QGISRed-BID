@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>595</width>
-    <height>441</height>
+    <width>589</width>
+    <height>453</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -63,8 +63,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>579</width>
-        <height>441</height>
+        <width>587</width>
+        <height>451</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_6">
@@ -185,31 +185,55 @@
                  </widget>
                 </item>
                 <item>
+                 <layout class="QHBoxLayout" name="horizontalLayout_5">
+                  <item>
+                   <widget class="QLabel" name="labelIntervalRange">
+                    <property name="text">
+                     <string>Interval Range</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QDoubleSpinBox" name="spinIntervalRange">
+                    <property name="maximumSize">
+                     <size>
+                      <width>80</width>
+                      <height>16777215</height>
+                     </size>
+                    </property>
+                    <property name="maximum">
+                     <double>9999999999999999583119736832.000000000000000</double>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
                  <widget class="Line" name="line_3">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
                   </property>
                  </widget>
                 </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QVBoxLayout" name="verticalLayout_2">
                 <item>
-                 <layout class="QHBoxLayout" name="horizontalLayout_9">
-                  <item>
-                   <widget class="QLabel" name="labelSizes">
-                    <property name="maximumSize">
-                     <size>
-                      <width>50</width>
-                      <height>16777215</height>
-                     </size>
-                    </property>
-                    <property name="text">
-                     <string>Sizes</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QComboBox" name="cbSizes"/>
-                  </item>
-                 </layout>
+                 <widget class="QLabel" name="labelSizes">
+                  <property name="maximumSize">
+                   <size>
+                    <width>50</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>Sizes</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="cbSizes"/>
                 </item>
                </layout>
               </item>
@@ -221,7 +245,7 @@
                </widget>
               </item>
               <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_10">
+               <layout class="QVBoxLayout" name="verticalLayout_4">
                 <item>
                  <widget class="QLabel" name="labelColors">
                   <property name="maximumSize">
@@ -246,30 +270,6 @@
                  <enum>Qt::Horizontal</enum>
                 </property>
                </widget>
-              </item>
-              <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_5">
-                <item>
-                 <widget class="QLabel" name="labelIntervalRange">
-                  <property name="text">
-                   <string>Interval Range</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QDoubleSpinBox" name="spinIntervalRange">
-                  <property name="maximumSize">
-                   <size>
-                    <width>60</width>
-                    <height>16777215</height>
-                   </size>
-                  </property>
-                  <property name="maximum">
-                   <double>9999999999999999583119736832.000000000000000</double>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
               </item>
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout">

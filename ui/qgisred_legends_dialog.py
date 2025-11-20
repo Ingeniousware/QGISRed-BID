@@ -92,8 +92,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         titleLabel.setFont(titleFont)
         titleLabel.setStyleSheet("color: rgb(25, 64, 75); background-color: transparent;")
 
-        closeButton = QPushButton("x", titleBar)
-        closeButton.setFixedSize(20, 20)
+        closeButton = QPushButton("X", titleBar)
+        closeButton.setFixedSize(30, 30)
         closeButton.setStyleSheet("QPushButton { background-color: transparent; color: rgb(25, 64, 75); font-weight: bold; border: none; } QPushButton:hover { background-color: rgb(195, 195, 195); }")
         closeButton.clicked.connect(self.close)
 
