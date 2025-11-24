@@ -288,21 +288,41 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.cbLegendLayer.blockSignals(False)
         self.onLayerChanged(self.cbLegendLayer.currentLayer())
 
+    def resetAllModesToManual(self):
+        """Reset classification, size, and color modes to Manual."""
+        # Reset classification mode
+        self.cbMode.blockSignals(True)
+        self.cbMode.setCurrentIndex(0)  # Manual
+        self.cbMode.blockSignals(False)
+
+        # Reset size mode
+        self.cbSizes.blockSignals(True)
+        self.cbSizes.setCurrentIndex(0)  # Manual
+        self.cbSizes.blockSignals(False)
+
+        # Reset color mode
+        self.cbColors.blockSignals(True)
+        self.cbColors.setCurrentIndex(0)  # Manual
+        self.cbColors.blockSignals(False)
+
+        # Trigger UI updates for size and color modes
+        self.onSizeModeChanged()
+        self.onColorModeChanged()
+
     def onLayerChanged(self, layer):
         """Handle layer selection change."""
         if layer and isinstance(layer, QgsVectorLayer):
             self.currentLayer = layer
             self.originalRenderer = layer.renderer().clone() if layer.renderer() else None
             self.currentFieldType, self.currentFieldName = self.detectFieldType(layer)
-            
+
             self.frameLegends.setEnabled(True)
             self.labelFrameLegends.setText(self.tr(f"Legend for {layer.name()}"))
+
+            self.resetAllModesToManual()
             self.updateUiBasedOnFieldType()
-            
+
             if self.currentFieldType == self.FIELD_TYPE_NUMERIC:
-                self.cbMode.blockSignals(True)
-                self.cbMode.setCurrentIndex(0)
-                self.cbMode.blockSignals(False)
                 self.populateNumericLegend()
             elif self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
                 self.populateCategoricalLegend()
