@@ -169,7 +169,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btColorEqual.colorChanged.connect(self.applyColorLogic)
         self.cbColorRampPalette.currentIndexChanged.connect(self.applyColorLogic)
         self.ckColorInvert.toggled.connect(self.applyColorLogic)
-        
+
+        # Setup refresh colors button
+        self.btRefreshColors.setIcon(QIcon(":/images/themes/default/mActionRefresh.svg"))
+        self.btRefreshColors.clicked.connect(self.applyColorLogic)
+
         self.onSizeModeChanged()
         self.onColorModeChanged()
 
@@ -369,6 +373,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btColorEqual.setVisible(mode == "Equal")
         self.cbColorRampPalette.setVisible(mode in ["Ramp", "Palette"])
         self.ckColorInvert.setVisible(mode in ["Ramp", "Palette"])
+        self.btRefreshColors.setVisible(mode == "Random")
 
         if mode == "Ramp":
             self.populateRamps()
