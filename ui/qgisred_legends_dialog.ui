@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>618</width>
-    <height>453</height>
+    <width>651</width>
+    <height>370</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -62,9 +62,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>0</y>
-        <width>602</width>
-        <height>502</height>
+        <y>-85</y>
+        <width>635</width>
+        <height>484</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_6">
@@ -269,13 +269,6 @@
                       </property>
                      </widget>
                     </item>
-                    <item>
-                     <widget class="QCheckBox" name="ckSizeInvert">
-                      <property name="text">
-                       <string>Invert</string>
-                      </property>
-                     </widget>
-                    </item>
                    </layout>
                   </item>
                   <item>
@@ -306,6 +299,19 @@
                       </property>
                       <property name="value">
                        <double>3.000000000000000</double>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QCheckBox" name="ckSizeInvert">
+                      <property name="maximumSize">
+                       <size>
+                        <width>50</width>
+                        <height>16777215</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string>Invert</string>
                       </property>
                      </widget>
                     </item>
@@ -362,21 +368,33 @@
                     </property>
                    </widget>
                   </item>
-                 </layout>
-                </item>
-                <item>
-                 <layout class="QHBoxLayout" name="horizontalLayout_12">
                   <item>
-                   <widget class="QgsColorButton" name="btColorEqual"/>
+                   <widget class="QgsColorButton" name="btColorEqual">
+                    <property name="minimumSize">
+                     <size>
+                      <width>50</width>
+                      <height>16</height>
+                     </size>
+                    </property>
+                   </widget>
                   </item>
                   <item>
                    <widget class="QCheckBox" name="ckColorInvert">
+                    <property name="maximumSize">
+                     <size>
+                      <width>50</width>
+                      <height>16777215</height>
+                     </size>
+                    </property>
                     <property name="text">
                      <string>Invert</string>
                     </property>
                    </widget>
                   </item>
                  </layout>
+                </item>
+                <item>
+                 <layout class="QHBoxLayout" name="horizontalLayout_12"/>
                 </item>
                 <item>
                  <widget class="QComboBox" name="cbColorRampPalette"/>
@@ -506,77 +524,10 @@
        </item>
        <item>
         <layout class="QGridLayout" name="gridLayout_9">
-         <item row="1" column="9">
-          <spacer name="horizontalSpacer_2">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item row="1" column="1">
-          <spacer name="horizontalSpacer">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Fixed</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>12</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item row="1" column="11">
+         <item row="1" column="12">
           <widget class="QPushButton" name="btCancelLegend">
            <property name="text">
             <string>Cancel</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="2">
-          <widget class="QPushButton" name="btLoadGlobal">
-           <property name="text">
-            <string>Load Global</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="5">
-          <widget class="QPushButton" name="btSaveProject">
-           <property name="text">
-            <string>Save Project</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="10">
-          <widget class="QPushButton" name="btApplyLegend">
-           <property name="text">
-            <string>Apply</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="11">
-          <layout class="QVBoxLayout" name="verticalLayout_3"/>
-         </item>
-         <item row="1" column="0">
-          <widget class="QPushButton" name="btLoadDefault">
-           <property name="text">
-            <string>Load Default</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="3">
-          <widget class="QPushButton" name="btSaveGlobal">
-           <property name="text">
-            <string>Save Global</string>
            </property>
           </widget>
          </item>
@@ -595,6 +546,80 @@
             </size>
            </property>
           </spacer>
+         </item>
+         <item row="1" column="3">
+          <widget class="QPushButton" name="btSaveGlobal">
+           <property name="text">
+            <string>Save Global</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <spacer name="horizontalSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeType">
+            <enum>QSizePolicy::Fixed</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>12</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item row="0" column="12">
+          <layout class="QVBoxLayout" name="verticalLayout_3"/>
+         </item>
+         <item row="1" column="10">
+          <spacer name="horizontalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item row="1" column="6">
+          <widget class="QPushButton" name="btSaveProject">
+           <property name="text">
+            <string>Save Project</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QPushButton" name="btLoadDefault">
+           <property name="text">
+            <string>Load Default</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="2">
+          <widget class="QPushButton" name="btLoadGlobal">
+           <property name="text">
+            <string>Load Global</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="11">
+          <widget class="QPushButton" name="btApplyLegend">
+           <property name="text">
+            <string>Apply</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="5">
+          <widget class="QPushButton" name="btLoadProject">
+           <property name="text">
+            <string>Load Project</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </item>
