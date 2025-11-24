@@ -156,81 +156,20 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.leClassCount.setStyleSheet("QLineEdit { background-color: #F0F0F0; color: #808080; }")
 
     def setupAdvancedUi(self):
-        """Injects the new Color and Size configuration widgets into the existing layouts."""
-
-        # --- 1. Size Configuration ---
-        # Find verticalLayout_2 based on UI file (holds labelSizes and cbSizes)
-        layoutSizes = self.findChild(QVBoxLayout, 'verticalLayout_2')
-
-        # Create Size Mode selector
-        self.cbSizeMode = QComboBox()
-        self.cbSizeMode.addItems(["Manual", "Equal", "Linear", "Quadratic", "Exponential"])
-        self.cbSizeMode.currentIndexChanged.connect(self.onSizeModeChanged)
-
-        # Size Input Widgets
-        self.spinSizeEqual = QDoubleSpinBox()
-        self.spinSizeEqual.setRange(0, 100)
-        self.spinSizeEqual.setValue(2.0)
-        self.spinSizeEqual.setSingleStep(0.1)
+        self.cbSizes.addItems(["Manual", "Equal", "Linear", "Quadratic", "Exponential"])
+        self.cbSizes.currentIndexChanged.connect(self.onSizeModeChanged)
         self.spinSizeEqual.valueChanged.connect(self.applySizeLogic)
-
-        self.spinSizeMin = QDoubleSpinBox()
-        self.spinSizeMin.setRange(0, 100)
-        self.spinSizeMin.setValue(1.0)
-        self.spinSizeMin.setSingleStep(0.1)
-        self.spinSizeMin.setPrefix("Min: ")
         self.spinSizeMin.valueChanged.connect(self.applySizeLogic)
-
-        self.spinSizeMax = QDoubleSpinBox()
-        self.spinSizeMax.setRange(0, 100)
-        self.spinSizeMax.setValue(5.0)
-        self.spinSizeMax.setSingleStep(0.1)
-        self.spinSizeMax.setPrefix("Max: ")
         self.spinSizeMax.valueChanged.connect(self.applySizeLogic)
+        self.ckSizeInvert.toggled.connect(self.applySizeLogic)
 
-        self.chkSizeInvert = QCheckBox(self.tr("Invert Order"))
-        self.chkSizeInvert.toggled.connect(self.applySizeLogic)
-
-        # Add to layout
-        if layoutSizes:
-            # Remove old placeholder if exists
-            if hasattr(self, 'cbSizes'):
-                self.cbSizes.setVisible(False)
-            layoutSizes.addWidget(self.cbSizeMode)
-            layoutSizes.addWidget(self.spinSizeEqual)
-            layoutSizes.addWidget(self.spinSizeMin)
-            layoutSizes.addWidget(self.spinSizeMax)
-            layoutSizes.addWidget(self.chkSizeInvert)
-
-        # --- 2. Color Configuration ---
-        # Find verticalLayout_4 based on UI file (holds labelColors)
-        layoutColors = self.findChild(QVBoxLayout, 'verticalLayout_4')
-
-        self.cbColorMode = QComboBox()
-        self.cbColorMode.addItems(["Manual", "Equal", "Random", "Ramp", "Palette"])
-        self.cbColorMode.currentIndexChanged.connect(self.onColorModeChanged)
-
-        # Color Widgets
-        self.btnColorEqual = QgsColorButton(self)
-        self.btnColorEqual.setColor(QColor("red"))
-        self.btnColorEqual.colorChanged.connect(self.applyColorLogic)
-
-        self.cbColorRampPalette = QComboBox()  # Holds Ramps or Palettes
+        self.cbColors.addItems(["Manual", "Equal", "Random", "Ramp", "Palette"])
+        self.cbColors.currentIndexChanged.connect(self.onColorModeChanged)
+        self.btColorEqual.setColor(QColor("red"))
+        self.btColorEqual.colorChanged.connect(self.applyColorLogic)
         self.cbColorRampPalette.currentIndexChanged.connect(self.applyColorLogic)
-
-        self.chkColorInvert = QCheckBox(self.tr("Invert Colors"))
-        self.chkColorInvert.toggled.connect(self.applyColorLogic)
-
-        # Add to layout
-        if layoutColors:
-            if hasattr(self, 'cbColors'):
-                self.cbColors.setVisible(False)
-            layoutColors.addWidget(self.cbColorMode)
-            layoutColors.addWidget(self.btnColorEqual)
-            layoutColors.addWidget(self.cbColorRampPalette)
-            layoutColors.addWidget(self.chkColorInvert)
-
-        # Initial Visibility Update
+        self.ckColorInvert.toggled.connect(self.applyColorLogic)
+        
         self.onSizeModeChanged()
         self.onColorModeChanged()
 
@@ -397,19 +336,19 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def onSizeModeChanged(self):
         """Handle size mode change."""
-        mode = self.cbSizeMode.currentText()
+        mode = self.cbSizes.currentText()
         self.spinSizeEqual.setVisible(mode == "Equal")
         self.spinSizeMin.setVisible(mode in ["Linear", "Quadratic", "Exponential"])
         self.spinSizeMax.setVisible(mode in ["Linear", "Quadratic", "Exponential"])
-        self.chkSizeInvert.setVisible(mode != "Manual" and mode != "Equal")
+        self.ckSizeInvert.setVisible(mode != "Manual" and mode != "Equal")
         self.applySizeLogic()
 
     def onColorModeChanged(self):
         """Handle color mode change."""
-        mode = self.cbColorMode.currentText()
-        self.btnColorEqual.setVisible(mode == "Equal")
+        mode = self.cbColors.currentText()
+        self.btColorEqual.setVisible(mode == "Equal")
         self.cbColorRampPalette.setVisible(mode in ["Ramp", "Palette"])
-        self.chkColorInvert.setVisible(mode in ["Ramp", "Palette"])
+        self.ckColorInvert.setVisible(mode in ["Ramp", "Palette"])
 
         if mode == "Ramp":
             self.populateRamps()
@@ -466,10 +405,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def applySizeLogic(self):
         """Apply size algorithm based on selected mode."""
-        if not hasattr(self, 'cbSizeMode'):
+        if not hasattr(self, 'cbSizes'):
             return
 
-        mode = self.cbSizeMode.currentText()
+        mode = self.cbSizes.currentText()
         if mode == "Manual" or self.tableView.rowCount() == 0:
             return
 
@@ -486,7 +425,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             # Normalize 0..1
             t_values = [i / max(1, rows - 1) for i in range(rows)]
 
-            if self.chkSizeInvert.isChecked():
+            if self.ckSizeInvert.isChecked():
                 t_values.reverse()
 
             for t in t_values:
@@ -519,10 +458,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def applyColorLogic(self):
         """Apply color algorithm based on selected mode."""
-        if not hasattr(self, 'cbColorMode'):
+        if not hasattr(self, 'cbColors'):
             return
 
-        mode = self.cbColorMode.currentText()
+        mode = self.cbColors.currentText()
         if mode == "Manual" or self.tableView.rowCount() == 0:
             return
 
@@ -530,7 +469,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         colors = []
 
         if mode == "Equal":
-            c = self.btnColorEqual.color()
+            c = self.btColorEqual.color()
             colors = [c] * rows
 
         elif mode == "Random":
@@ -551,7 +490,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 colors = [self.generateRandomColor() for _ in range(rows)]
 
         # Apply Inversion for Ramp/Palette
-        if mode in ["Ramp", "Palette"] and self.chkColorInvert.isChecked():
+        if mode in ["Ramp", "Palette"] and self.ckColorInvert.isChecked():
             colors.reverse()
 
         # Update Table
