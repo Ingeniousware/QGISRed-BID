@@ -63,6 +63,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.layerTreeViewConnection = None
         self.style = None  # QGISRed style database
 
+        # Resize handling for frameless window
+        self.resizing = False
+        self.resizeEdge = None
+        self.resizeMargin = 5
+
         # Plugin context properties (set via config method)
         self.parent = None
         self.iface = None
@@ -101,6 +106,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         iconPath = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconThematicMaps.png')
         self.setWindowIcon(QIcon(iconPath))
         self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.setMouseTracking(True)
         self.setupCustomTitleBar()
         self.btClassPlus.setIcon(QIcon(":/images/themes/default/symbologyAdd.svg"))
         self.btClassMinus.setIcon(QIcon(":/images/themes/default/symbologyRemove.svg"))
@@ -118,6 +124,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
         titleLabel.setFont(titleFont)
         titleLabel.setStyleSheet("color: rgb(25, 64, 75); background-color: transparent;")
 
+        minimizeButton = QPushButton("_", titleBar)
+        minimizeButton.setFixedSize(30, 30)
+        minimizeButton.setStyleSheet("QPushButton { background-color: transparent; color: rgb(25, 64, 75); font-weight: bold; border: none; padding-bottom: 5px; } QPushButton:hover { background-color: rgb(195, 195, 195); }")
+        minimizeButton.clicked.connect(self.showMinimized)
+
         closeButton = QPushButton("X", titleBar)
         closeButton.setFixedSize(30, 30)
         closeButton.setStyleSheet("QPushButton { background-color: transparent; color: rgb(25, 64, 75); font-weight: bold; border: none; } QPushButton:hover { background-color: rgb(195, 195, 195); }")
@@ -127,18 +138,19 @@ class QGISRedLegendsDialog(QDialog, formClass):
         layout.setContentsMargins(10, 0, 5, 0)
         layout.addWidget(titleLabel)
         layout.addStretch()
+        layout.addWidget(minimizeButton)
         layout.addWidget(closeButton)
 
         mainLayout = self.layout()
         oldContent = mainLayout.itemAt(0).widget()
         mainLayout.removeWidget(oldContent)
-        
+
         newContainer = QVBoxLayout()
         newContainer.setContentsMargins(0, 0, 0, 0)
         newContainer.setSpacing(0)
         newContainer.addWidget(titleBar)
         newContainer.addWidget(oldContent)
-        
+
         wrapper = QWidget()
         wrapper.setLayout(newContainer)
         mainLayout.addWidget(wrapper)
@@ -1533,3 +1545,101 @@ class QGISRedLegendsDialog(QDialog, formClass):
             except:
                 pass
         super().closeEvent(event)
+
+    # --- Custom Resize Functionality for Frameless Window ---
+
+    def getResizeEdge(self, pos):
+        """Determine which edge/corner is at the given position."""
+        rect = self.rect()
+        margin = self.resizeMargin
+
+        onLeft = pos.x() <= margin
+        onRight = pos.x() >= rect.width() - margin
+        onTop = pos.y() <= margin
+        onBottom = pos.y() >= rect.height() - margin
+
+        if onTop and onLeft:
+            return 'top-left'
+        elif onTop and onRight:
+            return 'top-right'
+        elif onBottom and onLeft:
+            return 'bottom-left'
+        elif onBottom and onRight:
+            return 'bottom-right'
+        elif onTop:
+            return 'top'
+        elif onBottom:
+            return 'bottom'
+        elif onLeft:
+            return 'left'
+        elif onRight:
+            return 'right'
+        return None
+
+    def updateCursor(self, edge):
+        """Update cursor shape based on resize edge."""
+        if edge in ['top', 'bottom']:
+            self.setCursor(Qt.SizeVerCursor)
+        elif edge in ['left', 'right']:
+            self.setCursor(Qt.SizeHorCursor)
+        elif edge in ['top-left', 'bottom-right']:
+            self.setCursor(Qt.SizeFDiagCursor)
+        elif edge in ['top-right', 'bottom-left']:
+            self.setCursor(Qt.SizeBDiagCursor)
+        else:
+            self.setCursor(Qt.ArrowCursor)
+
+    def mousePressEvent(self, event):
+        """Handle mouse press for resizing."""
+        if event.button() == Qt.LeftButton:
+            self.resizeEdge = self.getResizeEdge(event.pos())
+            if self.resizeEdge:
+                self.resizing = True
+                self.dragPosition = event.globalPos()
+                event.accept()
+                return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        """Handle mouse move for resizing or cursor update."""
+        if self.resizing and self.resizeEdge:
+            delta = event.globalPos() - self.dragPosition
+            self.dragPosition = event.globalPos()
+
+            geo = self.geometry()
+            minWidth = self.minimumWidth() or 400
+            minHeight = self.minimumHeight() or 300
+
+            if 'left' in self.resizeEdge:
+                newWidth = geo.width() - delta.x()
+                if newWidth >= minWidth:
+                    geo.setLeft(geo.left() + delta.x())
+            if 'right' in self.resizeEdge:
+                newWidth = geo.width() + delta.x()
+                if newWidth >= minWidth:
+                    geo.setWidth(newWidth)
+            if 'top' in self.resizeEdge:
+                newHeight = geo.height() - delta.y()
+                if newHeight >= minHeight:
+                    geo.setTop(geo.top() + delta.y())
+            if 'bottom' in self.resizeEdge:
+                newHeight = geo.height() + delta.y()
+                if newHeight >= minHeight:
+                    geo.setHeight(newHeight)
+
+            self.setGeometry(geo)
+            event.accept()
+        else:
+            # Update cursor based on position
+            edge = self.getResizeEdge(event.pos())
+            self.updateCursor(edge)
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        """Handle mouse release to stop resizing."""
+        if event.button() == Qt.LeftButton and self.resizing:
+            self.resizing = False
+            self.resizeEdge = None
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
