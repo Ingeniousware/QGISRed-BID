@@ -1369,6 +1369,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             m.setLabelFormat("%1 - %2")
             c = m.classes(self.currentLayer, self.currentFieldName, num)
             breaks = [minV] + [x.upperBound() for x in c]
+            num = len(breaks) - 1
         elif methodId == "StdDev":
             mu = statistics.mean(vals)
             sd = statistics.stdev(vals) if len(vals) > 1 else 0
@@ -1378,6 +1379,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             m = QgsClassificationPrettyBreaks()
             c = m.classes(self.currentLayer, self.currentFieldName, num)
             breaks = [minV] + [x.upperBound() for x in c]
+            num = len(breaks) - 1
 
         if len(breaks) < 2: return
 
