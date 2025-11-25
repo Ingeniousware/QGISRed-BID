@@ -63,6 +63,23 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.layerTreeViewConnection = None
         self.style = None  # QGISRed style database
 
+        # Plugin context properties (set via config method)
+        self.parent = None
+        self.iface = None
+        self.ProjectDirectory = ""
+        self.NetworkName = ""
+        self.utils = None
+
+    def config(self, ifac, direct, netw, parent):
+        """Configure dialog with parent plugin context."""
+        self.parent = parent
+        self.iface = ifac
+        self.ProjectDirectory = direct
+        self.NetworkName = netw
+
+        # Create utils instance
+        self.utils = QGISRedUtils(direct, netw, ifac)
+
     def initUi(self):
         """Initialize UI components."""
         self.configWindow()
