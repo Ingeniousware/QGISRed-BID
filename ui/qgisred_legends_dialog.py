@@ -1372,25 +1372,38 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if not self.currentLayer: return
         ident = self.currentLayer.customProperty("qgisred_identifier")
         if not ident: return
-        
-        name = QGISRedUtils().identifierToElementName.get(ident)
+
+        # Use utils instance instead of creating new QGISRedUtils
+        if self.utils:
+            name = self.utils.identifierToElementName.get(ident)
+        else:
+            name = QGISRedUtils().identifierToElementName.get(ident)
         if not name: return
-        
+
         fname = name.replace(" ", "") + ".qml"
-        
+
         if globalStyle:
             folder = os.path.join(self.pluginFolder, "layerStyles")
         else:
-            proj = QgsProject.instance().fileName()
-            folder = os.path.join(os.path.dirname(proj), "layerStyles") if proj else None
-            
+            # Use utils to get project directory
+            if self.utils:
+                projectDir = self.utils.getProjectDirectory()
+            else:
+                projectDir = self.ProjectDirectory
+
+            if not projectDir:
+                QMessageBox.warning(self, "No Project", "Project directory not set.")
+                return
+
+            folder = os.path.join(projectDir, "layerStyles")
+
         if not folder: return
         if not os.path.exists(folder): os.makedirs(folder)
-        
+
         path = os.path.join(folder, fname)
         if os.path.exists(path):
             if QMessageBox.question(self, "Overwrite", "Overwrite style?", QMessageBox.Yes|QMessageBox.No) != QMessageBox.Yes: return
-            
+
         self.currentLayer.saveNamedStyle(path)
         QMessageBox.information(self, "Saved", f"Style saved to {path}")
 
@@ -1405,17 +1418,28 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if not self.currentLayer:
             return
         ident = self.currentLayer.customProperty("qgisred_identifier")
-        name = QGISRedUtils().identifierToElementName.get(ident)
+
+        # Use utils instance instead of creating new QGISRedUtils
+        if self.utils:
+            name = self.utils.identifierToElementName.get(ident)
+        else:
+            name = QGISRedUtils().identifierToElementName.get(ident)
         if not name:
             return
 
         fname = name.replace(" ", "") + ".qml"
-        proj = QgsProject.instance().fileName()
-        if not proj:
-            QMessageBox.warning(self, "No Project", "Please save the project first.")
+
+        # Use utils to get project directory
+        if self.utils:
+            projectDir = self.utils.getProjectDirectory()
+        else:
+            projectDir = self.ProjectDirectory
+
+        if not projectDir:
+            QMessageBox.warning(self, "No Project", "Project directory not set.")
             return
 
-        folder = os.path.join(os.path.dirname(proj), "layerStyles")
+        folder = os.path.join(projectDir, "layerStyles")
         path = os.path.join(folder, fname)
 
         if not os.path.exists(path):
@@ -1430,7 +1454,12 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def _loadStyle(self, isDefault):
         if not self.currentLayer: return
         ident = self.currentLayer.customProperty("qgisred_identifier")
-        name = QGISRedUtils().identifierToElementName.get(ident)
+
+        # Use utils instance instead of creating new QGISRedUtils
+        if self.utils:
+            name = self.utils.identifierToElementName.get(ident)
+        else:
+            name = QGISRedUtils().identifierToElementName.get(ident)
         if not name: return
         
         fname = name.replace(" ", "") + ".qml" + (".bak" if isDefault else "")
