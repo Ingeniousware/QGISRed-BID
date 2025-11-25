@@ -1355,7 +1355,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 breaks.append(curr)
             num = len(breaks) - 1
         elif methodId == "Quantile":
-            breaks = [minV] + [vals[int(i/num * len(vals))] for i in range(1, num)] + [maxV]
+            breaks = [minV] + [vals[min(int(i/num * len(vals)), len(vals) - 1)] for i in range(1, num)] + [maxV]
         elif methodId == "Jenks":
             m = QgsClassificationJenks()
             m.setLabelFormat("%1 - %2")
@@ -1670,8 +1670,21 @@ class QGISRedLegendsDialog(QDialog, formClass):
         return False
 
     def ensureOtherValuesCategory(self):
-        if self.hasOtherValuesCategory(): return
-        self.addCategoricalClass() # Logic handles creating 'Other' if empty vals
+        """Add 'Other Values' category if it doesn't exist."""
+        if self.hasOtherValuesCategory():
+            return
+
+        # Create "Other Values" category directly without recursion
+        row = self.tableView.rowCount()
+        self.tableView.insertRow(row)
+
+        sym = QgsSymbol.defaultSymbol(self.currentLayer.geometryType())
+        sym.setColor(self.generateRandomColor())
+
+        self.setRowWidgets(row, sym, True, self.tr("Other Values"), self.tr("Other Values"),
+                          self.getGeometryHint(), isReadOnlyVal=True)
+
+        self.updateClassCount()
 
     def cancelAndClose(self):
         if self.currentLayer and self.originalRenderer and self.isEditing:
