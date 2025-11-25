@@ -222,6 +222,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btSaveGlobal.clicked.connect(self.saveGlobalStyle)
         self.btLoadDefault.clicked.connect(self.loadDefaultStyle)
         self.btLoadGlobal.clicked.connect(self.loadGlobalStyle)
+        self.btLoadProject.clicked.connect(self.loadProjectStyle)
         self.tableView.cellDoubleClicked.connect(self.onCellDoubleClicked)
         self.tableView.itemSelectionChanged.connect(self.updateButtonStates)
         self.tableView.itemClicked.connect(lambda item: self.tableView.selectRow(item.row()) if item else None)
@@ -1381,6 +1382,33 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def loadGlobalStyle(self):
         self._loadStyle(isDefault=False)
+
+    def loadProjectStyle(self):
+        """Load style from project-specific location."""
+        if not self.currentLayer:
+            return
+        ident = self.currentLayer.customProperty("qgisred_identifier")
+        name = QGISRedUtils().identifierToElementName.get(ident)
+        if not name:
+            return
+
+        fname = name.replace(" ", "") + ".qml"
+        proj = QgsProject.instance().fileName()
+        if not proj:
+            QMessageBox.warning(self, "No Project", "Please save the project first.")
+            return
+
+        folder = os.path.join(os.path.dirname(proj), "layerStyles")
+        path = os.path.join(folder, fname)
+
+        if not os.path.exists(path):
+            QMessageBox.warning(self, "Not Found", f"Style file not found: {path}")
+            return
+
+        self.currentLayer.loadNamedStyle(path)
+        self.currentLayer.triggerRepaint()
+        self.onLayerChanged(self.currentLayer)
+        QMessageBox.information(self, "Loaded", f"Style loaded from {path}")
 
     def _loadStyle(self, isDefault):
         if not self.currentLayer: return
