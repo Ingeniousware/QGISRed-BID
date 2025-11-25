@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (QDialog, QMessageBox, QHeaderView,
                              QComboBox, QLineEdit, QAbstractItemView, QLabel,
                              QWidget, QHBoxLayout, QPushButton, QVBoxLayout,
                              QCheckBox, QDoubleSpinBox)
-from PyQt5.QtCore import QVariant, Qt, QTimer
+from PyQt5.QtCore import QVariant, Qt, QTimer, QObject, QEvent
 from qgis.PyQt import uic
 
 # QGIS imports
@@ -31,6 +31,24 @@ from .qgisred_custom_dialogs import RangeEditDialog, SymbolColorSelectorWithChec
 
 # Load UI
 formClass, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_legends_dialog.ui"))
+
+class RowSelectionFilter(QObject):
+    """
+    Event filter to ensure clicking a cell widget selects the underlying table row.
+    """
+    def __init__(self, table):
+        super(RowSelectionFilter, self).__init__(table)
+        self.table = table
+
+    def eventFilter(self, widget, event):
+        if event.type() == QEvent.FocusIn:
+            # Find the widget's position in the table
+            index = self.table.indexAt(widget.pos())
+            if index.isValid():
+                self.table.selectRow(index.row())
+                # Ensure the selection color shows immediately
+                self.table.viewport().update()
+        return False
 
 class QGISRedLegendsDialog(QDialog, formClass):
     FIELD_TYPE_NUMERIC = 'numeric'
@@ -164,28 +182,55 @@ class QGISRedLegendsDialog(QDialog, formClass):
         """Configure table columns and visual style."""
         self.tableView.setColumnCount(4)
         self.tableView.setHorizontalHeaderLabels(["Symbol", "Size", "Value", "Legend"])
+
+        # Initialize Event Filter for row selection logic
+        self.rowSelectionFilter = RowSelectionFilter(self.tableView)
+
         header = self.tableView.horizontalHeader()
+
+        # 0: Symbol (Fixed Icon size)
         header.setSectionResizeMode(0, QHeaderView.Fixed)
-        header.setSectionResizeMode(1, QHeaderView.Fixed)
-        header.setSectionResizeMode(2, QHeaderView.Fixed)
-        header.setSectionResizeMode(3, QHeaderView.Stretch)
         self.tableView.setColumnWidth(0, 50)
+
+        # 1: Size (Fixed small width)
+        header.setSectionResizeMode(1, QHeaderView.Fixed)
         self.tableView.setColumnWidth(1, 60)
-        self.tableView.setColumnWidth(2, 120)
+
+        # 2: Value (Stretch - takes up available space)
+        header.setSectionResizeMode(2, QHeaderView.Stretch)
+
+        # 3: Legend (Stretch - takes up available space)
+        header.setSectionResizeMode(3, QHeaderView.Stretch)
 
         self.tableView.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tableView.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.tableView.setAlternatingRowColors(False)
         self.tableView.verticalHeader().setVisible(False)
         self.tableView.setShowGrid(True)
-        # Standardized table styling with consistent grid lines for all columns
+
+        # CSS Update:
+        # 1. gridline-color defines the grid.
+        # 2. selection-background-color defines the blue highlight.
+        # 3. We remove widget-specific borders here to let the grid show.
         self.tableView.setStyleSheet("""
             QTableWidget {
                 background-color: white;
-                border: 1px solid #d0d0d0;
+                gridline-color: #d0d0d0;
                 selection-background-color: #3399ff;
                 selection-color: white;
-                gridline-color: #d0d0d0;
+                border: 1px solid #d0d0d0;
+            }
+            QTableWidget::item {
+                border-bottom: 1px solid #d0d0d0;
+                padding: 0px;
+            }
+            QTableWidget::item:selected {
+                background-color: #3399ff;
+            }
+            QHeaderView::section {
+                background-color: #f0f0f0;
+                padding: 4px;
+                border: 1px solid #d0d0d0;
             }
         """)
 
@@ -911,36 +956,67 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def setRowWidgets(self, row, symbol, visible, valText, legendText, geom, isReadOnlyVal=False):
         """Helper to create and set widgets for a row."""
+
+        # Common style for inner widgets: Transparent background so Table selection shows through
+        baseStyle = """
+            QLineEdit {
+                background-color: transparent;
+                border: none;
+                padding: 2px;
+                color: #2b2b2b;
+            }
+            QLineEdit:focus {
+                border: 1px solid #3399ff; /* Visual cue when editing */
+            }
+        """
+
+        readOnlyStyle = """
+            QLineEdit {
+                background-color: transparent;
+                border: none;
+                padding: 2px;
+                color: #808080;
+            }
+        """
+
         # Color
         cw = SymbolColorSelectorWithCheckbox(self.tableView, geom, symbol.color(), visible, "")
         cw.colorSelector.setEnabled(self.isEditing)
         size = symbol.width() if geom == "line" else symbol.size()
         cw.updateSymbolSize(size, geom == "line")
+        # Ensure custom widget background doesn't block selection
+        cw.setAutoFillBackground(False)
         self.tableView.setCellWidget(row, 0, cw)
 
-        # Size - standardized white background with consistent border
+        # Size
         sw = QLineEdit(str(size))
         sw.setEnabled(self.isEditing)
         sw.setAlignment(Qt.AlignCenter)
-        sw.setStyleSheet("QLineEdit { background-color: white; border: none; padding: 2px; }")
+        sw.setStyleSheet(baseStyle)
+        sw.installEventFilter(self.rowSelectionFilter)  # Install filter
         sw.textChanged.connect(lambda t, r=row: self.onSizeChanged(r, t))
         self.tableView.setCellWidget(row, 1, sw)
 
-        # Value - standardized styling with consistent borders
+        # Value
         vw = QLineEdit(valText)
         vw.setReadOnly(True)
         vw.setAlignment(Qt.AlignCenter)
+
         if isReadOnlyVal:
-            vw.setStyleSheet("QLineEdit { background-color: white; color: #808080; border: none; padding: 2px; }")
+            vw.setStyleSheet(readOnlyStyle)
         else:
-            vw.setStyleSheet("QLineEdit { background-color: white; color: #404040; border: none; padding: 2px; }")
+            # If numeric, it looks like regular text but is read-only until dbl-click
+            vw.setStyleSheet(baseStyle)
             vw.mouseDoubleClickEvent = lambda _event, r=row: self.openRangeEditor(r)
+
+        vw.installEventFilter(self.rowSelectionFilter)  # Install filter
         self.tableView.setCellWidget(row, 2, vw)
 
-        # Legend - standardized white background with consistent border
+        # Legend
         lw = QLineEdit(legendText)
         lw.setEnabled(self.isEditing)
-        lw.setStyleSheet("QLineEdit { background-color: white; border: none; padding: 2px; }")
+        lw.setStyleSheet(baseStyle)
+        lw.installEventFilter(self.rowSelectionFilter)  # Install filter
         self.tableView.setCellWidget(row, 3, lw)
 
     def getUniqueValuesFromLayer(self):
@@ -1119,6 +1195,29 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def _setRowData(self, row, data):
         """Recreate row widgets from data."""
+
+        # Common style for inner widgets: Transparent background so Table selection shows through
+        baseStyle = """
+            QLineEdit {
+                background-color: transparent;
+                border: none;
+                padding: 2px;
+                color: #2b2b2b;
+            }
+            QLineEdit:focus {
+                border: 1px solid #3399ff; /* Visual cue when editing */
+            }
+        """
+
+        readOnlyStyle = """
+            QLineEdit {
+                background-color: transparent;
+                border: none;
+                padding: 2px;
+                color: #808080;
+            }
+        """
+
         geom = self.getGeometryHint()
         for c, d in enumerate(data):
             if not d: continue
@@ -1127,6 +1226,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 cw = SymbolColorSelectorWithCheckbox(self.tableView, geom, d[1], d[2], "")
                 cw.colorSelector.setEnabled(self.isEditing)
                 cw.updateSymbolSize(d[3], geom=="line")
+                cw.setAutoFillBackground(False)  # Ensure custom widget background doesn't block selection
                 self.tableView.setCellWidget(row, c, cw)
             elif dtype == 'le':
                 le = QLineEdit(d[1])
@@ -1137,18 +1237,21 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     if c == 2:  # Value column
                         le.setAlignment(Qt.AlignCenter)
                         if hasDoubleClick:  # Numeric - editable via double-click
-                            le.setStyleSheet("QLineEdit { background-color: white; color: #404040; border: none; padding: 2px; }")
+                            le.setStyleSheet(baseStyle)
                             le.mouseDoubleClickEvent = lambda _event, r=row: self.openRangeEditor(r)
                         else:  # Categorical - truly read-only
-                            le.setStyleSheet("QLineEdit { background-color: white; color: #808080; border: none; padding: 2px; }")
+                            le.setStyleSheet(readOnlyStyle)
                     else:  # Other read-only columns
-                        le.setStyleSheet("QLineEdit { background-color: white; border: none; padding: 2px; }")
+                        le.setStyleSheet(baseStyle)
                 else:
-                    # Editable columns (Size and Legend) - standardized white background
-                    le.setStyleSheet("QLineEdit { background-color: white; border: none; padding: 2px; }")
+                    # Editable columns (Size and Legend) - standardized transparent background
+                    le.setStyleSheet(baseStyle)
                 if c == 1:
                     le.setAlignment(Qt.AlignCenter)
                     le.textChanged.connect(lambda t, r=row: self.onSizeChanged(r, t))
+
+                # Install event filter for row selection
+                le.installEventFilter(self.rowSelectionFilter)
                 self.tableView.setCellWidget(row, c, le)
 
     # --- Numeric Logic & Classification ---

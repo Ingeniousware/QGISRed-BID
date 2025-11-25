@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>650</width>
-    <height>370</height>
+    <width>810</width>
+    <height>401</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -18,7 +18,7 @@
   </property>
   <property name="minimumSize">
    <size>
-    <width>650</width>
+    <width>810</width>
     <height>0</height>
    </size>
   </property>
@@ -68,8 +68,8 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>0</y>
-        <width>634</width>
+        <y>-40</y>
+        <width>794</width>
         <height>439</height>
        </rect>
       </property>
@@ -182,6 +182,12 @@
              <layout class="QVBoxLayout" name="verticalLayout_7">
               <item>
                <widget class="QTableWidget" name="tableView">
+                <property name="minimumSize">
+                 <size>
+                  <width>400</width>
+                  <height>0</height>
+                 </size>
+                </property>
                 <property name="frameShape">
                  <enum>QFrame::StyledPanel</enum>
                 </property>
@@ -578,14 +584,65 @@
        </item>
        <item>
         <layout class="QGridLayout" name="gridLayout_9">
-         <item row="1" column="12">
+         <item row="1" column="11">
           <widget class="QPushButton" name="btCancelLegend">
            <property name="text">
             <string>Cancel</string>
            </property>
           </widget>
          </item>
+         <item row="1" column="9">
+          <spacer name="horizontalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeType">
+            <enum>QSizePolicy::Fixed</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>12</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item row="1" column="0">
+          <widget class="QPushButton" name="btLoadDefault">
+           <property name="text">
+            <string>Load Default</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="2">
+          <widget class="QPushButton" name="btSaveGlobal">
+           <property name="text">
+            <string>Save to Global</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QPushButton" name="btLoadGlobal">
+           <property name="text">
+            <string>Load Global</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="5">
+          <widget class="QPushButton" name="btSaveProject">
+           <property name="text">
+            <string>Save to Project</string>
+           </property>
+          </widget>
+         </item>
          <item row="1" column="4">
+          <widget class="QPushButton" name="btLoadProject">
+           <property name="text">
+            <string>Load Project</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="3">
           <spacer name="horizontalSpacer_3">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
@@ -601,77 +658,13 @@
            </property>
           </spacer>
          </item>
-         <item row="1" column="3">
-          <widget class="QPushButton" name="btSaveGlobal">
-           <property name="text">
-            <string>Save to Global</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
-          <spacer name="horizontalSpacer">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeType">
-            <enum>QSizePolicy::Fixed</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>12</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item row="0" column="12">
+         <item row="0" column="11">
           <layout class="QVBoxLayout" name="verticalLayout_3"/>
          </item>
          <item row="1" column="10">
-          <spacer name="horizontalSpacer_2">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item row="1" column="6">
-          <widget class="QPushButton" name="btSaveProject">
-           <property name="text">
-            <string>Save to Project</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="0">
-          <widget class="QPushButton" name="btLoadDefault">
-           <property name="text">
-            <string>Load Default</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="2">
-          <widget class="QPushButton" name="btLoadGlobal">
-           <property name="text">
-            <string>Load Global</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="11">
           <widget class="QPushButton" name="btApplyLegend">
            <property name="text">
             <string>Apply</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="5">
-          <widget class="QPushButton" name="btLoadProject">
-           <property name="text">
-            <string>Load Project</string>
            </property>
           </widget>
          </item>
