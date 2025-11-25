@@ -96,6 +96,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # NEW: Setup Advanced Color and Size UI
         self.setupAdvancedUi()
         self.loadStyleDatabase()
+        self.applyConsistentStyling()
 
         self.labelIntervalRange.setVisible(False)
         self.spinIntervalRange.setVisible(False)
@@ -171,13 +172,22 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.tableView.setColumnWidth(0, 50)
         self.tableView.setColumnWidth(1, 60)
         self.tableView.setColumnWidth(2, 120)
-        
+
         self.tableView.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tableView.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.tableView.setAlternatingRowColors(False)
         self.tableView.verticalHeader().setVisible(False)
         self.tableView.setShowGrid(True)
-        self.tableView.setStyleSheet("QTableWidget { background-color: white; border: none; selection-background-color: #3399ff; selection-color: white; gridline-color: #e0e0e0; } QTableWidget::item { border: none; }")
+        # Standardized table styling with consistent grid lines for all columns
+        self.tableView.setStyleSheet("""
+            QTableWidget {
+                background-color: white;
+                border: 1px solid #d0d0d0;
+                selection-background-color: #3399ff;
+                selection-color: white;
+                gridline-color: #d0d0d0;
+            }
+        """)
 
     def setupClassCountField(self):
         """Configure read-only class count field."""
@@ -205,6 +215,31 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         self.onSizeModeChanged()
         self.onColorModeChanged()
+
+    def applyConsistentStyling(self):
+        """Apply consistent white backgrounds to all editable widgets and standardize appearance."""
+        # Define standard styles
+        editableComboStyle = "QComboBox { background-color: white; }"
+        editableSpinBoxStyle = "QSpinBox { background-color: white; } QDoubleSpinBox { background-color: white; }"
+        editableCheckBoxStyle = "QCheckBox { background-color: white; }"
+
+        # Apply to combo boxes
+        self.cbGroups.setStyleSheet(editableComboStyle)
+        self.cbLegendLayer.setStyleSheet(editableComboStyle)
+        self.cbMode.setStyleSheet(editableComboStyle)
+        self.cbSizes.setStyleSheet(editableComboStyle)
+        self.cbColors.setStyleSheet(editableComboStyle)
+        self.cbColorRampPalette.setStyleSheet(editableComboStyle)
+
+        # Apply to spin boxes
+        self.spinIntervalRange.setStyleSheet(editableSpinBoxStyle)
+        self.spinSizeEqual.setStyleSheet(editableSpinBoxStyle)
+        self.spinSizeMin.setStyleSheet(editableSpinBoxStyle)
+        self.spinSizeMax.setStyleSheet(editableSpinBoxStyle)
+
+        # Apply to checkboxes
+        self.ckSizeInvert.setStyleSheet(editableCheckBoxStyle)
+        self.ckColorInvert.setStyleSheet(editableCheckBoxStyle)
 
     def loadStyleDatabase(self):
         """Loads the proprietary QGISRed style database."""
@@ -882,28 +917,30 @@ class QGISRedLegendsDialog(QDialog, formClass):
         size = symbol.width() if geom == "line" else symbol.size()
         cw.updateSymbolSize(size, geom == "line")
         self.tableView.setCellWidget(row, 0, cw)
-        
-        # Size
+
+        # Size - standardized white background with consistent border
         sw = QLineEdit(str(size))
         sw.setEnabled(self.isEditing)
         sw.setAlignment(Qt.AlignCenter)
+        sw.setStyleSheet("QLineEdit { background-color: white; border: none; padding: 2px; }")
         sw.textChanged.connect(lambda t, r=row: self.onSizeChanged(r, t))
         self.tableView.setCellWidget(row, 1, sw)
-        
-        # Value
+
+        # Value - standardized styling with consistent borders
         vw = QLineEdit(valText)
         vw.setReadOnly(True)
         vw.setAlignment(Qt.AlignCenter)
         if isReadOnlyVal:
-            vw.setStyleSheet("QLineEdit { background-color: white; color: #808080; border: 1px inset #696969; }")
+            vw.setStyleSheet("QLineEdit { background-color: white; color: #808080; border: none; padding: 2px; }")
         else:
-            vw.setStyleSheet("QLineEdit { background-color: white; color: #404040; border: 1px inset #696969; }")
+            vw.setStyleSheet("QLineEdit { background-color: white; color: #404040; border: none; padding: 2px; }")
             vw.mouseDoubleClickEvent = lambda _event, r=row: self.openRangeEditor(r)
         self.tableView.setCellWidget(row, 2, vw)
 
-        # Legend
+        # Legend - standardized white background with consistent border
         lw = QLineEdit(legendText)
         lw.setEnabled(self.isEditing)
+        lw.setStyleSheet("QLineEdit { background-color: white; border: none; padding: 2px; }")
         self.tableView.setCellWidget(row, 3, lw)
 
     def getUniqueValuesFromLayer(self):
@@ -1100,12 +1137,15 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     if c == 2:  # Value column
                         le.setAlignment(Qt.AlignCenter)
                         if hasDoubleClick:  # Numeric - editable via double-click
-                            le.setStyleSheet("QLineEdit { background-color: white; color: #404040; border: 1px solid #e0e0e0; }")
+                            le.setStyleSheet("QLineEdit { background-color: white; color: #404040; border: none; padding: 2px; }")
                             le.mouseDoubleClickEvent = lambda _event, r=row: self.openRangeEditor(r)
                         else:  # Categorical - truly read-only
-                            le.setStyleSheet("QLineEdit { background-color: white; color: #808080; border: 1px solid #e0e0e0; }")
+                            le.setStyleSheet("QLineEdit { background-color: white; color: #808080; border: none; padding: 2px; }")
                     else:  # Other read-only columns
-                        le.setStyleSheet("QLineEdit { background-color: #F8F8F8; color: #808080; }")
+                        le.setStyleSheet("QLineEdit { background-color: white; border: none; padding: 2px; }")
+                else:
+                    # Editable columns (Size and Legend) - standardized white background
+                    le.setStyleSheet("QLineEdit { background-color: white; border: none; padding: 2px; }")
                 if c == 1:
                     le.setAlignment(Qt.AlignCenter)
                     le.textChanged.connect(lambda t, r=row: self.onSizeChanged(r, t))
