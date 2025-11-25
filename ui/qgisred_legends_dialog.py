@@ -291,8 +291,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.spinSizeMax.setStyleSheet(editableSpinBoxStyle)
 
         # Apply to checkboxes
-        self.ckSizeInvert.setStyleSheet(editableCheckBoxStyle)
-        self.ckColorInvert.setStyleSheet(editableCheckBoxStyle)
+        #self.ckSizeInvert.setStyleSheet(editableCheckBoxStyle)
+        #self.ckColorInvert.setStyleSheet(editableCheckBoxStyle)
 
     def loadStyleDatabase(self):
         """Loads the proprietary QGISRed style database."""
