@@ -118,14 +118,22 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         self.labelIntervalRange.setVisible(False)
         self.spinIntervalRange.setVisible(False)
-        #self.initializeUiVisibility()
 
     def configWindow(self):
         """Configure window appearance and custom title bar."""
         iconPath = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconThematicMaps.png')
         self.setWindowIcon(QIcon(iconPath))
-        self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)
         self.setMouseTracking(True)
+
+        # Add a border frame using stylesheet
+        self.setStyleSheet("""
+            QDialog {
+                border: 1px solid rgb(160, 160, 160);
+                background-color: rgb(240, 240, 240);
+            }
+        """)
+
         self.setupCustomTitleBar()
         self.btClassPlus.setIcon(QIcon(":/images/themes/default/symbologyAdd.svg"))
         self.btClassMinus.setIcon(QIcon(":/images/themes/default/symbologyRemove.svg"))
