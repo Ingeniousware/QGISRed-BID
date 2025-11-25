@@ -1382,23 +1382,17 @@ class QGISRedLegendsDialog(QDialog, formClass):
             num = len(breaks) - 1
 
         if len(breaks) < 2: return
-
         # Adjust row count
         while self.tableView.rowCount() < num: self.addNumericClass()
         while self.tableView.rowCount() > num: self.tableView.removeRow(self.tableView.rowCount()-1)
 
         # Apply
-        ramp = QgsGradientColorRamp(QColor(0,0,255), QColor(255,0,0))
         for i in range(num):
             l, u = breaks[i], breaks[i+1]
             txt = f"{l:.2f} - {u:.2f}"
             vw = self.tableView.cellWidget(i, 2)
             if isinstance(vw, QLineEdit):
                 vw.setText(txt)
-
-            col = ramp.color(i / max(1, num - 1))
-            cw = self.tableView.cellWidget(i, 0)
-            if isinstance(cw, SymbolColorSelectorWithCheckbox): cw.setColor(col)
 
             lw = self.tableView.cellWidget(i, 3)
             if isinstance(lw, QLineEdit): lw.setText(txt)
