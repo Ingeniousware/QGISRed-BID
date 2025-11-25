@@ -1073,8 +1073,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
             self.addCategoricalClass()
         else:
             self.addNumericClass()
-            mid = self.cbMode.currentData()
-            if mid: self.applyClassificationMethod(mid)
+            # Don't re-apply classification method - let manual changes stand
+            # Classification is only applied when user changes the mode dropdown
         self.updateButtonStates()
 
         # NEW: Re-apply generic logic
@@ -1155,7 +1155,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             lowest = rows[-1]
             for r in rows: self.tableView.removeRow(r)
             self.mergeAdjacentRowsAfterDeletion(lowest)
-            if self.cbMode.currentData(): self.applyClassificationMethod(self.cbMode.currentData())
+            # Don't re-apply classification method - let manual changes stand
 
         self.updateClassCount()
         self.updateButtonStates()
@@ -1658,14 +1658,21 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if not self.currentLayer: return
         sel = len(self.getSelectedRows())
         isCat = self.currentFieldType == self.FIELD_TYPE_CATEGORICAL
-        
-        self.btClassMinus.setEnabled(sel >= 1)
-        if isCat:
+        isFixed = self.currentFieldType == self.FIELD_TYPE_NUMERIC and self.cbMode.currentData() == "FixedInterval"
+
+        # Respect FixedInterval mode - buttons should stay disabled
+        if isFixed:
+            self.btClassPlus.setEnabled(False)
+            self.btClassMinus.setEnabled(False)
+        elif isCat:
             self.btClassPlus.setEnabled(len(self.availableUniqueValues) > 0 or not self.hasOtherValuesCategory())
+            self.btClassMinus.setEnabled(sel >= 1)
             self.btUp.setEnabled(sel == 1 and self.getSelectedRows()[0] > 0)
             self.btDown.setEnabled(sel == 1 and self.getSelectedRows()[0] < self.tableView.rowCount() - 1)
         else:
+            # Numeric mode (not FixedInterval)
             self.btClassPlus.setEnabled(True)
+            self.btClassMinus.setEnabled(sel >= 1)
             self.btUp.setEnabled(False)
             self.btDown.setEnabled(False)
 
