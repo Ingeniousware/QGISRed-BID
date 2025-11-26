@@ -11,7 +11,7 @@ from PyQt5.QtGui import QIcon, QColor, QFont
 from PyQt5.QtWidgets import (QDialog, QMessageBox, QHeaderView,
                              QComboBox, QLineEdit, QAbstractItemView, QLabel,
                              QWidget, QHBoxLayout, QPushButton, QVBoxLayout,
-                             QCheckBox, QDoubleSpinBox, QGraphicsDropShadowEffect)
+                             QCheckBox, QDoubleSpinBox, QGraphicsDropShadowEffect, QSizeGrip)
 from PyQt5.QtCore import QVariant, Qt, QTimer, QObject, QEvent
 from qgis.PyQt import uic
 
@@ -84,7 +84,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Resize handling for frameless window
         self.resizing = False
         self.resizeEdge = None
-        self.resizeMargin = 5
+        self.resizeMargin = 10  # Increased from 5 to 10 for easier grabbing
 
         # Plugin context properties (set via config method)
         self.parent = None
@@ -186,6 +186,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.titleBar = titleBar
         self.titleBar.mousePressEvent = self.titleBarMousePressEvent
         self.titleBar.mouseMoveEvent = self.titleBarMouseMoveEvent
+
+        # Add size grip for visual resize cue
+        self.sizeGrip = QSizeGrip(self)
+        self.sizeGrip.setStyleSheet("background-color: transparent; width: 20px; height: 20px;")
+        self.sizeGrip.setVisible(True)
 
     def setupTableView(self):
         """Configure table columns and visual style."""
@@ -1835,3 +1840,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
             event.accept()
             return
         super().mouseReleaseEvent(event)
+
+    def resizeEvent(self, event):
+        """Handle resize events to keep size grip positioned correctly."""
+        # Ensure the grip stays in the bottom-right corner
+        if hasattr(self, 'sizeGrip'):
+            rect = self.rect()
+            self.sizeGrip.move(rect.right() - self.sizeGrip.width(),
+                               rect.bottom() - self.sizeGrip.height())
+            self.sizeGrip.raise_()
+        super().resizeEvent(event)
