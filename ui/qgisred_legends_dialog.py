@@ -452,7 +452,15 @@ class QGISRedLegendsDialog(QDialog, formClass):
             self.currentFieldType, self.currentFieldName = self.detectFieldType(layer)
 
             self.frameLegends.setEnabled(True)
-            self.labelFrameLegends.setText(self.tr(f"Legend for {layer.name()}"))
+
+            # Get Units and update Label
+            baseTitle = self.tr(f"Legend for {layer.name()}")
+            units = self.getLayerUnits()
+
+            if units:
+                self.labelFrameLegends.setText(f"{baseTitle} | Units: {units}")
+            else:
+                self.labelFrameLegends.setText(baseTitle)
 
             self.resetAllModesToManual()
             self.updateUiBasedOnFieldType()
@@ -1656,6 +1664,18 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.onLayerChanged(self.currentLayer)
 
     # --- Utilities ---
+
+    def getLayerUnits(self):
+        """
+        Helper to retrieve units from QGISRedUtils (returns 'SI' or 'US').
+        """
+        if not self.utils:
+            return ""
+
+        try:
+            return self.utils.getUnits()
+        except:
+            return ""
 
     def getGeometryHint(self):
         if not self.currentLayer: return "fill"
