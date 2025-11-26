@@ -403,12 +403,19 @@ class QGISRedLegendsDialog(QDialog, formClass):
         allowed = self.getRenderableLayersInSelectedGroup()
         allLayers = list(QgsProject.instance().mapLayers().values())
         excepted = [l for l in allLayers if l not in allowed]
-        
+
         self.cbLegendLayer.blockSignals(True)
         self.cbLegendLayer.setExceptedLayerList(excepted)
+
         if allowed:
             self.cbLegendLayer.setLayer(allowed[0])
+        else:
+            # Explicitly set to None if no renderable layers exist in this group
+            self.cbLegendLayer.setLayer(None)
+
         self.cbLegendLayer.blockSignals(False)
+
+        # Trigger UI update
         self.onLayerChanged(self.cbLegendLayer.currentLayer())
 
     def resetAllModesToManual(self):
@@ -738,13 +745,25 @@ class QGISRedLegendsDialog(QDialog, formClass):
         """Populate group selector from QGIS layer tree."""
         self.cbGroups.blockSignals(True)
         self.cbGroups.clear()
-        
+
         groups = []
         self.collectGroupsRecursive(QgsProject.instance().layerTreeRoot(), [], groups)
-        
+
         for name, path, _ in groups:
             self.cbGroups.addItem(name, path)
         self.cbGroups.blockSignals(False)
+
+        # If cbGroups is empty (no valid groups found),
+        # explicitly clear the dependent layer combo and reset the UI.
+        if self.cbGroups.count() == 0:
+            self.cbLegendLayer.blockSignals(True)
+            # Except all layers to ensure the combo appears empty
+            self.cbLegendLayer.setExceptedLayerList(list(QgsProject.instance().mapLayers().values()))
+            self.cbLegendLayer.setLayer(None)
+            self.cbLegendLayer.blockSignals(False)
+
+            # Force the UI to update to the 'no layer' state
+            self.onLayerChanged(None)
 
     def collectGroupsRecursive(self, parent, pathParts, results):
         """Recursively collect allowed groups."""
