@@ -123,7 +123,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         """Configure window appearance and custom title bar."""
         iconPath = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconThematicMaps.png')
         self.setWindowIcon(QIcon(iconPath))
-        self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setMouseTracking(True)
 
         # Add a border frame using stylesheet
