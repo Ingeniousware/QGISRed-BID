@@ -1711,6 +1711,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 iface.layerTreeView().currentLayerChanged.disconnect(self.onQgisLayerSelectionChanged)
             except:
                 pass
+
+        # Clean up parent reference to allow garbage collection
+        if self.parent and hasattr(self.parent, 'legendsDialog'):
+            self.parent.legendsDialog = None
+
         super().closeEvent(event)
 
     # --- Custom Resize Functionality for Frameless Window ---

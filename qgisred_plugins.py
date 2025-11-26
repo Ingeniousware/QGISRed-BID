@@ -4705,10 +4705,23 @@ class QGISRed:
         if self.isLayerOnEdition():
             return
 
-        # Store reference to prevent garbage collection
-        self.legendsDialog = QGISRedLegendsDialog()
-        self.legendsDialog.config(self.iface, self.ProjectDirectory, self.NetworkName, self)
-        # Show the dialog as non-modal (semi-modal)
-        self.legendsDialog.show()
-        self.legendsDialog.raise_()
-        self.legendsDialog.activateWindow()
+        # Check if dialog already exists and is open
+        if hasattr(self, 'legendsDialog') and self.legendsDialog is not None:
+            # Dialog exists, just show/raise/activate it
+            if self.legendsDialog.isVisible():
+                # Already visible, just bring to front
+                self.legendsDialog.raise_()
+                self.legendsDialog.activateWindow()
+            else:
+                # Was minimized or hidden, show it
+                self.legendsDialog.showNormal()
+                self.legendsDialog.raise_()
+                self.legendsDialog.activateWindow()
+        else:
+            # Create new dialog
+            self.legendsDialog = QGISRedLegendsDialog()
+            self.legendsDialog.config(self.iface, self.ProjectDirectory, self.NetworkName, self)
+            # Show the dialog as non-modal (semi-modal)
+            self.legendsDialog.show()
+            self.legendsDialog.raise_()
+            self.legendsDialog.activateWindow()
