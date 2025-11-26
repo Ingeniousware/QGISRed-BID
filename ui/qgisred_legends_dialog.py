@@ -11,7 +11,7 @@ from PyQt5.QtGui import QIcon, QColor, QFont
 from PyQt5.QtWidgets import (QDialog, QMessageBox, QHeaderView,
                              QComboBox, QLineEdit, QAbstractItemView, QLabel,
                              QWidget, QHBoxLayout, QPushButton, QVBoxLayout,
-                             QCheckBox, QDoubleSpinBox)
+                             QCheckBox, QDoubleSpinBox, QGraphicsDropShadowEffect)
 from PyQt5.QtCore import QVariant, Qt, QTimer, QObject, QEvent
 from qgis.PyQt import uic
 
@@ -126,11 +126,12 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setMouseTracking(True)
 
-        # Add a border frame using stylesheet
+        # Enhanced border with rounded corners
         self.setStyleSheet("""
             QDialog {
-                border: 1px solid rgb(160, 160, 160);
+                border: 2px solid rgb(120, 120, 120);
                 background-color: rgb(240, 240, 240);
+                border-radius: 4px;
             }
         """)
 
