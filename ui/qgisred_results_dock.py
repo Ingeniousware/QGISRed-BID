@@ -638,7 +638,6 @@ class QGISRedResultsDock(QDockWidget, FORM_CLASS):
         if not self.cbNodes.currentIndex() == 0:
             self.LabelsToOpRe.append("Node_" + result)
             self.Variables = result + "_Node"
-            self.saveCurrentRender()
             self.openResult()
 
     def nodeLabelsClicked(self):
