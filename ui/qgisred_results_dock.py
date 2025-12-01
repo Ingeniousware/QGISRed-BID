@@ -261,7 +261,7 @@ class QGISRedResultsDock(QDockWidget, FORM_CLASS):
                     if renderer.type() == "graduatedSymbol":
                         # Guarda por ruta, se pierde al cerrar QGis
                         dictSce[openedLayerPath] = renderer.ranges()
-                    else:
+                    elif renderer.type() == "RuleRenderer":
                         dictSce[openedLayerPath] = renderer.rootRule().clone()
         self.Renders[self.Scenario] = dictSce
 
