@@ -77,6 +77,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btClassPlusClickTimer = None
         self.btClassPlusAddBefore = False
         self.layerTreeViewConnection = None
+        self.layerTreeRoot = None  # NEW: Store reference to layer tree root
         self.style = None  # QGISRed style database
 
         # Plugin context properties (set via config method)
@@ -289,6 +290,16 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if iface and iface.layerTreeView():
             self.layerTreeViewConnection = iface.layerTreeView().currentLayerChanged.connect(self.onQgisLayerSelectionChanged)
 
+        # --- NEW: Project and Tree Signals ---
+        # Watch for global visibility changes (recursive from root)
+        self.layerTreeRoot = QgsProject.instance().layerTreeRoot()
+        self.layerTreeRoot.visibilityChanged.connect(self.onTreeNodeVisibilityChanged)
+
+        # Watch for layer additions and removals
+        QgsProject.instance().layersWillBeRemoved.connect(self.onLayersWillBeRemoved)
+        QgsProject.instance().layersAdded.connect(self.onProjectLayersChanged)
+        QgsProject.instance().layersRemoved.connect(self.onProjectLayersChanged)
+
     def loadInitialState(self):
         """Preselect group/layer and set initial state."""
         self.preselectGroupAndLayer()
@@ -419,6 +430,46 @@ class QGISRedLegendsDialog(QDialog, formClass):
         """Route double click to specific editors."""
         if column == 2 and self.currentFieldType == self.FIELD_TYPE_NUMERIC:
             self.openRangeEditor(row)
+
+    def onTreeNodeVisibilityChanged(self, node):
+        """
+        Handle visibility changes in the layer tree.
+        Triggered when any node (Group or Layer) is checked/unchecked.
+        """
+        # If a layer became visible/invisible, it might need to appear/disappear
+        # from the 'Layer' combobox if we are filtering by visibility.
+        # Calling onGroupChanged re-evaluates the valid layers for the current group.
+        self.onGroupChanged()
+
+    def onLayersWillBeRemoved(self, layerIds):
+        """
+        Handle layer deletion *before* it happens to prevent crashes.
+        """
+        # Check if the currently selected layer is about to be deleted
+        if self.currentLayer and self.currentLayer.id() in layerIds:
+            # Explicitly clear the reference to prevent accessing a deleted C++ object
+            self.currentLayer = None
+            self.cbLegendLayer.blockSignals(True)
+            self.cbLegendLayer.setLayer(None)
+            self.cbLegendLayer.blockSignals(False)
+            self.resetToEmptyState()
+
+    def onProjectLayersChanged(self, layers):
+        """
+        Handle layers added or removed (after the removal is complete).
+        """
+        # Save the currently selected group path so we can try to restore it
+        currentGroupPath = self.cbGroups.currentData()
+
+        # Re-populate the groups combo (in case a group was added/removed or emptied)
+        self.populateGroups()
+
+        # Try to restore the previous group selection
+        if currentGroupPath:
+            self.setGroupByPath(currentGroupPath)
+
+        # Trigger update of the layer list
+        self.onGroupChanged()
 
     # --- Advanced Size & Color UI Logic ---
 
@@ -1692,6 +1743,17 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 iface.layerTreeView().currentLayerChanged.disconnect(self.onQgisLayerSelectionChanged)
             except:
                 pass
+
+        # --- NEW: Disconnect Project/Tree signals ---
+        try:
+            if hasattr(self, 'layerTreeRoot') and self.layerTreeRoot:
+                self.layerTreeRoot.visibilityChanged.disconnect(self.onTreeNodeVisibilityChanged)
+            QgsProject.instance().layersWillBeRemoved.disconnect(self.onLayersWillBeRemoved)
+            QgsProject.instance().layersAdded.disconnect(self.onProjectLayersChanged)
+            QgsProject.instance().layersRemoved.disconnect(self.onProjectLayersChanged)
+        except:
+            pass
+        # --------------------------------------------
 
         # Clean up parent reference to allow garbage collection
         if self.parent and hasattr(self.parent, 'legendsDialog'):
