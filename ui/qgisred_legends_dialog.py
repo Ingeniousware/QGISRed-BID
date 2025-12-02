@@ -112,6 +112,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.labelIntervalRange.setVisible(False)
         self.spinIntervalRange.setVisible(False)
 
+        # Install event filter on dialog to detect clicks outside table
+        self.installEventFilter(self)
+
     def configWindow(self):
         """Configure window appearance."""
         iconPath = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconThematicMaps.png')
@@ -1669,6 +1672,17 @@ class QGISRedLegendsDialog(QDialog, formClass):
             self.currentLayer.setRenderer(self.originalRenderer.clone())
             self.currentLayer.triggerRepaint()
         self.reject()
+
+    def eventFilter(self, obj, event):
+        """Handle clicks outside the table to clear selection."""
+        if obj == self and event.type() == QEvent.MouseButtonPress:
+            # Check if the click is outside the tableView
+            clickPos = event.pos()
+            tableGeometry = self.tableView.geometry()
+            if not tableGeometry.contains(clickPos):
+                # Click is outside the table, clear selection
+                self.tableView.clearSelection()
+        return super().eventFilter(obj, event)
 
     def closeEvent(self, event):
         """Clean up connections when dialog is closed."""
