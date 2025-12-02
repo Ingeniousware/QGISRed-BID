@@ -182,7 +182,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def setupClassCountField(self):
         """Configure read-only class count field."""
         self.leClassCount.setReadOnly(True)
-        self.leClassCount.setStyleSheet("QLineEdit { background-color: #F0F0F0; color: #808080; }")
+        self.leClassCount.setButtonSymbols(QDoubleSpinBox.NoButtons)
+        self.leClassCount.setStyleSheet("QSpinBox { background-color: #F0F0F0; color: #808080; }")
 
     def setupAdvancedUi(self):
         self.cbSizes.addItems(["Manual", "Equal", "Linear", "Quadratic", "Exponential"])
