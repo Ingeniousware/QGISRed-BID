@@ -10,8 +10,9 @@ import statistics
 from PyQt5.QtGui import QIcon, QColor
 from PyQt5.QtWidgets import (QDialog, QMessageBox, QHeaderView,
                              QComboBox, QLineEdit, QAbstractItemView,
-                             QCheckBox, QDoubleSpinBox)
-from PyQt5.QtCore import QVariant, Qt, QTimer, QObject, QEvent
+                             QCheckBox, QDoubleSpinBox, QApplication)
+from PyQt5.QtCore import (QVariant, Qt, QTimer, QObject, QEvent,
+                          QItemSelectionModel, QItemSelection)
 from qgis.PyQt import uic
 
 # QGIS imports
@@ -33,7 +34,8 @@ formClass, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_l
 
 class RowSelectionFilter(QObject):
     """
-    Event filter to ensure clicking a cell widget selects the underlying table row.
+    Event filter to ensure clicking a cell widget selects the underlying table row
+    while respecting Ctrl/Shift modifiers for multi-selection.
     """
     def __init__(self, table):
         super(RowSelectionFilter, self).__init__(table)
@@ -44,7 +46,29 @@ class RowSelectionFilter(QObject):
             # Find the widget's position in the table
             index = self.table.indexAt(widget.pos())
             if index.isValid():
-                self.table.selectRow(index.row())
+                selectionModel = self.table.selectionModel()
+                modifiers = QApplication.keyboardModifiers()
+
+                # Define selection behavior based on modifiers
+                if modifiers & Qt.ControlModifier:
+                    command = QItemSelectionModel.Toggle
+                elif modifiers & Qt.ShiftModifier:
+                    # Treat focus on widget with Shift as adding to selection
+                    command = QItemSelectionModel.Select
+                else:
+                    command = QItemSelectionModel.ClearAndSelect
+
+                # Create a selection range covering the entire row (all columns)
+                topLeft = self.table.model().index(index.row(), 0)
+                bottomRight = self.table.model().index(index.row(), self.table.columnCount() - 1)
+                selection = QItemSelection(topLeft, bottomRight)
+
+                # Apply selection
+                selectionModel.select(selection, command)
+
+                # Update current index so Shift+Click range selection logic works nicely later
+                self.table.setCurrentIndex(index)
+
                 # Ensure the selection color shows immediately
                 self.table.viewport().update()
         return False
@@ -283,8 +307,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btLoadGlobal.clicked.connect(self.loadGlobalStyle)
         self.btLoadProject.clicked.connect(self.loadProjectStyle)
         self.tableView.cellDoubleClicked.connect(self.onCellDoubleClicked)
+
+        # CHANGED: Use itemSelectionChanged to handle state updates.
+        # REMOVED: itemClicked connection (native behavior handles selection better).
         self.tableView.itemSelectionChanged.connect(self.updateButtonStates)
-        self.tableView.itemClicked.connect(lambda item: self.tableView.selectRow(item.row()) if item else None)
 
         # Connect to layer tree view to track layer selection changes
         if iface and iface.layerTreeView():
@@ -1671,23 +1697,47 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def updateButtonStates(self):
         if not self.currentLayer: return
-        sel = len(self.getSelectedRows())
+
+        selected_rows = self.getSelectedRows()
+        sel_count = len(selected_rows)
+
         isCat = self.currentFieldType == self.FIELD_TYPE_CATEGORICAL
         isFixed = self.currentFieldType == self.FIELD_TYPE_NUMERIC and self.cbMode.currentData() == "FixedInterval"
 
-        # Respect FixedInterval mode - buttons should stay disabled
-        if isFixed:
+        # 1. Logic for disabling 'Add' button on multi-selection
+        # If more than 1 row is selected, disable the Plus button immediately
+        if sel_count > 1:
             self.btClassPlus.setEnabled(False)
-            self.btClassMinus.setEnabled(False)
+        elif isFixed:
+            self.btClassPlus.setEnabled(False)
         elif isCat:
+            # Normal Categorical logic
             self.btClassPlus.setEnabled(len(self.availableUniqueValues) > 0 or not self.hasOtherValuesCategory())
-            self.btClassMinus.setEnabled(sel >= 1)
-            self.btUp.setEnabled(sel == 1 and self.getSelectedRows()[0] > 0)
-            self.btDown.setEnabled(sel == 1 and self.getSelectedRows()[0] < self.tableView.rowCount() - 1)
         else:
-            # Numeric mode (not FixedInterval)
+            # Normal Numeric logic
             self.btClassPlus.setEnabled(True)
-            self.btClassMinus.setEnabled(sel >= 1)
+
+        # 2. Logic for other buttons (Removal, Up, Down)
+        # Fixed Interval disables removal
+        if isFixed:
+            self.btClassMinus.setEnabled(False)
+        else:
+            # Removal is allowed for 1 or more rows
+            self.btClassMinus.setEnabled(sel_count >= 1)
+
+        # Reordering only allowed for exactly 1 row
+        if isCat:
+            can_move = (sel_count == 1)
+            # Check bounds
+            if can_move:
+                row_idx = selected_rows[0]
+                self.btUp.setEnabled(row_idx > 0)
+                self.btDown.setEnabled(row_idx < self.tableView.rowCount() - 1)
+            else:
+                self.btUp.setEnabled(False)
+                self.btDown.setEnabled(False)
+        else:
+            # Numeric mode doesn't allow manual reordering
             self.btUp.setEnabled(False)
             self.btDown.setEnabled(False)
 
