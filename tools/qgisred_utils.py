@@ -705,8 +705,8 @@ class QGISRedUtils:
             layer.setRenderer(renderer)
 
     def setResultStyle(self, layer):
-        stylePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "layerStyles")
-
+        stylePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "defaults", "layerStyles")
+        
         # default style
         if layer.geometryType() == 0:  # Point
             qmlBasePath = os.path.join(stylePath, "nodeResults.qml.bak")
