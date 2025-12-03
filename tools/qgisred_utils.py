@@ -573,7 +573,7 @@ class QGISRedUtils:
     def setStyle(self, layer, name):
         if name == "":
             return
-        stylePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "layerStyles")
+        stylePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "defaults", "layerStyles")
 
         # user style
         qmlPath = os.path.join(stylePath, name + "_user.qml")
@@ -846,7 +846,7 @@ class QGISRedUtils:
             layer.setRenderer(renderer)
 
     def setIsolatedSegmentsStyle(self, layer):
-        stylePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "layerStyles")
+        stylePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "defaults", "layerStyles")
 
         # default style
         if layer.geometryType() == 0:  # Point
