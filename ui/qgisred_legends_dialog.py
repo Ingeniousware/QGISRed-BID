@@ -140,6 +140,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Install event filter on dialog to detect clicks outside table
         self.installEventFilter(self)
 
+        # TASK 5.1: Install event filter on Plus button for Right-Click detection
+        self.btClassPlus.installEventFilter(self)
+
     def configWindow(self):
         """Configure window appearance."""
         iconPath = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconThematicMaps.png')
@@ -1082,25 +1085,63 @@ class QGISRedLegendsDialog(QDialog, formClass):
     # --- Table Manipulation ---
 
     def addClass(self):
-        """Handle add class button click with double-click detection."""
+        """
+        Handle add class button click.
+        TASK 5.1: Left Click (Single) -> Add Below.
+        TASK 5.2: Double Click -> Classify All (Categorical Only).
+        """
         if not self.currentLayer: return
-        
+
+        # If timer is running, this is the second click (Double Click)
         if self.btClassPlusClickTimer and self.btClassPlusClickTimer.isActive():
             self.btClassPlusClickTimer.stop()
             self.btClassPlusClickTimer = None
-            self.btClassPlusAddBefore = True
-            self.executeAddClass()
-            self.btClassPlusAddBefore = False
+
+            # TASK 5.2: Double Click triggers Classify All for Categorical
+            if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
+                self.classifyAll()
+            else:
+                # For numeric, treat double click as adding another class below
+                self.btClassPlusAddBefore = False
+                self.executeAddClass()
         else:
+            # First click: Start timer to wait for potential second click
             self.btClassPlusClickTimer = QTimer()
             self.btClassPlusClickTimer.setSingleShot(True)
             self.btClassPlusClickTimer.timeout.connect(self._onSingleClickAdd)
-            self.btClassPlusClickTimer.start(400)
+            # 250ms is standard system double-click interval
+            self.btClassPlusClickTimer.start(250)
 
     def _onSingleClickAdd(self):
+        """Timer timeout: It was just a single click."""
         self.btClassPlusClickTimer = None
-        self.btClassPlusAddBefore = False
+        self.btClassPlusAddBefore = False  # Default: Add Below
         self.executeAddClass()
+
+    def classifyAll(self):
+        """TASK 5.2: Add all available unique values at once."""
+        if not self.availableUniqueValues:
+            QMessageBox.information(self, "Info", "All values are already classified.")
+            return
+
+        # Disable updates for performance
+        self.tableView.setUpdatesEnabled(False)
+        self.tableView.blockSignals(True)
+
+        try:
+            # Loop while there are still values available
+            # addCategoricalClass modifies self.availableUniqueValues internally
+            while self.availableUniqueValues:
+                self.addCategoricalClass()
+        finally:
+            self.tableView.blockSignals(False)
+            self.tableView.setUpdatesEnabled(True)
+
+            # Final UI refresh
+            self.updateClassCount()
+            self.updateButtonStates()
+            self.applyColorLogic()
+            self.applySizeLogic()
 
     def executeAddClass(self):
         """Route add logic."""
@@ -1702,33 +1743,41 @@ class QGISRedLegendsDialog(QDialog, formClass):
         sel_count = len(selected_rows)
 
         isCat = self.currentFieldType == self.FIELD_TYPE_CATEGORICAL
-        isFixed = self.currentFieldType == self.FIELD_TYPE_NUMERIC and self.cbMode.currentData() == "FixedInterval"
 
-        # 1. Logic for disabling 'Add' button on multi-selection
-        # If more than 1 row is selected, disable the Plus button immediately
-        if sel_count > 1:
-            self.btClassPlus.setEnabled(False)
-        elif isFixed:
-            self.btClassPlus.setEnabled(False)
-        elif isCat:
-            # Normal Categorical logic
-            self.btClassPlus.setEnabled(len(self.availableUniqueValues) > 0 or not self.hasOtherValuesCategory())
-        else:
-            # Normal Numeric logic
+        # Check specific numeric modes
+        modeId = self.cbMode.currentData()
+        # TASK 5.3: Distinguish Manual vs Automatic numeric modes
+        isManualNumeric = (self.currentFieldType == self.FIELD_TYPE_NUMERIC and (modeId is None or modeId == "Manual"))
+        isAutoNumeric = (self.currentFieldType == self.FIELD_TYPE_NUMERIC and not isManualNumeric)
+
+        # 1. Logic for 'Add' button
+        if isCat:
+            # Categorical logic: Disable on multi-selection
+            if sel_count > 1:
+                self.btClassPlus.setEnabled(False)
+            else:
+                self.btClassPlus.setEnabled(len(self.availableUniqueValues) > 0 or not self.hasOtherValuesCategory())
+
+        elif isAutoNumeric:
+            # TASK 5.3: Keep Plus Button Active in Automatic Modes
+            # Always enable add button in automatic modes (Equal, Jenks, Fixed Interval, etc)
+            # Adding a class triggers re-calculation of the algorithm
             self.btClassPlus.setEnabled(True)
 
-        # 2. Logic for other buttons (Removal, Up, Down)
-        # Fixed Interval disables removal
-        if isFixed:
+        else:  # Manual Numeric
+            # Disable if multiple rows selected (cannot determine where to insert easily)
+            self.btClassPlus.setEnabled(sel_count <= 1)
+
+        # 2. Logic for removal button
+        # Fixed Interval disables removal (maintains original behavior)
+        if modeId == "FixedInterval":
             self.btClassMinus.setEnabled(False)
         else:
-            # Removal is allowed for 1 or more rows
             self.btClassMinus.setEnabled(sel_count >= 1)
 
-        # Reordering only allowed for exactly 1 row
+        # 3. Logic for Reordering (Only allowed for Categorical with single selection)
         if isCat:
             can_move = (sel_count == 1)
-            # Check bounds
             if can_move:
                 row_idx = selected_rows[0]
                 self.btUp.setEnabled(row_idx > 0)
@@ -1737,7 +1786,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 self.btUp.setEnabled(False)
                 self.btDown.setEnabled(False)
         else:
-            # Numeric mode doesn't allow manual reordering
+            # Numeric mode doesn't allow manual reordering (values are sorted by definition)
             self.btUp.setEnabled(False)
             self.btDown.setEnabled(False)
 
@@ -1775,7 +1824,17 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.reject()
 
     def eventFilter(self, obj, event):
-        """Handle clicks outside the table to clear selection."""
+        """Handle clicks outside the table to clear selection and right-click on Plus button."""
+        # TASK 5.1: Right-Click on '+' Button adds class ABOVE selection
+        if obj == self.btClassPlus and event.type() == QEvent.MouseButtonPress:
+            if event.button() == Qt.RightButton:
+                if self.btClassPlus.isEnabled():
+                    self.btClassPlusAddBefore = True  # Set flag to add ABOVE
+                    self.executeAddClass()
+                    self.btClassPlusAddBefore = False  # Reset flag
+                    return True  # Consume event
+
+        # Handle clicks outside the table to clear selection
         if obj == self and event.type() == QEvent.MouseButtonPress:
             # Check if the click is outside the tableView
             clickPos = event.pos()
