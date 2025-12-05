@@ -1825,13 +1825,23 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def eventFilter(self, obj, event):
         """Handle clicks outside the table to clear selection and right-click on Plus button."""
-        # TASK 5.1: Right-Click on '+' Button adds class ABOVE selection
+
+        # Logic for Right-Click on '+' Button
         if obj == self.btClassPlus and event.type() == QEvent.MouseButtonPress:
             if event.button() == Qt.RightButton:
                 if self.btClassPlus.isEnabled():
-                    self.btClassPlusAddBefore = True  # Set flag to add ABOVE
-                    self.executeAddClass()
-                    self.btClassPlusAddBefore = False  # Reset flag
+
+                    # --- FIX START: Check Field Type ---
+                    if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
+                        # If Categorical, Right-Click triggers Classify All (Add all unique values)
+                        self.classifyAll()
+                    else:
+                        # If Numeric, maintain the original "Add Above" logic
+                        self.btClassPlusAddBefore = True  # Set flag to add ABOVE
+                        self.executeAddClass()
+                        self.btClassPlusAddBefore = False  # Reset flag
+                    # --- FIX END ---
+
                     return True  # Consume event
 
         # Handle clicks outside the table to clear selection
@@ -1842,6 +1852,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             if not tableGeometry.contains(clickPos):
                 # Click is outside the table, clear selection
                 self.tableView.clearSelection()
+
         return super().eventFilter(obj, event)
 
     def closeEvent(self, event):
