@@ -1149,29 +1149,50 @@ class QGISRedLegendsDialog(QDialog, formClass):
             self.addCategoricalClass()
         else:
             self.addNumericClass()
-            # Don't re-apply classification method - let manual changes stand
-            # Classification is only applied when user changes the mode dropdown
+
+            # --- FIX START: Re-apply Automatic Classification ---
+            # If the mode is NOT Manual (and not Fixed Interval, though that button is usually disabled),
+            # we should re-calculate the breaks for the new class count (N+1).
+            modeId = self.cbMode.currentData()
+            if modeId and modeId != "Manual" and modeId != "FixedInterval":
+                self.applyClassificationMethod(modeId)
+            # --- FIX END ---
+
         self.updateButtonStates()
 
-        # NEW: Re-apply generic logic
+        # Re-apply generic logic
         self.applyColorLogic()
         self.applySizeLogic()
 
     def addNumericClass(self):
         """Add numeric range."""
         sel = self.getSelectedRows()
-        row = sel[0] if sel and len(sel) == 1 else self.tableView.rowCount()
-        if sel and not self.btClassPlusAddBefore: row += 1 # After selection
-        
+
+        # --- FIX START: Handle Multi-Selection ---
+        # If multiple rows are selected, we treat it as "Append to End"
+        # rather than trying to insert relative to the selection.
+        if len(sel) > 1:
+            self.tableView.clearSelection()
+            sel = []  # Clear this so it falls through to the 'Append' logic below
+        # --- FIX END ---
+
+        # Calculate insertion index
+        if sel and len(sel) == 1:
+            row = sel[0]
+            if not self.btClassPlusAddBefore:
+                row += 1 # Insert After selection
+        else:
+            row = self.tableView.rowCount() # Append to end
+
         lower, upper = self.calculateInitialRangeForNewRow(row)
         self.tableView.insertRow(row)
-        
+
         sym = QgsSymbol.defaultSymbol(self.currentLayer.geometryType())
         sym.setColor(self.generateRandomColor())
-        
+
         self.setRowWidgets(row, sym, True, f"{lower:.2f} - {upper:.2f}", f"{lower:.2f} - {upper:.2f}", self.getGeometryHint())
         self.updateAdjacentRowsAfterInsertion(row, lower, upper)
-        
+
         self.tableView.clearSelection()
         self.tableView.selectRow(row)
         self.updateClassCount()
