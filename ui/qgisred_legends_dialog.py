@@ -77,7 +77,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
     FIELD_TYPE_NUMERIC = 'numeric'
     FIELD_TYPE_CATEGORICAL = 'categorical'
     FIELD_TYPE_UNKNOWN = 'unknown'
-    ALLOWED_GROUP_IDENTIFIERS = ["qgisred_thematicmaps"]
+    # Task 4.3: Add 'qgisred_results' to allowed groups
+    ALLOWED_GROUP_IDENTIFIERS = ["qgisred_thematicmaps", "qgisred_results"]
 
     def __init__(self, parent=None):
         """Constructor."""
@@ -103,6 +104,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.layerTreeViewConnection = None
         self.layerTreeRoot = None  # NEW: Store reference to layer tree root
         self.style = None  # QGISRed style database
+
+        # NEW: Track the last successfully selected layer ID
+        self.lastValidLayerId = None
 
         # Plugin context properties (set via config method)
         self.parent = None
@@ -370,19 +374,38 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def onGroupChanged(self):
         """Filter layer combo when group selection changes."""
+        # 1. Get layers valid for this group (must be visible and correct type)
         allowed = self.getRenderableLayersInSelectedGroup()
         allLayers = list(QgsProject.instance().mapLayers().values())
         excepted = [l for l in allLayers if l not in allowed]
 
+        # 2. Prepare the dropdown
         self.cbLegendLayer.blockSignals(True)
         self.cbLegendLayer.setExceptedLayerList(excepted)
 
-        if allowed:
-            self.cbLegendLayer.setLayer(allowed[0])
-        else:
-            # Explicitly set to None if no renderable layers exist in this group
-            self.cbLegendLayer.setLayer(None)
+        # 3. Intelligent Selection Logic (Task 4.2 Fix)
+        current_layer = self.cbLegendLayer.currentLayer()
+        target_layer = None
 
+        # Priority A: If the memory (lastValidLayerId) is now available, restore it.
+        # This handles the case: Layer A selected -> Hidden (dropdown changes) -> Shown (Restore Layer A)
+        if self.lastValidLayerId:
+            for lyr in allowed:
+                if lyr.id() == self.lastValidLayerId:
+                    target_layer = lyr
+                    break
+
+        # Priority B: If current selection is still valid, keep it.
+        # (Only if we didn't find the 'restored' layer, or if the restored layer IS the current one)
+        if target_layer is None and current_layer and current_layer in allowed:
+            target_layer = current_layer
+
+        # Priority C: Default to the first available layer
+        if target_layer is None and allowed:
+            target_layer = allowed[0]
+
+        # Apply selection
+        self.cbLegendLayer.setLayer(target_layer)
         self.cbLegendLayer.blockSignals(False)
 
         # Trigger UI update
@@ -412,6 +435,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def onLayerChanged(self, layer):
         """Handle layer selection change."""
         if layer and isinstance(layer, QgsVectorLayer):
+            # NEW: Update memory of the last valid selection
+            self.lastValidLayerId = layer.id()
+
             self.currentLayer = layer
             self.originalRenderer = layer.renderer().clone() if layer.renderer() else None
             self.currentFieldType, self.currentFieldName = self.detectFieldType(layer)
@@ -438,6 +464,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 self.clearTable()
             self.updateButtonStates()
         else:
+            # Note: We DO NOT clear self.lastValidLayerId here.
+            # We want to remember what was selected before it became None (hidden).
             self.resetToEmptyState()
 
     def onModeChanged(self):
@@ -465,9 +493,24 @@ class QGISRedLegendsDialog(QDialog, formClass):
         Handle visibility changes in the layer tree.
         Triggered when any node (Group or Layer) is checked/unchecked.
         """
-        # If a layer became visible/invisible, it might need to appear/disappear
-        # from the 'Layer' combobox if we are filtering by visibility.
-        # Calling onGroupChanged re-evaluates the valid layers for the current group.
+        # Save state
+        currentGroupPath = self.cbGroups.currentData()
+
+        # 1. Refresh Groups (handles cases where a Group was hidden/shown)
+        self.populateGroups()
+
+        # 2. Restore Group Selection if it still exists
+        if currentGroupPath:
+            # Check if the path still exists in the refreshed combo
+            index = self.cbGroups.findData(currentGroupPath)
+            if index != -1:
+                self.setGroupByPath(currentGroupPath)
+            elif self.cbGroups.count() > 0:
+                self.cbGroups.setCurrentIndex(0)
+
+        # 3. Refresh Layer List and trigger Restoration Logic
+        # This calls onGroupChanged, which now contains the logic to
+        # check self.lastValidLayerId and restore selection if the layer became visible.
         self.onGroupChanged()
 
     def onLayersWillBeRemoved(self, layerIds):
@@ -769,19 +812,29 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         for name, path, _ in groups:
             self.cbGroups.addItem(name, path)
+
         self.cbGroups.blockSignals(False)
 
-        # If cbGroups is empty (no valid groups found),
-        # explicitly clear the dependent layer combo and reset the UI.
+        # Fix 4.1: Strictly handle empty state
         if self.cbGroups.count() == 0:
+            # Force empty index
+            self.cbGroups.setCurrentIndex(-1)
+
+            # Explicitly clear dependent layer combo
             self.cbLegendLayer.blockSignals(True)
-            # Except all layers to ensure the combo appears empty
             self.cbLegendLayer.setExceptedLayerList(list(QgsProject.instance().mapLayers().values()))
             self.cbLegendLayer.setLayer(None)
             self.cbLegendLayer.blockSignals(False)
 
-            # Force the UI to update to the 'no layer' state
+            # Disable the main frame since no valid selection exists
+            self.frameLegends.setEnabled(False)
+            self.labelFrameLegends.setText(self.tr("Legend"))
+
+            # Clear internal state
             self.onLayerChanged(None)
+
+        # Note: If count > 0, the previous selection logic (preselectGroupAndLayer)
+        # or the user's interaction will handle the selection.
 
     def collectGroupsRecursive(self, parent, pathParts, results):
         """Recursively collect allowed groups."""
