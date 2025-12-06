@@ -1191,6 +1191,17 @@ class QGISRed:
             add_to_toolbar=True,
             parent=self.iface.mainWindow(),
         )
+        icon_path = ":/plugins/QGISRed-BID/images/iconRunModel.png"
+        self.add_action(
+            icon_path,
+            text=self.tr("Status report"),
+            callback=self.runOpenStatusReport,
+            menubar=self.analysisMenu,
+            toolbar=self.analysisToolbar,
+            actionBase=analysisDropButton,
+            add_to_toolbar=True,
+            parent=self.iface.mainWindow(),
+        )
         icon_path = ":/plugins/QGISRed-BID/images/iconExportToEpanet.png"
         self.add_action(
             icon_path,
@@ -2943,6 +2954,25 @@ class QGISRed:
             self.runModel()
         else:
             self.ResultDockwidget.show()
+
+    def runOpenStatusReport(self):
+        if not self.checkDependencies():
+            return
+        # Validations
+        self.defineCurrentProject()
+        if not self.isValidProject():
+            return
+
+        # TODO Open project folder (as per note: file location still needs to be identified)
+        try:
+            os.startfile(self.ProjectDirectory)
+        except Exception as e:
+            self.iface.messageBar().pushMessage(
+                self.tr("Error"),
+                self.tr("Could not open project folder: ") + str(e),
+                level=2,
+                duration=5
+            )
 
     def runExportInp(self):
         if not self.checkDependencies():
