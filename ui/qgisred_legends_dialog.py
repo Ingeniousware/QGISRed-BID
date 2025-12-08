@@ -78,7 +78,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
     FIELD_TYPE_CATEGORICAL = 'categorical'
     FIELD_TYPE_UNKNOWN = 'unknown'
     # Task 4.3: Add 'qgisred_results' to allowed groups
-    ALLOWED_GROUP_IDENTIFIERS = ["qgisred_thematicmaps", "qgisred_results"]
+    ALLOWED_GROUP_IDENTIFIERS = ["qgisred_thematicmaps", "qgisred_results", "qgisred_demandsectors"]
 
     def __init__(self, parent=None):
         """Constructor."""
