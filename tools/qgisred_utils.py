@@ -482,12 +482,15 @@ class QGISRedUtils:
         for layerName in layers:
             self.removeLayer(layerName, ext)
 
+    def isThematicMapsLayer(self, layer):
+        identifier = layer.customProperty("qgisred_identifier")
+        return identifier and identifier.startswith("qgisred_query_")
+
     def removeLayer(self, name, ext=".shp"):
         layers = self.getLayers()
         originalLayerName = self.getOriginalNameFromLayerName(name)
         layerPath = self.generatePath(self.ProjectDirectory, self.NetworkName + "_" + originalLayerName + ext)
 
-        # Check in Inputs, Queries, and Results groups
         groupLayers = []
         root = QgsProject.instance().layerTreeRoot()
         for groupName in ["Inputs", "Queries", "Results"]:
@@ -499,6 +502,8 @@ class QGISRedUtils:
             layers = [layer for layer in layers if layer in groupLayers]
 
         for layer in layers:
+            if self.isThematicMapsLayer(layer):
+                continue
             openedLayerPath = self.getLayerPath(layer)
             if openedLayerPath == layerPath:
                 QgsProject.instance().removeMapLayer(layer.id())
