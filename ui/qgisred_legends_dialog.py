@@ -558,9 +558,14 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def onSizeModeChanged(self):
         """Handle size mode change."""
         mode = self.cbSizes.currentText()
-        self.spinSizeEqual.setVisible(mode == "Equal")
-        self.spinSizeMin.setVisible(mode in ["Linear", "Quadratic", "Exponential"])
-        self.spinSizeMax.setVisible(mode in ["Linear", "Quadratic", "Exponential"])
+        showEqual = mode == "Equal"
+        showMinMax = mode in ["Linear", "Quadratic", "Exponential"]
+        self.spinSizeEqual.setVisible(showEqual)
+        self.labelSizeValue.setVisible(showEqual)
+        self.spinSizeMin.setVisible(showMinMax)
+        self.spinSizeMax.setVisible(showMinMax)
+        self.labelSpinMin.setVisible(showMinMax)
+        self.labelSpinMax.setVisible(showMinMax)
         self.ckSizeInvert.setVisible(mode != "Manual" and mode != "Equal")
         self.applySizeLogic()
 
