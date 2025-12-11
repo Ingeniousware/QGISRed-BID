@@ -383,20 +383,30 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.cbLegendLayer.blockSignals(True)
         self.cbLegendLayer.setExceptedLayerList(excepted)
 
-        # 3. Intelligent Selection Logic (Task 4.2 Fix)
+        # 3. Intelligent Selection Logic
         current_layer = self.cbLegendLayer.currentLayer()
         target_layer = None
 
+        # --- NEW PRIORITY: Check for Active Layer First ---
+        # If the user has a layer selected in the TOC, and that layer is visible
+        # and belongs to this group, prioritize it.
+        active_node = self.getActiveLayerFromTree()
+        if active_node:
+            active_lyr = active_node.layer()
+            # Check if this active layer is in our allowed list (visible & in current group)
+            if active_lyr in allowed:
+                target_layer = active_lyr
+
         # Priority A: If the memory (lastValidLayerId) is now available, restore it.
-        # This handles the case: Layer A selected -> Hidden (dropdown changes) -> Shown (Restore Layer A)
-        if self.lastValidLayerId:
+        # (Only if we didn't find an active layer above)
+        if target_layer is None and self.lastValidLayerId:
             for lyr in allowed:
                 if lyr.id() == self.lastValidLayerId:
                     target_layer = lyr
                     break
 
         # Priority B: If current selection is still valid, keep it.
-        # (Only if we didn't find the 'restored' layer, or if the restored layer IS the current one)
+        # (Only if we didn't find the 'active' or 'restored' layer)
         if target_layer is None and current_layer and current_layer in allowed:
             target_layer = current_layer
 
