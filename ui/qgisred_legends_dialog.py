@@ -1792,15 +1792,19 @@ class QGISRedLegendsDialog(QDialog, formClass):
         else:
             name = QGISRedUtils().identifierToElementName.get(ident)
         if not name: return
-        
+
         fname = name.replace(" ", "") + ".qml" + (".bak" if isDefault else "")
         sub = os.path.join("defaults", "layerStyles") if isDefault else "layerStyles"
         path = os.path.join(self.pluginFolder, sub, fname)
-        
-        if not os.path.exists(path): return
+
+        if not os.path.exists(path):
+            QMessageBox.warning(self, "Not Found", f"Style file not found: {path}")
+            return
+
         self.currentLayer.loadNamedStyle(path)
         self.currentLayer.triggerRepaint()
         self.onLayerChanged(self.currentLayer)
+        QMessageBox.information(self, "Loaded", f"Style loaded from {path}")
 
     # --- Utilities ---
 
