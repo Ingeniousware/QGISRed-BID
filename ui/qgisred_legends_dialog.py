@@ -354,6 +354,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if not layerNode:
             return
 
+        # --- FIX START: Check visibility before proceeding ---
+        # If the clicked layer is not visible, do nothing.
+        # This preserves the current state of the dialog instead of blanking it out.
+        if not layerNode.isVisible():
+            return
+        # --- FIX END ---
+
         groupPath = self.findGroupPathForLayer(layerNode)
         if not groupPath:
             return
