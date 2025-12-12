@@ -1926,17 +1926,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if obj == self.btClassPlus and event.type() == QEvent.MouseButtonPress:
             if event.button() == Qt.RightButton:
                 if self.btClassPlus.isEnabled():
+                    # TASK 5.1 & User Request:
+                    # Right Click + Row Selected = Add class ABOVE (for both Numeric and Categorical)
+                    # Note: "Classify All" for Categorical is now handled via Double-Click in addClass()
 
-                    # --- FIX START: Check Field Type ---
-                    if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
-                        # If Categorical, Right-Click triggers Classify All (Add all unique values)
-                        self.classifyAll()
-                    else:
-                        # If Numeric, maintain the original "Add Above" logic
-                        self.btClassPlusAddBefore = True  # Set flag to add ABOVE
-                        self.executeAddClass()
-                        self.btClassPlusAddBefore = False  # Reset flag
-                    # --- FIX END ---
+                    self.btClassPlusAddBefore = True  # Set flag to add ABOVE
+                    self.executeAddClass()            # Execute addition (routes to addCategoricalClass or addNumericClass)
+                    self.btClassPlusAddBefore = False # Reset flag
 
                     return True  # Consume event
 
