@@ -467,7 +467,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             units = self.getLayerUnits()
 
             if units:
-                self.labelFrameLegends.setText(f"{baseTitle} | Units: {units}")
+                self.labelFrameLegends.setText(f"{baseTitle} | {units} units")
             else:
                 self.labelFrameLegends.setText(baseTitle)
 
