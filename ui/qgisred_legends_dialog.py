@@ -1208,6 +1208,12 @@ class QGISRedLegendsDialog(QDialog, formClass):
             # addCategoricalClass modifies self.availableUniqueValues internally
             while self.availableUniqueValues:
                 self.addCategoricalClass()
+
+            for r in reversed(range(self.tableView.rowCount())):
+                w = self.tableView.cellWidget(r, 3)
+                if isinstance(w, QLineEdit) and w.text() in [self.tr("Other Values"), "Other Values"]:
+                    self.tableView.removeRow(r)
+
         finally:
             self.tableView.blockSignals(False)
             self.tableView.setUpdatesEnabled(True)
