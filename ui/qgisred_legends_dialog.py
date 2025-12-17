@@ -130,6 +130,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.configWindow()
         self.setupTableView()
         self.populateClassificationModes()
+        self.populateLegendTypes()
         self.populateGroups()
         self.setupClassCountField()
 
@@ -469,6 +470,15 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 self.labelFrameLegends.setText(f"{baseTitle} | Units: {units}")
             else:
                 self.labelFrameLegends.setText(baseTitle)
+
+            # Update Legend Type Combobox
+            rType = layer.renderer().type()
+            index = self.cbLegendsType.findData(rType)
+            if index != -1:
+                self.cbLegendsType.setCurrentIndex(index)
+            else:
+                # Fallback or leave as is? Likely singleSymbol if unknown or not in list
+                pass
 
             self.resetAllModesToManual()
             self.updateUiBasedOnFieldType()
@@ -967,6 +977,18 @@ class QGISRedLegendsDialog(QDialog, formClass):
                  ("StdDev", "Standard Deviation"), ("Pretty", "Pretty Breaks")]
         for id, name in modes: self.cbMode.addItem(self.tr(name), id)
         self.cbMode.blockSignals(False)
+
+    def populateLegendTypes(self):
+        """Populate legend type combo box."""
+        self.cbLegendsType.blockSignals(True)
+        self.cbLegendsType.clear()
+        
+        # Add basic types
+        self.cbLegendsType.addItem(self.tr("Single Symbol"), "singleSymbol")
+        self.cbLegendsType.addItem(self.tr("Categorized"), "categorizedSymbol")
+        self.cbLegendsType.addItem(self.tr("Graduated"), "graduatedSymbol")
+        
+        self.cbLegendsType.blockSignals(False)
 
     def detectFieldType(self, layer):
         """Determine if layer uses numeric or categorical renderer."""
