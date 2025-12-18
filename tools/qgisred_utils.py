@@ -59,49 +59,25 @@ class QGISRedUtils:
         'qgisred_isolatedsegments': 'IsolatedSegments'
     }
 
-    # Base Dictionary Structure for Unit Management
-    # Hierarchy: Element Type -> Magnitude -> Unit System -> List of Available Units
     unit_definitions = {
-        "Project": {
-            "Flow": {
-                "SI": [
-                    {"name": "Liters per Second", "abbr": "LPS"},
-                    {"name": "Liters per Minute", "abbr": "LPM"},
-                    {"name": "Million Liters per Day", "abbr": "MLD"},
-                    {"name": "Cubic Meters per Hour", "abbr": "CMH"},
-                    {"name": "Cubic Meters per Day", "abbr": "CMD"}
-                ],
-                "US": [
-                    {"name": "Cubic Feet per Second", "abbr": "CFS"},
-                    {"name": "Gallons per Minute", "abbr": "GPM"},
-                    {"name": "Million Gallons per Day", "abbr": "MGD"},
-                    {"name": "Imperial Million Gallons per Day", "abbr": "IMGD"},
-                    {"name": "Acre-Feet per Day", "abbr": "AFD"}
-                ]
-            }
-        },
         "Pipes": {
-            "Diameter": {
-                "SI": [{"name": "Millimeters", "abbr": "mm"}],
-                "US": [{"name": "Inches", "abbr": "in"}]
+            "qgisred_query_diameter_diam": {
+                "property": "Diameter",
+                "field": "Diam",
+                "SI": {"name": "Millimeters", "abbr": "mm"},
+                "US": {"name": "Inches", "abbr": "in"}
             },
-            "Length": {
-                "SI": [{"name": "Meters", "abbr": "m"}],
-                "US": [{"name": "Feet", "abbr": "ft"}]
+            "qgisred_query_length_len": {
+                "property": "Length",
+                "field": "Len",
+                "SI": {"name": "Meters", "abbr": "m"},
+                "US": {"name": "Feet", "abbr": "ft"}
             },
-            "Velocity": {
-                "SI": [{"name": "Meters per Second", "abbr": "m/s"}],
-                "US": [{"name": "Feet per Second", "abbr": "fps"}]
-            }
-        },
-        "Nodes": { # Junctions, Tanks, Reservoirs
-            "Pressure": {
-                "SI": [{"name": "Meters", "abbr": "m"}],
-                "US": [{"name": "Pounds per Square Inch", "abbr": "psi"}]
-            },
-            "Elevation": {
-                "SI": [{"name": "Meters", "abbr": "m"}],
-                "US": [{"name": "Feet", "abbr": "ft"}]
+            "qgisred_query_material_mat": {
+                "property": "Material",
+                "field": "Mat",
+                "SI": None,
+                "US": None
             }
         }
     }
