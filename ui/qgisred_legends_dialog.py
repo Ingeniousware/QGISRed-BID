@@ -1515,10 +1515,26 @@ class QGISRedLegendsDialog(QDialog, formClass):
         vw = self.tableView.cellWidget(row, 2)
         if isinstance(vw, QLineEdit):
             vw.setText(txt)
-        # Update legend if it matched old range
+        
+        # Update legend with unit abbreviation if it matched old range pattern
         lw = self.tableView.cellWidget(row, 3)
-        if isinstance(lw, QLineEdit) and lw.text().replace(" ","") == f"{curr[0]:.2f}-{curr[1]:.2f}".replace(" ",""):
-            lw.setText(txt)
+        if isinstance(lw, QLineEdit):
+            # Build new legend text with unit if available
+            unitAbbr = self.getCurrentLayerUnitAbbr()
+            if unitAbbr:
+                newLegendTxt = f"{l:.2f} - {u:.2f} {unitAbbr}"
+            else:
+                newLegendTxt = txt
+            lw.setText(newLegendTxt)
+
+    def getCurrentLayerUnitAbbr(self):
+        """Get unit abbreviation for current layer from utils."""
+        if not self.currentLayer or not self.utils:
+            return ""
+        layerIdent = self.currentLayer.customProperty("qgisred_identifier")
+        if layerIdent:
+            return self.utils.getUnitAbbreviationForLayer(layerIdent)
+        return ""
 
     def calculateOptimalInterval(self):
         """Calculate nice interval for ~5 classes."""
@@ -1619,7 +1635,14 @@ class QGISRedLegendsDialog(QDialog, formClass):
         curr = self.getRangeValues(row)
         if not curr: return
         
-        dlg = RangeEditDialog(curr[0], curr[1], self)
+        # Get unit abbreviation for current layer (supports diameters and lengths)
+        unitAbbr = ""
+        if self.currentLayer and self.utils:
+            layerIdent = self.currentLayer.customProperty("qgisred_identifier")
+            if layerIdent:
+                unitAbbr = self.utils.getUnitAbbreviationForLayer(layerIdent)
+        
+        dlg = RangeEditDialog(curr[0], curr[1], self, unitAbbr=unitAbbr)
         if dlg.exec_():
             nl, nu = dlg.getValues()
 

@@ -1095,6 +1095,21 @@ class QGISRedUtils:
             # Default to SI units
             return 'SI'
 
+    def getUnitAbbreviationForLayer(self, layerIdentifier):
+        if not layerIdentifier:
+            return ""
+        
+        unitSystem = self.getUnits()  # Returns 'SI' or 'US'
+        
+        # Search through unit_definitions for matching identifier
+        for category, layers in self.unit_definitions.items():
+            if layerIdentifier in layers:
+                unitInfo = layers[layerIdentifier].get(unitSystem)
+                if unitInfo:
+                    return unitInfo.get("abbr", "")
+        
+        return ""
+
     def apply_categorized_renderer(self, layer, field, qml_file):
         material_field_index = layer.fields().indexFromName(field)
         
