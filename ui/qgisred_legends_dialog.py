@@ -1198,9 +1198,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
             if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
                 self.classifyAll()
             else:
-                # For numeric, treat double click as adding another class below
-                self.btClassPlusAddBefore = False
-                self.executeAddClass()
+                # For numeric, ignore double-click to prevent adding two classes
+                return
         else:
             # First click: Start timer to wait for potential second click
             self.btClassPlusClickTimer = QTimer()
