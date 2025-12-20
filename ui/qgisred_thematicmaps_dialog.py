@@ -96,7 +96,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
 
         selectedQueries = self.getSelectedQueries()
         currentValidIdentifiers = set(
-            f"qgisred_query_{query['field'].lower()}_{query['tooltip_prefix'].lower()}"
+            f"qgisred_query_{query['field'].lower()}"
             for query in selectedQueries
         )
         toRemoveIdentifiers = self.initialValidIdentifiers - currentValidIdentifiers
@@ -131,7 +131,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
 
             newQueries = [
                 query for query in selectedQueries
-                if f"qgisred_query_{query['field'].lower()}_{query['tooltip_prefix'].lower()}" 
+                if f"qgisred_query_{query['field'].lower()}" 
                 in (currentValidIdentifiers - self.initialValidIdentifiers)
             ]
 
@@ -225,7 +225,7 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         tooltipPrefix = query['tooltip_prefix']
         
         # Generate a unique identifier for the layer
-        layerIdentifier = f"qgisred_query_{field.lower()}_{tooltipPrefix.lower()}"
+        layerIdentifier = f"qgisred_query_{field.lower()}"
         
         # Find existing layer by identifier instead of name
         existingLayer, layerPosition = self.findLayerByIdentifier(queriesGroup, layerIdentifier)
@@ -410,76 +410,76 @@ class QGISRedThematicMapsDialog(QDialog, FORM_CLASS):
         
         # Tanks mappings
         mapping.update({
-            'qgisred_query_elevation_elev': self.cbTanksElevation,
-            'qgisred_query_diameter_diam': self.cbTanksDiameter,
-            'qgisred_query_volume_vol': self.cbTanksVolume,
-            'qgisred_query_level_level': self.cbTanksLevel,
-            'qgisred_query_initquality_quality': self.cbTanksInitialQuality,
-            'qgisred_query_bulkcoeff_bulk': self.cbTanksBulkCoeff,
-            'qgisred_query_mixmodel_mix': self.cbTanksMixingModel,
-            'qgisred_query_tag_tag': self.cbTanksTag
+            'qgisred_query_elevation': self.cbTanksElevation,
+            'qgisred_query_diameter': self.cbTanksDiameter,
+            'qgisred_query_volume': self.cbTanksVolume,
+            'qgisred_query_level': self.cbTanksLevel,
+            'qgisred_query_initquality': self.cbTanksInitialQuality,
+            'qgisred_query_bulkcoeff': self.cbTanksBulkCoeff,
+            'qgisred_query_mixmodel': self.cbTanksMixingModel,
+            'qgisred_query_tag': self.cbTanksTag
         })
 
         # Reservoirs mappings
         mapping.update({
-            'qgisred_query_totalhead_head': self.cbReservoirsTotalHead,
-            'qgisred_query_headpattern_pattern': self.cbReservoirsHeadPattern,
-            'qgisred_query_initquality_quality': self.cbReservoirsInitialQuality,
-            'qgisred_query_tag_tag': self.cbReservoirsTag
+            'qgisred_query_totalhead': self.cbReservoirsTotalHead,
+            'qgisred_query_headpattern': self.cbReservoirsHeadPattern,
+            'qgisred_query_initquality': self.cbReservoirsInitialQuality,
+            'qgisred_query_tag': self.cbReservoirsTag
         })
 
         # Junctions mappings
         mapping.update({
-            'qgisred_query_elevation_elev': self.cbJunctionsElevation,
-            'qgisred_query_basedemand_demand': self.cbJunctionsBaseDemand,
-            'qgisred_query_patterndemand_pattern': self.cbJunctionsPatternDemand,
-            'qgisred_query_emittercoeff_emitter': self.cbJunctionsEmitterCoeff,
-            'qgisred_query_initquality_quality': self.cbJunctionsInitialQuality,
-            'qgisred_query_tag_tag': self.cbJunctionsTag
+            'qgisred_query_elevation': self.cbJunctionsElevation,
+            'qgisred_query_basedemand': self.cbJunctionsBaseDemand,
+            'qgisred_query_patterndemand': self.cbJunctionsPatternDemand,
+            'qgisred_query_emittercoeff': self.cbJunctionsEmitterCoeff,
+            'qgisred_query_initquality': self.cbJunctionsInitialQuality,
+            'qgisred_query_tag': self.cbJunctionsTag
         })
 
         # Valves mappings
         mapping.update({
-            'qgisred_query_type_type': self.cbValvesType,
-            'qgisred_query_diameter_diam': self.cbValvesDiameter,
-            'qgisred_query_setting_set': self.cbValvesSetting,
-            'qgisred_query_initstatus_status': self.cbValvesInitialStatus,
-            'qgisred_query_losscoeff_loss': self.cbValvesLossCoeff,
-            'qgisred_query_tag_tag': self.cbValvesTag
+            'qgisred_query_type': self.cbValvesType,
+            'qgisred_query_diameter': self.cbValvesDiameter,
+            'qgisred_query_setting': self.cbValvesSetting,
+            'qgisred_query_initstatus': self.cbValvesInitialStatus,
+            'qgisred_query_losscoeff': self.cbValvesLossCoeff,
+            'qgisred_query_tag': self.cbValvesTag
         })
 
         # Pumps mappings
         mapping.update({
-            'qgisred_query_type_type': self.cbPumpsType,
-            'qgisred_query_pumpcurve_curve': self.cbPumpsPumpCurve,
-            'qgisred_query_power_power': self.cbPumpsPower,
-            'qgisred_query_initstatus_status': self.cbPumpsInitialStatus,
-            'qgisred_query_speed_speed': self.cbPumpsSpeed,
-            'qgisred_query_effcurve_eff': self.cbPumpsEfficiencyCurve,
-            'qgisred_query_energyprice_price': self.cbPumpsEnergyPrice,
-            'qgisred_query_tag_tag': self.cbPumpsTag
+            'qgisred_query_type': self.cbPumpsType,
+            'qgisred_query_pumpcurve': self.cbPumpsPumpCurve,
+            'qgisred_query_power': self.cbPumpsPower,
+            'qgisred_query_initstatus': self.cbPumpsInitialStatus,
+            'qgisred_query_speed': self.cbPumpsSpeed,
+            'qgisred_query_effcurve': self.cbPumpsEfficiencyCurve,
+            'qgisred_query_energyprice': self.cbPumpsEnergyPrice,
+            'qgisred_query_tag': self.cbPumpsTag
         })
 
         # Service Connection, Isolation Valves, and Meters mappings
         mapping.update({
-            'qgisred_query_temporary_temp': self.cbPipesDiameter_3,  # Service Connection
-            'qgisred_query_temporary_temp': self.cbTanksElevation_3,  # Isolation Valves
-            'qgisred_query_temporary_temp': self.cbReservoirsTotalHead_3  # Meters
+            'qgisred_query_temporary': self.cbPipesDiameter_3,  # Service Connection
+            'qgisred_query_temporary': self.cbTanksElevation_3,  # Isolation Valves
+            'qgisred_query_temporary': self.cbReservoirsTotalHead_3  # Meters
         })
 
         # Pipes mappings
         mapping.update({
-            'qgisred_query_diameter_diam': self.cbPipesDiameter,
-            'qgisred_query_length_len': self.cbPipesLength,
-            'qgisred_query_material_mat': self.cbPipesMaterial,
-            'qgisred_query_roughness_rough': self.cbPipesRoughness,
-            'qgisred_query_age_age': self.cbPipesAge,
-            'qgisred_query_losscoeff_loss': self.cbPipesLossCoeff,
-            'qgisred_query_initstatus_status': self.cbPipesInitStatus,
-            'qgisred_query_installdate_inst': self.cbPipesInstallationDate,
-            'qgisred_query_bulkcoeff_bulk': self.cbPipesBulkCoeff,
-            'qgisred_query_wallcoeff_wall': self.cbPipesWallCoeff,
-            'qgisred_query_tag_tag': self.cbPipesTag
+            'qgisred_query_diameter': self.cbPipesDiameter,
+            'qgisred_query_length': self.cbPipesLength,
+            'qgisred_query_material': self.cbPipesMaterial,
+            'qgisred_query_roughness': self.cbPipesRoughness,
+            'qgisred_query_age': self.cbPipesAge,
+            'qgisred_query_losscoeff': self.cbPipesLossCoeff,
+            'qgisred_query_initstatus': self.cbPipesInitStatus,
+            'qgisred_query_installdate': self.cbPipesInstallationDate,
+            'qgisred_query_bulkcoeff': self.cbPipesBulkCoeff,
+            'qgisred_query_wallcoeff': self.cbPipesWallCoeff,
+            'qgisred_query_tag': self.cbPipesTag
         })
         
         return mapping
