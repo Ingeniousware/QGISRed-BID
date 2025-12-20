@@ -304,6 +304,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btApplyLegend.clicked.connect(self.applyLegend)
         self.btCancelLegend.clicked.connect(self.cancelAndClose)
         self.cbMode.currentIndexChanged.connect(self.onModeChanged)
+        self.cbLegendsType.currentIndexChanged.connect(self.onLegendTypeChanged)
         self.spinIntervalRange.valueChanged.connect(self.onIntervalRangeChanged)
         self.btClassPlus.clicked.connect(self.addClass)
         self.btClassMinus.clicked.connect(self.removeClass)
@@ -471,14 +472,16 @@ class QGISRedLegendsDialog(QDialog, formClass):
             else:
                 self.labelFrameLegends.setText(baseTitle)
 
-            # Update Legend Type Combobox
+            # Populate legend types based on layer support
+            self.populateLegendTypes(layer)
+
+            # Update Legend Type Combobox to current renderer
             rType = layer.renderer().type()
             index = self.cbLegendsType.findData(rType)
             if index != -1:
+                self.cbLegendsType.blockSignals(True)
                 self.cbLegendsType.setCurrentIndex(index)
-            else:
-                # Fallback or leave as is? Likely singleSymbol if unknown or not in list
-                pass
+                self.cbLegendsType.blockSignals(False)
 
             self.resetAllModesToManual()
             self.updateUiBasedOnFieldType()
@@ -509,6 +512,123 @@ class QGISRedLegendsDialog(QDialog, formClass):
         """Handle spin box change for fixed interval."""
         if self.cbMode.currentData() == "FixedInterval":
             self.applyClassificationMethod("FixedInterval")
+
+    def onLegendTypeChanged(self):
+        """Handle legend type change (Graduated <-> Categorized)."""
+        if not self.currentLayer or not self.currentFieldName:
+            return
+        
+        newType = self.cbLegendsType.currentData()
+        currentType = self.currentLayer.renderer().type() if self.currentLayer.renderer() else None
+        
+        # If type hasn't actually changed, do nothing
+        if newType == currentType:
+            return
+        
+        field = self.currentFieldName
+        
+        if newType == "categorizedSymbol":
+            # Convert to categorized: use unique values from the field
+            self.convertToCategorized(field)
+        elif newType == "graduatedSymbol":
+            # Convert to graduated: create default ranges
+            self.convertToGraduated(field)
+        
+        # Update field type and UI
+        self.currentFieldType, self.currentFieldName = self.detectFieldType(self.currentLayer)
+        self.resetAllModesToManual()
+        self.updateUiBasedOnFieldType()
+        
+        # Repopulate the table
+        if self.currentFieldType == self.FIELD_TYPE_NUMERIC:
+            self.populateNumericLegend()
+        elif self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
+            self.populateCategoricalLegend()
+        else:
+            self.clearTable()
+        
+        self.updateButtonStates()
+        self.currentLayer.triggerRepaint()
+
+    def convertToCategorized(self, field):
+        """Convert current layer to categorized renderer using unique field values."""
+        layer = self.currentLayer
+        fieldIdx = layer.fields().indexOf(field)
+        if fieldIdx < 0:
+            return
+        
+        uniqueValues = sorted(layer.uniqueValues(fieldIdx))
+        categories = []
+        
+        for value in uniqueValues:
+            if value is None or str(value) == 'NULL':
+                continue
+            symbol = QgsSymbol.defaultSymbol(layer.geometryType())
+            # Generate a random color for each category
+            color = QColor.fromHsv(
+                random.randint(0, 359),
+                random.randint(150, 255),
+                random.randint(150, 255)
+            )
+            symbol.setColor(color)
+            if layer.geometryType() == 1:  # Line
+                symbol.setWidth(0.6)
+            else:
+                symbol.setSize(2.5)
+            category = QgsRendererCategory(value, symbol, str(value))
+            categories.append(category)
+        
+        renderer = QgsCategorizedSymbolRenderer(field, categories)
+        layer.setRenderer(renderer)
+
+    def convertToGraduated(self, field):
+        """Convert current layer to graduated renderer using equal intervals."""
+        layer = self.currentLayer
+        fieldIdx = layer.fields().indexOf(field)
+        if fieldIdx < 0:
+            return
+        
+        # Get min/max values
+        minVal = layer.minimumValue(fieldIdx)
+        maxVal = layer.maximumValue(fieldIdx)
+        
+        if minVal is None or maxVal is None:
+            return
+        
+        # Create 5 classes by default
+        numClasses = 5
+        interval = (maxVal - minVal) / numClasses
+        ranges = []
+        
+        # Create a color ramp (blue to red)
+        startColor = QColor(0, 255, 0)  # Green
+        endColor = QColor(255, 0, 0)    # Red
+        
+        for i in range(numClasses):
+            lower = minVal + (i * interval)
+            upper = minVal + ((i + 1) * interval)
+            
+            # Interpolate color
+            t = i / max(1, numClasses - 1)
+            color = QColor(
+                int(startColor.red() + t * (endColor.red() - startColor.red())),
+                int(startColor.green() + t * (endColor.green() - startColor.green())),
+                int(startColor.blue() + t * (endColor.blue() - startColor.blue()))
+            )
+            
+            symbol = QgsSymbol.defaultSymbol(layer.geometryType())
+            symbol.setColor(color)
+            if layer.geometryType() == 1:  # Line
+                symbol.setWidth(0.6)
+            else:
+                symbol.setSize(2.5)
+            
+            label = f"{lower:.1f} - {upper:.1f}"
+            rangeObj = QgsRendererRange(lower, upper, symbol, label)
+            ranges.append(rangeObj)
+        
+        renderer = QgsGraduatedSymbolRenderer(field, ranges)
+        layer.setRenderer(renderer)
 
     def onCellDoubleClicked(self, row, column):
         """Route double click to specific editors."""
@@ -978,15 +1098,40 @@ class QGISRedLegendsDialog(QDialog, formClass):
         for id, name in modes: self.cbMode.addItem(self.tr(name), id)
         self.cbMode.blockSignals(False)
 
-    def populateLegendTypes(self):
-        """Populate legend type combo box."""
+    def populateLegendTypes(self, layer=None):
+        """Populate legend type combo box based on layer support."""
         self.cbLegendsType.blockSignals(True)
         self.cbLegendsType.clear()
         
-        # Add basic types
-        self.cbLegendsType.addItem(self.tr("Single Symbol"), "singleSymbol")
-        self.cbLegendsType.addItem(self.tr("Categorized"), "categorizedSymbol")
-        self.cbLegendsType.addItem(self.tr("Graduated"), "graduatedSymbol")
+        if not layer:
+            # Default: show all types
+            self.cbLegendsType.addItem(self.tr("Single Symbol"), "singleSymbol")
+            self.cbLegendsType.addItem(self.tr("Categorized"), "categorizedSymbol")
+            self.cbLegendsType.addItem(self.tr("Graduated"), "graduatedSymbol")
+        else:
+            # Get layer identifier and check support
+            layerIdentifier = layer.customProperty("qgisred_identifier")
+            currentRendererType = layer.renderer().type() if layer.renderer() else "singleSymbol"
+            
+            # Check if layer supports categorized
+            supportsCategorized = False
+            if self.utils:
+                supportsCategorized = self.utils.getLayerSupportsCategorized(layerIdentifier)
+            
+            if supportsCategorized:
+                print("Supports")
+                # Layer supports both graduated and categorized (like diameter)
+                self.cbLegendsType.addItem(self.tr("Graduated"), "graduatedSymbol")
+                self.cbLegendsType.addItem(self.tr("Categorized"), "categorizedSymbol")
+            elif currentRendererType == "categorizedSymbol":
+                # Categorized-only layer (like material)
+                self.cbLegendsType.addItem(self.tr("Categorized"), "categorizedSymbol")
+            elif currentRendererType == "graduatedSymbol":
+                # Graduated-only layer (like length)
+                self.cbLegendsType.addItem(self.tr("Graduated"), "graduatedSymbol")
+            else:
+                # Default fallback: show current type
+                self.cbLegendsType.addItem(self.tr("Single Symbol"), "singleSymbol")
         
         self.cbLegendsType.blockSignals(False)
 

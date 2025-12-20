@@ -1114,6 +1114,20 @@ class QGISRedUtils:
         
         return ""
 
+    def getLayerSupportsCategorized(self, layerIdentifier):
+        """Check if a layer supports categorized rendering based on qgisred_units.json."""
+        if not layerIdentifier:
+            return False
+        
+        unitDefs = self.loadUnitDefinitions()
+        
+        # Search through unit_definitions for matching identifier
+        for category, layers in unitDefs.items():
+            if layerIdentifier in layers:
+                return layers[layerIdentifier].get("supports_categorized", False)
+        
+        return False
+
     def apply_categorized_renderer(self, layer, field, qml_file):
         material_field_index = layer.fields().indexFromName(field)
         
