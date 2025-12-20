@@ -1516,16 +1516,37 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if isinstance(vw, QLineEdit):
             vw.setText(txt)
         
-        # Update legend with unit abbreviation if it matched old range pattern
+        # Update legend text
+        self.updateLegendsValues(row, l, u)
+
+    def updateLegendsValues(self, row, lower, upper):
+        """Update legend text for a row based on its position (first, middle, or last)."""
         lw = self.tableView.cellWidget(row, 3)
-        if isinstance(lw, QLineEdit):
-            # Build new legend text with unit if available
-            unitAbbr = self.getCurrentLayerUnitAbbr()
+        if not isinstance(lw, QLineEdit):
+            return
+            
+        unitAbbr = self.getCurrentLayerUnitAbbr()
+        totalRows = self.tableView.rowCount()
+        
+        if row == 0:
+            # First row: "< {upper} {units}"
             if unitAbbr:
-                newLegendTxt = f"{l:.2f} - {u:.2f} {unitAbbr}"
+                newLegendTxt = f"< {upper:.2f} {unitAbbr}"
             else:
-                newLegendTxt = txt
-            lw.setText(newLegendTxt)
+                newLegendTxt = f"< {upper:.2f}"
+        elif row == totalRows - 1:
+            # Last row: "> {lower} {units}"
+            if unitAbbr:
+                newLegendTxt = f"> {lower:.2f} {unitAbbr}"
+            else:
+                newLegendTxt = f"> {lower:.2f}"
+        else:
+            # Middle rows: "{lower} < {upper} {units}"
+            if unitAbbr:
+                newLegendTxt = f"{lower:.2f} < {upper:.2f} {unitAbbr}"
+            else:
+                newLegendTxt = f"{lower:.2f} < {upper:.2f}"
+        lw.setText(newLegendTxt)
 
     def getCurrentLayerUnitAbbr(self):
         """Get unit abbreviation for current layer from utils."""
