@@ -1,6 +1,6 @@
 {
     "Pipes": {
-        "qgisred_query_diameter_diam": {
+        "qgisred_query_diameter": {
             "property": "Diameter",
             "SI": {
                 "name": "Millimeters",
@@ -9,9 +9,10 @@
             "US": {
                 "name": "Inches",
                 "abbr": "in"
-            }
+            },
+            "supports_categorized": true
         },
-        "qgisred_query_length_len": {
+        "qgisred_query_length": {
             "property": "Length",
             "SI": {
                 "name": "Meters",
@@ -20,12 +21,14 @@
             "US": {
                 "name": "Feet",
                 "abbr": "ft"
-            }
+            },
+            "supports_categorized": false
         },
-        "qgisred_query_material_mat": {
+        "qgisred_query_material": {
             "property": "Material",
             "SI": null,
-            "US": null
+            "US": null,
+            "supports_categorized": false
         }
     }
 }
