@@ -1672,24 +1672,40 @@ class QGISRedLegendsDialog(QDialog, formClass):
         unitAbbr = self.getCurrentLayerUnitAbbr()
         totalRows = self.tableView.rowCount()
         
+        # Calculate optimal rounding precision based on all values in the table
+        vals = self.getNumericValues()
+        if vals and len(vals) > 0:
+            minV, maxV = min(vals), max(vals)
+            try:
+                m = self.calculateLegendRoundingPrecision(minV, maxV, totalRows)
+                # Convert m to number of decimal places (negative m means more decimals)
+                decimalPlaces = max(0, -m)
+            except ValueError:
+                decimalPlaces = 2  # Fallback to 2 decimal places
+        else:
+            decimalPlaces = 2  # Default fallback
+        
+        # Create format string based on calculated decimal places
+        fmt = f"{{:.{decimalPlaces}f}}"
+        
         if row == 0:
             # First row: "< {upper} {units}"
             if unitAbbr:
-                newLegendTxt = f"< {upper:.2f} {unitAbbr}"
+                newLegendTxt = f"< {fmt.format(upper)} {unitAbbr}"
             else:
-                newLegendTxt = f"< {upper:.2f}"
+                newLegendTxt = f"< {fmt.format(upper)}"
         elif row == totalRows - 1:
             # Last row: "> {lower} {units}"
             if unitAbbr:
-                newLegendTxt = f"> {lower:.2f} {unitAbbr}"
+                newLegendTxt = f"> {fmt.format(lower)} {unitAbbr}"
             else:
-                newLegendTxt = f"> {lower:.2f}"
+                newLegendTxt = f"> {fmt.format(lower)}"
         else:
             # Middle rows: "{lower} < {upper} {units}"
             if unitAbbr:
-                newLegendTxt = f"{lower:.2f} < {upper:.2f} {unitAbbr}"
+                newLegendTxt = f"{fmt.format(lower)} < {fmt.format(upper)} {unitAbbr}"
             else:
-                newLegendTxt = f"{lower:.2f} < {upper:.2f}"
+                newLegendTxt = f"{fmt.format(lower)} < {fmt.format(upper)}"
         lw.setText(newLegendTxt)
 
     def getCurrentLayerUnitAbbr(self):
@@ -1700,6 +1716,40 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if layerIdent:
             return self.utils.getUnitAbbreviationForLayer(layerIdent)
         return ""
+
+    def calculateLegendRoundingPrecision(self, minValue, maxValue, intervals=10):
+        """
+        Calculate the optimal rounding precision for legend values.
+        
+        Args:
+            minValue: Minimum value of the field
+            maxValue: Maximum value of the field
+            intervals: Number of classes/intervals (default: 10)
+            
+        Returns:
+            int: The rounding precision exponent 'm'. 
+                 - m = 0 means round to integers
+                 - m = -1 means 1 decimal place
+                 - m = -2 means 2 decimal places
+                 - m = 1 means round to tens
+                 - m = 2 means round to hundreds
+                 
+        Raises:
+            ValueError: If intervals <= 0 or maxValue < minValue
+        """
+        if intervals <= 0:
+            raise ValueError("intervals must be > 0")
+        if maxValue < minValue:
+            raise ValueError("maxValue must be >= minValue")
+
+        increment = (maxValue - minValue) / intervals
+        meanAbs = (abs(minValue) + abs(maxValue)) / 2.0
+
+        m1 = math.floor(math.log10(meanAbs) - 2 + 0.5) if meanAbs > 0 else 0
+        m2 = math.floor(math.log10(increment)) if increment > 0 else 0
+        m = min(m1, m2)
+        
+        return m
 
     def calculateOptimalInterval(self):
         """Calculate nice interval for ~5 classes."""
