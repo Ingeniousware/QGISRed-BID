@@ -1817,16 +1817,46 @@ class QGISRedLegendsDialog(QDialog, formClass):
         while self.tableView.rowCount() < num: self.addNumericClass()
         while self.tableView.rowCount() > num: self.tableView.removeRow(self.tableView.rowCount()-1)
 
-        # Apply
+        # Calculate optimal rounding precision for legend formatting
+        try:
+            m = self.calculateLegendRoundingPrecision(minV, maxV, num)
+            decimalPlaces = max(0, -m)
+        except ValueError:
+            decimalPlaces = 2  # Fallback
+        
+        fmt = f"{{:.{decimalPlaces}f}}"
+        unitAbbr = self.getCurrentLayerUnitAbbr()
+
+        # Apply breaks and update legends with rounding precision
         for i in range(num):
             l, u = breaks[i], breaks[i+1]
-            txt = f"{l:.2f} - {u:.2f}"
+            txt = f"{fmt.format(l)} - {fmt.format(u)}"
             vw = self.tableView.cellWidget(i, 2)
             if isinstance(vw, QLineEdit):
                 vw.setText(txt)
 
+            # Format legend based on position (first, middle, last)
             lw = self.tableView.cellWidget(i, 3)
-            if isinstance(lw, QLineEdit): lw.setText(txt)
+            if isinstance(lw, QLineEdit):
+                if i == 0:
+                    # First row: "< {upper} {units}"
+                    if unitAbbr:
+                        legendTxt = f"< {fmt.format(u)} {unitAbbr}"
+                    else:
+                        legendTxt = f"< {fmt.format(u)}"
+                elif i == num - 1:
+                    # Last row: "> {lower} {units}"
+                    if unitAbbr:
+                        legendTxt = f"> {fmt.format(l)} {unitAbbr}"
+                    else:
+                        legendTxt = f"> {fmt.format(l)}"
+                else:
+                    # Middle rows: "{lower} < {upper} {units}"
+                    if unitAbbr:
+                        legendTxt = f"{fmt.format(l)} < {fmt.format(u)} {unitAbbr}"
+                    else:
+                        legendTxt = f"{fmt.format(l)} < {fmt.format(u)}"
+                lw.setText(legendTxt)
 
         self.updateClassCount()
 
