@@ -125,6 +125,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Create utils instance
         self.utils = QGISRedUtils(direct, netw, ifac)
 
+        # Refresh current layer to populate legend types now that utils is available
+        if self.cbLegendLayer.currentLayer():
+            self.onLayerChanged(self.cbLegendLayer.currentLayer())
+
     def initUi(self):
         """Initialize UI components."""
         self.configWindow()
@@ -254,6 +258,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.cbGroups.setStyleSheet(editableComboStyle)
         self.cbLegendLayer.setStyleSheet(editableComboStyle)
         self.cbMode.setStyleSheet(editableComboStyle)
+        self.cbLegendsType.setStyleSheet(editableComboStyle)
         self.cbSizes.setStyleSheet(editableComboStyle)
         self.cbColors.setStyleSheet(editableComboStyle)
         self.cbColorRampPalette.setStyleSheet(editableComboStyle)
@@ -342,6 +347,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.labelFrameLegends.setText(self.tr("Legend"))
         if self.cbLegendLayer.currentLayer():
             self.onLayerChanged(self.cbLegendLayer.currentLayer())
+            # Populate legend types based on the current layer's support
+            self.populateLegendTypes(self.cbLegendLayer.currentLayer())
         self.updateClassCount()
 
     # --- Event Handlers ---
@@ -593,6 +600,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
         uniqueValues = sorted(layer.uniqueValues(fieldIdx))
         categories = []
         
+        # Get unit abbreviation if available
+        unitAbbr = ""
+        if self.utils:
+            layerIdentifier = layer.customProperty("qgisred_identifier")
+            if layerIdentifier:
+                unitAbbr = self.utils.getUnitAbbreviationForLayer(layerIdentifier)
+        
         for value in uniqueValues:
             if value is None or str(value) == 'NULL':
                 continue
@@ -608,7 +622,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 symbol.setWidth(0.6)
             else:
                 symbol.setSize(2.5)
-            category = QgsRendererCategory(value, symbol, str(value))
+            
+            # Create label with unit abbreviation if available
+            label = str(value)
+            if unitAbbr:
+                label = f"{value} {unitAbbr}"
+            
+            category = QgsRendererCategory(value, symbol, label)
             categories.append(category)
         
         renderer = QgsCategorizedSymbolRenderer(field, categories)
@@ -1507,7 +1527,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
         sym.setColor(self.generateRandomColor())
         
         disp = str(val)
-        self.setRowWidgets(row, sym, True, disp, disp, self.getGeometryHint(), isReadOnlyVal=True)
+        # Add unit abbreviation to legend if available
+        unitAbbr = self.getCurrentLayerUnitAbbr()
+        legendText = f"{val} {unitAbbr}" if unitAbbr else disp
+        self.setRowWidgets(row, sym, True, disp, legendText, self.getGeometryHint(), isReadOnlyVal=True)
         
         self.tableView.clearSelection()
         self.tableView.selectRow(row)

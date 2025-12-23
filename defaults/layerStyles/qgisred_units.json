@@ -22,7 +22,7 @@
                 "name": "Feet",
                 "abbr": "ft"
             },
-            "supports_categorized": false
+            "supports_categorized": true
         },
         "qgisred_query_material": {
             "property": "Material",
