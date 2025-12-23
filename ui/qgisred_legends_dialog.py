@@ -528,18 +528,51 @@ class QGISRedLegendsDialog(QDialog, formClass):
         field = self.currentFieldName
         
         if newType == "categorizedSymbol":
+            # Check unique value count before converting to categorized
+            fieldIdx = self.currentLayer.fields().indexOf(field)
+            if fieldIdx >= 0:
+                uniqueValues = self.currentLayer.uniqueValues(fieldIdx)
+                uniqueCount = len([v for v in uniqueValues if v is not None and str(v) != 'NULL'])
+                
+                if uniqueCount > 100:
+                    reply = QMessageBox.warning(
+                        self,
+                        self.tr("High Class Count Warning"),
+                        self.tr(f"The field '{field}' has {uniqueCount} unique values.\n\n"
+                                f"Creating a categorized legend with this many classes may "
+                                f"affect performance and readability.\n\n"
+                                f"Do you want to proceed?"),
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.No
+                    )
+                    
+                    if reply == QMessageBox.No:
+                        # Revert combo box to current renderer type
+                        self.cbLegendsType.blockSignals(True)
+                        idx = self.cbLegendsType.findData(currentType)
+                        if idx >= 0:
+                            self.cbLegendsType.setCurrentIndex(idx)
+                        self.cbLegendsType.blockSignals(False)
+                        return
+            
             # Convert to categorized: use unique values from the field
             self.convertToCategorized(field)
+            # Force field type to CATEGORICAL for categorized renderer
+            self.currentFieldType = self.FIELD_TYPE_CATEGORICAL
+            self.currentFieldName = field
         elif newType == "graduatedSymbol":
             # Convert to graduated: create default ranges
             self.convertToGraduated(field)
+            # Update field type from renderer
+            self.currentFieldType, self.currentFieldName = self.detectFieldType(self.currentLayer)
+        else:
+            # Update field type from renderer
+            self.currentFieldType, self.currentFieldName = self.detectFieldType(self.currentLayer)
         
-        # Update field type and UI
-        self.currentFieldType, self.currentFieldName = self.detectFieldType(self.currentLayer)
         self.resetAllModesToManual()
         self.updateUiBasedOnFieldType()
         
-        # Repopulate the table
+        # Repopulate the table based on explicit type
         if self.currentFieldType == self.FIELD_TYPE_NUMERIC:
             self.populateNumericLegend()
         elif self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
