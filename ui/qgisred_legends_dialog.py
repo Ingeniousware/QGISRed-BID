@@ -1495,7 +1495,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         self.tableView.clearSelection()
         self.tableView.selectRow(row)
+        self.tableView.selectRow(row)
         self.updateClassCount()
+        
+        # Refresh all legend labels to apply correct rounding for the new number of classes
+        self.refreshAllLegendLabels()
 
     def addCategoricalClass(self):
         """Add categorical value."""
@@ -1558,6 +1562,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
             # Don't re-apply classification method - let manual changes stand
 
         self.updateClassCount()
+        
+        # Refresh all legend labels to apply correct rounding for the new number of classes
+        self.refreshAllLegendLabels()
+        
         self.updateButtonStates()
 
         # NEW: Re-apply generic logic
@@ -1764,6 +1772,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 newLegendTxt = f"{fmt.format(lower)} < {fmt.format(upper)}"
         lw.setText(newLegendTxt)
 
+    def refreshAllLegendLabels(self):
+        """Re-calculate and apply optimal rounding to all legend rows."""
+        for r in range(self.tableView.rowCount()):
+            vals = self.getRangeValues(r)
+            if vals:
+                self.updateLegendsValues(r, vals[0], vals[1])
+
     def getCurrentLayerUnitAbbr(self):
         """Get unit abbreviation for current layer from utils."""
         if not self.currentLayer or not self.utils:
@@ -1933,6 +1948,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def openRangeEditor(self, row):
         """Open range dialog."""
+        # Check if we are in Manual mode
+        modeId = self.cbMode.currentData()
+        if modeId and modeId != "Manual":
+            # Optional: Show a message or just silently return
+            # QMessageBox.information(self, "Mode Restriction", "Please switch to 'Manual' mode to edit range values values.")
+            return
+
         curr = self.getRangeValues(row)
         if not curr: return
         
