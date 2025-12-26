@@ -22,7 +22,7 @@ from qgis.core import (QgsProject, QgsVectorLayer, QgsMessageLog, Qgis,
                        QgsLayerTreeGroup, QgsLayerTreeLayer, QgsGradientColorRamp,
                        QgsClassificationJenks, QgsClassificationPrettyBreaks,
                        QgsStyle, QgsPresetSchemeColorRamp, QgsColorRamp)
-from qgis.gui import QgsColorButton
+from qgis.gui import QgsColorButton, QgsColorRampButton
 from qgis.utils import iface
 
 # Local imports
@@ -244,8 +244,21 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btRefreshColors.setIcon(QIcon(":/images/themes/default/mActionRefresh.svg"))
         self.btRefreshColors.clicked.connect(self.applyColorLogic)
 
+        self.setupColorRampButton()
+
         self.onSizeModeChanged()
         self.onColorModeChanged()
+
+    def setupColorRampButton(self):
+        """Initialize and add QgsColorRampButton to the UI."""
+        self.btnColorRamp = QgsColorRampButton(self)
+        self.btnColorRamp.setMaximumWidth(100)
+        self.btnColorRamp.setVisible(False)
+        # Use existing layout created in UI
+        self.palletesHorizontalLayout.addWidget(self.btnColorRamp)
+        # Reflect only behavior
+        self.btnColorRamp.setEnabled(False)
+        self.cbColorRampPalette.currentIndexChanged.connect(self.syncColorRampButton)
 
     def applyConsistentStyling(self):
         """Apply consistent white backgrounds to all editable widgets and standardize appearance."""
@@ -759,12 +772,25 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.ckSizeInvert.setVisible(mode != "Manual" and mode != "Equal")
         self.applySizeLogic()
 
+
+
+    def syncColorRampButton(self):
+        """Update QgsColorRampButton to match selected ramp/palette."""
+        ramp = self.cbColorRampPalette.currentData()
+        if isinstance(ramp, QgsColorRamp):
+            self.btnColorRamp.setColorRamp(ramp)
+        # Ensure correct visibility/state
+        
     def onColorModeChanged(self):
         """Handle color mode change."""
         mode = self.cbColors.currentText()
         self.btColorEqual.setVisible(mode == "Equal")
-        self.cbColorRampPalette.setVisible(mode in ["Ramp", "Palette"])
-        self.ckColorInvert.setVisible(mode in ["Ramp", "Palette"])
+        
+        isRampOrPalette = mode in ["Ramp", "Palette"]
+        self.cbColorRampPalette.setVisible(isRampOrPalette)
+        self.btnColorRamp.setVisible(isRampOrPalette)
+        
+        self.ckColorInvert.setVisible(isRampOrPalette)
         self.btRefreshColors.setVisible(mode == "Random")
 
         if mode == "Ramp":
@@ -773,6 +799,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             self.populatePalettes()
 
         self.applyColorLogic()
+        self.syncColorRampButton()
 
     def populateRamps(self):
         """Populate color ramps from style database."""
