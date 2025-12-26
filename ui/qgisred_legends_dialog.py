@@ -257,7 +257,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Use existing layout created in UI
         self.palletesHorizontalLayout.addWidget(self.btnColorRamp)
         # Reflect only behavior
-        self.btnColorRamp.setEnabled(False)
+        #self.btnColorRamp.setEnabled(False)
         self.cbColorRampPalette.currentIndexChanged.connect(self.syncColorRampButton)
 
     def applyConsistentStyling(self):
