@@ -10,7 +10,7 @@ import statistics
 from PyQt5.QtGui import QIcon, QColor
 from PyQt5.QtWidgets import (QDialog, QMessageBox, QHeaderView,
                              QComboBox, QLineEdit, QAbstractItemView,
-                             QCheckBox, QDoubleSpinBox, QApplication)
+                             QCheckBox, QDoubleSpinBox, QApplication, QProgressDialog)
 from PyQt5.QtCore import (QVariant, Qt, QTimer, QObject, QEvent,
                           QItemSelectionModel, QItemSelection)
 from qgis.PyQt import uic
@@ -77,6 +77,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
     FIELD_TYPE_NUMERIC = 'numeric'
     FIELD_TYPE_CATEGORICAL = 'categorical'
     FIELD_TYPE_UNKNOWN = 'unknown'
+    
+    # Class Count Limits
+    WARN_CLASSES = 50
+    MAX_CLASSES = 1000
+
     # Task 4.3: Add 'qgisred_results' to allowed groups
     ALLOWED_GROUP_IDENTIFIERS = ["qgisred_thematicmaps", "qgisred_results", "qgisred_demandsectors"]
 
@@ -554,12 +559,28 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 uniqueValues = self.currentLayer.uniqueValues(fieldIdx)
                 uniqueCount = len([v for v in uniqueValues if v is not None and str(v) != 'NULL'])
                 
-                if uniqueCount > 100:
-                    reply = QMessageBox.warning(
+                if uniqueCount > self.MAX_CLASSES:
+                    QMessageBox.critical(
+                        self,
+                        self.tr("Too Many Classes"),
+                        self.tr(f"The field '{field}' has {uniqueCount} unique values.\n"
+                                f"The maximum allowed is {self.MAX_CLASSES}.\n"
+                                f"Please filter the data or choose a different field.")
+                    )
+                    # Revert combo box
+                    self.cbLegendsType.blockSignals(True)
+                    idx = self.cbLegendsType.findData(currentType)
+                    if idx >= 0:
+                        self.cbLegendsType.setCurrentIndex(idx)
+                    self.cbLegendsType.blockSignals(False)
+                    return
+
+                if uniqueCount > self.WARN_CLASSES:
+                    reply = QMessageBox.question(
                         self,
                         self.tr("High Class Count Warning"),
-                        self.tr(f"The field '{field}' has {uniqueCount} unique values.\n\n"
-                                f"Creating a categorized legend with this many classes may "
+                        self.tr(f"The field '{field}' has {uniqueCount} unique values.\n"
+                                f"Creating a categorized legend with more than {self.WARN_CLASSES} classes may "
                                 f"affect performance and readability.\n\n"
                                 f"Do you want to proceed?"),
                         QMessageBox.Yes | QMessageBox.No,
@@ -1441,19 +1462,51 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def classifyAll(self):
         """TASK 5.2: Add all available unique values at once."""
-        if not self.availableUniqueValues:
-            QMessageBox.information(self, "Info", "All values are already classified.")
+        unique_count_to_add = len(self.availableUniqueValues)
+        if unique_count_to_add == 0:
+            QMessageBox.information(self, self.tr("Info"), self.tr("All values are already classified."))
             return
+
+        # Check Limits
+        current_count = self.tableView.rowCount()
+        # "Other" category might be removed, but let's be conservative with the count check
+        total_potential = current_count + unique_count_to_add
+        
+        if total_potential > self.MAX_CLASSES:
+             QMessageBox.critical(
+                self,
+                self.tr("Limit Exceeded"),
+                self.tr(f"Adding {unique_count_to_add} classes would result in {total_potential} total classes,\n"
+                        f"which exceeds the maximum limit of {self.MAX_CLASSES}.")
+            )
+             return
 
         # Disable updates for performance
         self.tableView.setUpdatesEnabled(False)
         self.tableView.blockSignals(True)
 
+        progress = None
+        use_progress = unique_count_to_add > self.WARN_CLASSES
+
+        if use_progress:
+            progress = QProgressDialog(self.tr("Adding classes..."), self.tr("Cancel"), 0, unique_count_to_add, self)
+            progress.setWindowModality(Qt.WindowModal)
+            progress.setMinimumDuration(0)
+            progress.setValue(0)
+
         try:
             # Loop while there are still values available
             # addCategoricalClass modifies self.availableUniqueValues internally
+            count = 0
             while self.availableUniqueValues:
                 self.addCategoricalClass()
+                count += 1
+                
+                if use_progress:
+                    progress.setValue(count)
+                    QApplication.processEvents()
+                    if progress.wasCanceled():
+                        break
 
             for r in reversed(range(self.tableView.rowCount())):
                 w = self.tableView.cellWidget(r, 3)
@@ -1461,6 +1514,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     self.tableView.removeRow(r)
 
         finally:
+            if progress:
+                progress.close()
+            
             self.tableView.blockSignals(False)
             self.tableView.setUpdatesEnabled(True)
 
@@ -1493,6 +1549,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def addNumericClass(self):
         """Add numeric range."""
+        if self.tableView.rowCount() >= self.MAX_CLASSES:
+             QMessageBox.critical(self, self.tr("Limit Exceeded"), self.tr(f"Maximum of {self.MAX_CLASSES} classes reached."))
+             return
+
         sel = self.getSelectedRows()
 
         # --- FIX START: Handle Multi-Selection ---
@@ -1530,6 +1590,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def addCategoricalClass(self):
         """Add categorical value."""
+        if self.tableView.rowCount() >= self.MAX_CLASSES:
+             QMessageBox.critical(self, self.tr("Limit Exceeded"), self.tr(f"Maximum of {self.MAX_CLASSES} classes reached."))
+             return
+
         if not self.availableUniqueValues:
             if not self.hasOtherValuesCategory():
                 self.ensureOtherValuesCategory()
