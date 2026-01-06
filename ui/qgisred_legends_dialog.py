@@ -180,7 +180,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         # 0: Symbol (Fixed Icon size)
         header.setSectionResizeMode(0, QHeaderView.Fixed)
-        self.tableView.setColumnWidth(0, 50)
+        self.tableView.setColumnWidth(0, 60)
 
         # 1: Size (Fixed small width)
         header.setSectionResizeMode(1, QHeaderView.Fixed)
