@@ -171,7 +171,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def setupTableView(self):
         """Configure table columns and visual style."""
         self.tableView.setColumnCount(4)
-        self.tableView.setHorizontalHeaderLabels(["Symbol", "Size", "Value", "Legend"])
+        self.tableView.setHorizontalHeaderLabels(["Color", "Size", "Value", "Legend"])
 
         # Initialize Event Filter for row selection logic
         self.rowSelectionFilter = RowSelectionFilter(self.tableView)
