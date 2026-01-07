@@ -149,6 +149,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.setupAdvancedUi()
         self.loadStyleDatabase()
         self.applyConsistentStyling()
+        self.setupTooltips()
 
         self.labelIntervalRange.setVisible(False)
         self.spinIntervalRange.setVisible(False)
@@ -304,6 +305,34 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Apply to checkboxes
         #self.ckSizeInvert.setStyleSheet(editableCheckBoxStyle)
         #self.ckColorInvert.setStyleSheet(editableCheckBoxStyle)
+
+    def setupTooltips(self):
+        """Setup tooltips for all buttons with translation support."""
+        # Navigation buttons
+        self.btUp.setToolTip(self.tr("Move selected class up"))
+        self.btDown.setToolTip(self.tr("Move selected class down"))
+        
+        # Class management buttons (dynamic tooltips set in updateUiBasedOnFieldType)
+        self.btClassMinus.setToolTip(self.tr("Remove selected class(es)"))
+        
+        # Classification button
+        self.btClassifyAll.setToolTip(self.tr("Add all unique values as separate classes"))
+        
+        # Color refresh button
+        if hasattr(self, 'btRefreshColors'):
+            self.btRefreshColors.setToolTip(self.tr("Refresh color ramp"))
+        
+        # Style management buttons
+        self.btLoadDefault.setToolTip(self.tr("Load default style for this layer"))
+        self.btLoadGlobal.setToolTip(self.tr("Load style from global database"))
+        self.btSaveGlobal.setToolTip(self.tr("Save current style to global database"))
+        self.btLoadProject.setToolTip(self.tr("Load style from project database"))
+        self.btSaveProject.setToolTip(self.tr("Save current style to project database"))
+        
+        # Action buttons
+        self.btApplyLegend.setToolTip(self.tr("Apply changes to layer"))
+        self.btCancelLegend.setToolTip(self.tr("Cancel and close dialog"))
+
 
     def loadStyleDatabase(self):
         """Loads the proprietary QGISRed style database."""
@@ -1301,15 +1330,16 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Update tooltip based on layer type
         if isCat:
             self.btClassPlus.setToolTip(
-                "Right-click: Add a new item above the current selection\n"
-                "Left-click: Add a new item below the current selection\n"
-                "Double-click: Add \"Other values\" option"
+                self.tr("Right-click: Add a new item above the current selection\n"
+                        "Left-click: Add a new item below the current selection\n"
+                        "Double-click: Add \"Other values\" option")
             )
         elif isNum:
             self.btClassPlus.setToolTip(
-                "Right-click: Add a new item above the current selection\n"
-                "Left-click: Add a new item below the current selection"
+                self.tr("Right-click: Add a new item above the current selection\n"
+                        "Left-click: Add a new item below the current selection")
             )
+
 
         if isCat: self.updateAddClassButtonState()
 
