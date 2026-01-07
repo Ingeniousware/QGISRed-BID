@@ -143,6 +143,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.populateLegendTypes()
         self.populateGroups()
         self.setupClassCountField()
+        self.setupClassifyAllButton()
 
         # NEW: Setup Advanced Color and Size UI
         self.setupAdvancedUi()
@@ -269,6 +270,14 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Reflect only behavior
         #self.btnColorRamp.setEnabled(False)
         self.cbColorRampPalette.currentIndexChanged.connect(self.syncColorRampButton)
+
+    def setupClassifyAllButton(self):
+        # Ensure icon exists or fallback
+        iconPath = os.path.join(os.path.dirname(__file__), '..', 'images', 'iconClassifyAll.png')
+        self.btClassifyAll.setIcon(QIcon(iconPath))
+
+        self.btClassifyAll.setToolTip(self.tr("Classify All Unique Values"))
+        self.btClassifyAll.clicked.connect(self.classifyAll)
 
     def applyConsistentStyling(self):
         """Apply consistent white backgrounds to all editable widgets and standardize appearance."""
@@ -1286,6 +1295,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btUp.setVisible(isCat)
         self.btDown.setVisible(isCat)
         self.labelFrameLegends.setVisible(isNum or isCat)
+        
+        self.btClassifyAll.setVisible(isCat)
 
         if isCat: self.updateAddClassButtonState()
 
@@ -1471,7 +1482,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
             # TASK 5.2: Double Click triggers Classify All for Categorical
             if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
-                self.classifyAll()
+                self.ensureOtherValuesCategory()
             else:
                 # For numeric, ignore double-click to prevent adding two classes
                 return
@@ -1624,10 +1635,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
              return
 
         if not self.availableUniqueValues:
-            if not self.hasOtherValuesCategory():
-                self.ensureOtherValuesCategory()
-            else:
-                QMessageBox.information(self, "Info", "All values used.")
+            QMessageBox.information(self, "Info", "All values used.")
             return
 
         val = self.availableUniqueValues.pop(0)
@@ -1667,7 +1675,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
             for r in rows:
-                w = self.tableView.cellWidget(r, 2)
+                w = self.tableView.cellWidget(r, 3)
                 if isinstance(w, QLineEdit):
                     val = w.text()
                     if val != self.tr("Other Values") and val in self.usedUniqueValues:
