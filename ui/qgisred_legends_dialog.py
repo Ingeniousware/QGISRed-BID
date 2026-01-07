@@ -1297,6 +1297,19 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.labelFrameLegends.setVisible(isNum or isCat)
         
         self.btClassifyAll.setVisible(isCat)
+        
+        # Update tooltip based on layer type
+        if isCat:
+            self.btClassPlus.setToolTip(
+                "Right-click: Add a new item above the current selection\n"
+                "Left-click: Add a new item below the current selection\n"
+                "Double-click: Add \"Other values\" option"
+            )
+        elif isNum:
+            self.btClassPlus.setToolTip(
+                "Right-click: Add a new item above the current selection\n"
+                "Left-click: Add a new item below the current selection"
+            )
 
         if isCat: self.updateAddClassButtonState()
 
