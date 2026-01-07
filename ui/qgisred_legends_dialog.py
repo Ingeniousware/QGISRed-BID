@@ -1395,12 +1395,14 @@ class QGISRedLegendsDialog(QDialog, formClass):
         cw.updateSymbolSize(size, geom == "line")
         cw.setAutoFillBackground(False)
         cw.setFixedSize(30, 20)
-        # Create a container to center the color widget
+        # Create a container to center the color widget horizontally
         colorContainer = QWidget(self.tableView)
         colorLayout = QHBoxLayout(colorContainer)
         colorLayout.setContentsMargins(0, 0, 0, 0)
         colorLayout.setSpacing(0)
-        colorLayout.addWidget(cw, 0, Qt.AlignVCenter | Qt.AlignHCenter)
+        colorLayout.addStretch()
+        colorLayout.addWidget(cw)
+        colorLayout.addStretch()
         colorContainer.setAutoFillBackground(False)
         self.tableView.setCellWidget(row, 1, colorContainer)
 
