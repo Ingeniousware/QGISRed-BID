@@ -1768,13 +1768,32 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def _getRowData(self, row):
         """Extract all widget data from a row."""
         data = []
-        for c in range(4):
+        for c in range(5):  # Now we have 5 columns (0-4)
             w = self.tableView.cellWidget(row, c)
-            if isinstance(w, SymbolColorSelectorWithCheckbox):
-                data.append(('cw', w.color(), w.isChecked(), w.colorSelector.symbolSize))
+            if c == 0:
+                # Column 0: Container with checkbox
+                if w:
+                    checkbox = w.findChild(QCheckBox)
+                    if checkbox:
+                        data.append(('ck', checkbox.isChecked()))
+                    else:
+                        data.append(None)
+                else:
+                    data.append(None)
+            elif c == 1:
+                # Column 1: Container with SymbolColorSelector
+                if w:
+                    colorSelector = w.findChild(SymbolColorSelector)
+                    if colorSelector:
+                        data.append(('cs', colorSelector.color(), colorSelector.symbolSize, colorSelector.geometryHint()))
+                    else:
+                        data.append(None)
+                else:
+                    data.append(None)
             elif isinstance(w, QLineEdit):
-                # For column 2 (Value), check if it has double-click handler (numeric) or not (categorical)
-                hasDoubleClick = c == 2 and hasattr(w, 'mouseDoubleClickEvent') and w.mouseDoubleClickEvent.__name__ == '<lambda>'
+                # Columns 2, 3, 4: Line edits
+                # For column 3 (Value), check if it has double-click handler (numeric) or not (categorical)
+                hasDoubleClick = c == 3 and hasattr(w, 'mouseDoubleClickEvent') and w.mouseDoubleClickEvent.__name__ == '<lambda>'
                 data.append(('le', w.text(), w.isReadOnly(), hasDoubleClick))
             else:
                 data.append(None)
@@ -1809,19 +1828,51 @@ class QGISRedLegendsDialog(QDialog, formClass):
         for c, d in enumerate(data):
             if not d: continue
             dtype = d[0]
-            if dtype == 'cw':
-                cw = SymbolColorSelectorWithCheckbox(self.tableView, geom, d[1], d[2], "")
-                cw.colorSelector.setEnabled(self.isEditing)
-                cw.updateSymbolSize(d[3], geom=="line")
-                cw.setAutoFillBackground(False)  # Ensure custom widget background doesn't block selection
-                self.tableView.setCellWidget(row, c, cw)
+
+            if dtype == 'ck':
+                # Column 0: Checkbox in container
+                ckw = QCheckBox(self.tableView)
+                ckw.setChecked(d[1])
+                ckw.installEventFilter(self.rowSelectionFilter)
+                containerWidget = QWidget(self.tableView)
+                containerLayout = QHBoxLayout(containerWidget)
+                containerLayout.setContentsMargins(0, 0, 0, 0)
+                containerLayout.setSpacing(2)
+                containerLayout.addWidget(ckw, 0, Qt.AlignVCenter | Qt.AlignHCenter)
+                containerWidget.setAutoFillBackground(False)
+                self.tableView.setCellWidget(row, c, containerWidget)
+
+            elif dtype == 'cs':
+                # Column 1: SymbolColorSelector in container
+                color = d[1]
+                symbolSize = d[2]
+                geomHint = d[3]
+
+                cw = SymbolColorSelector(self.tableView, geomHint, color, True, "Pick color", doubleClickOnly=True)
+                cw.setEnabled(self.isEditing)
+                cw.updateSymbolSize(symbolSize, geomHint == "line")
+                cw.setAutoFillBackground(False)
+                cw.setFixedSize(30, 20)
+
+                colorContainer = QWidget(self.tableView)
+                colorLayout = QHBoxLayout(colorContainer)
+                colorLayout.setContentsMargins(0, 0, 0, 0)
+                colorLayout.setSpacing(0)
+                colorLayout.addStretch()
+                colorLayout.addWidget(cw)
+                colorLayout.addStretch()
+                colorContainer.setAutoFillBackground(False)
+                self.tableView.setCellWidget(row, c, colorContainer)
+
             elif dtype == 'le':
+                # Columns 2, 3, 4: Line edits
                 le = QLineEdit(d[1])
                 le.setEnabled(self.isEditing)
                 hasDoubleClick = d[3] if len(d) > 3 else False
-                if d[2]:
+
+                if d[2]:  # isReadOnly
                     le.setReadOnly(True)
-                    if c == 2:  # Value column
+                    if c == 3:  # Value column
                         le.setAlignment(Qt.AlignCenter)
                         if hasDoubleClick:  # Numeric - editable via double-click
                             le.setStyleSheet(baseStyle)
@@ -1833,7 +1884,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 else:
                     # Editable columns (Size and Legend) - standardized transparent background
                     le.setStyleSheet(baseStyle)
-                if c == 1:
+
+                if c == 2:  # Size column
                     le.setAlignment(Qt.AlignCenter)
                     le.textChanged.connect(lambda t, r=row: self.onSizeChanged(r, t))
 
