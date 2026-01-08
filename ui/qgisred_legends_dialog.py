@@ -28,7 +28,7 @@ from qgis.utils import iface
 
 # Local imports
 from ..tools.qgisred_utils import QGISRedUtils
-from .qgisred_custom_dialogs import RangeEditDialog, SymbolColorSelector
+from .qgisred_custom_dialogs import RangeEditDialog, SymbolColorSelector, QGISRedColorRampSelector
 
 # Load UI
 formClass, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_legends_dialog.ui"))
@@ -249,7 +249,6 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.cbColors.currentIndexChanged.connect(self.onColorModeChanged)
         self.btColorEqual.setColor(QColor("red"))
         self.btColorEqual.colorChanged.connect(self.applyColorLogic)
-        self.cbColorRampPalette.currentIndexChanged.connect(self.applyColorLogic)
         self.ckColorInvert.toggled.connect(self.applyColorLogic)
 
         # Setup refresh colors button
@@ -262,15 +261,18 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.onColorModeChanged()
 
     def setupColorRampButton(self):
-        """Initialize and add QgsColorRampButton to the UI."""
-        self.btnColorRamp = QgsColorRampButton(self)
-        self.btnColorRamp.setMaximumWidth(100)
+        """Initialize and add QGISRedColorRampSelector to the UI."""
+        self.btnColorRamp = QGISRedColorRampSelector(self)
         self.btnColorRamp.setVisible(False)
         # Use existing layout created in UI
         self.palletesHorizontalLayout.addWidget(self.btnColorRamp)
-        # Reflect only behavior
-        #self.btnColorRamp.setEnabled(False)
-        self.cbColorRampPalette.currentIndexChanged.connect(self.syncColorRampButton)
+        # Connect signal to handle ramp changes
+        self.btnColorRamp.colorRampChanged.connect(self.onCustomColorRampChanged)
+    
+    def onCustomColorRampChanged(self, ramp):
+        """Handle color ramp change from custom selector."""
+        # Apply the selected ramp to the current color logic
+        self.applyColorLogic()
 
     def setupClassifyAllButton(self):
         # Ensure icon exists or fallback
@@ -294,7 +296,6 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.cbLegendsType.setStyleSheet(editableComboStyle)
         self.cbSizes.setStyleSheet(editableComboStyle)
         self.cbColors.setStyleSheet(editableComboStyle)
-        self.cbColorRampPalette.setStyleSheet(editableComboStyle)
 
         # Apply to spin boxes
         self.spinIntervalRange.setStyleSheet(editableSpinBoxStyle)
@@ -839,11 +840,27 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
 
     def syncColorRampButton(self):
-        """Update QgsColorRampButton to match selected ramp/palette."""
-        ramp = self.cbColorRampPalette.currentData()
-        if isinstance(ramp, QgsColorRamp):
-            self.btnColorRamp.setColorRamp(ramp)
-        # Ensure correct visibility/state
+        """Update CustomColorRampSelector with ramps from style database."""
+        # Clear existing ramps
+        self.btnColorRamp.clearRamps()
+        
+        mode = self.cbColors.currentText()
+        
+        if mode == "Ramp":
+            # Load gradient ramps
+            ramps = self.loadGradientRampsFromStyle()
+        elif mode == "Palette":
+            # Load palette ramps
+            ramps = self.loadPaletteRampsFromStyle()
+        else:
+            return
+        
+        # Add ramps to the custom selector
+        if ramps:
+            self.btnColorRamp.addColorRamps(ramps)
+            # Set first ramp as default
+            first_name = list(ramps.keys())[0]
+            self.btnColorRamp.setCurrentRamp(first_name)
         
     def onColorModeChanged(self):
         """Handle color mode change."""
@@ -851,45 +868,39 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btColorEqual.setVisible(mode == "Equal")
         
         isRampOrPalette = mode in ["Ramp", "Palette"]
-        self.cbColorRampPalette.setVisible(isRampOrPalette)
         self.btnColorRamp.setVisible(isRampOrPalette)
         
         self.ckColorInvert.setVisible(isRampOrPalette)
         self.btRefreshColors.setVisible(mode == "Random")
 
-        if mode == "Ramp":
-            self.populateRamps()
-        elif mode == "Palette":
-            self.populatePalettes()
+        if isRampOrPalette:
+            self.syncColorRampButton()
 
         self.applyColorLogic()
-        self.syncColorRampButton()
 
-    def populateRamps(self):
-        """Populate color ramps from style database."""
-        self.cbColorRampPalette.blockSignals(True)
-        self.cbColorRampPalette.clear()
-
+    def loadGradientRampsFromStyle(self):
+        """Load gradient color ramps from style database."""
+        ramps = {}
+        
         if self.style:
             # Load Gradient Ramps from Style
             names = self.style.colorRampNames()
             for name in names:
                 ramp = self.style.colorRamp(name)
                 if isinstance(ramp, QgsGradientColorRamp):
-                    self.cbColorRampPalette.addItem(name, ramp)
+                    ramps[name] = ramp
 
         # If no ramps found, add default gradient
-        if self.cbColorRampPalette.count() == 0:
+        if not ramps:
             defaultRamp = QgsGradientColorRamp(QColor(0, 0, 255), QColor(255, 0, 0))
-            self.cbColorRampPalette.addItem("Default (Blue to Red)", defaultRamp)
+            ramps["Default (Blue to Red)"] = defaultRamp
 
-        self.cbColorRampPalette.blockSignals(False)
+        return ramps
 
-    def populatePalettes(self):
-        """Populate color palettes from style database."""
-        self.cbColorRampPalette.blockSignals(True)
-        self.cbColorRampPalette.clear()
-
+    def loadPaletteRampsFromStyle(self):
+        """Load palette color schemes from style database."""
+        ramps = {}
+        
         if self.style:
             # Load Preset Schemes (Palettes)
             names = self.style.colorRampNames()
@@ -897,17 +908,17 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 ramp = self.style.colorRamp(name)
                 # QGIS treats Palettes as PresetSchemeColorRamp
                 if isinstance(ramp, QgsPresetSchemeColorRamp):
-                    self.cbColorRampPalette.addItem(name, ramp)
+                    ramps[name] = ramp
 
         # If no palettes found, create a default one
-        if self.cbColorRampPalette.count() == 0:
+        if not ramps:
             # Create a simple default palette
             defaultColors = [QColor(255, 0, 0), QColor(0, 255, 0), QColor(0, 0, 255),
                            QColor(255, 255, 0), QColor(255, 0, 255), QColor(0, 255, 255)]
             defaultPalette = QgsPresetSchemeColorRamp(defaultColors)
-            self.cbColorRampPalette.addItem("Default Palette", defaultPalette)
+            ramps["Default Palette"] = defaultPalette
 
-        self.cbColorRampPalette.blockSignals(False)
+        return ramps
 
     # --- Mathematical Algorithms ---
 
@@ -985,14 +996,14 @@ class QGISRedLegendsDialog(QDialog, formClass):
             colors = [self.generateRandomColor() for _ in range(rows)]
 
         elif mode == "Ramp":
-            ramp = self.cbColorRampPalette.currentData()
+            ramp = self.btnColorRamp.currentRamp()
             if isinstance(ramp, QgsGradientColorRamp):
                 colors = self.algorithmRamp(ramp, rows)
             else:
                 colors = [self.generateRandomColor() for _ in range(rows)]
 
         elif mode == "Palette":
-            palette = self.cbColorRampPalette.currentData()
+            palette = self.btnColorRamp.currentRamp()
             if isinstance(palette, QgsPresetSchemeColorRamp):
                 colors = self.algorithmPalette(palette, rows)
             else:
