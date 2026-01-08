@@ -242,12 +242,14 @@ class QGISRedColorRampSelector(QWidget):
     
     def _initUi(self):
         """Initialize the user interface."""
+        # Set fixed height for the widget
+        self.setFixedHeight(20)
+        
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         
         # Create button with dropdown arrow
         self._button = QPushButton(self)
-        self._button.setMinimumHeight(24)
         self._button.clicked.connect(self._showRampMenu)
         
         layout.addWidget(self._button)
