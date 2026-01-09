@@ -10,7 +10,7 @@ import statistics
 from PyQt5.QtGui import QIcon, QColor
 from PyQt5.QtWidgets import (QDialog, QMessageBox, QHeaderView,
                              QComboBox, QLineEdit, QAbstractItemView,
-                             QCheckBox, QDoubleSpinBox, QApplication, QProgressDialog,
+                             QCheckBox, QDoubleSpinBox, QSpinBox, QApplication, QProgressDialog,
                              QWidget, QHBoxLayout)
 from PyQt5.QtCore import (QVariant, Qt, QTimer, QObject, QEvent,
                           QItemSelectionModel, QItemSelection)
@@ -232,10 +232,59 @@ class QGISRedLegendsDialog(QDialog, formClass):
         """)
 
     def setupClassCountField(self):
-        """Configure read-only class count field."""
-        self.leClassCount.setReadOnly(True)
-        self.leClassCount.setButtonSymbols(QDoubleSpinBox.NoButtons)
-        self.leClassCount.setStyleSheet("QSpinBox { background-color: #F0F0F0; color: #808080; }")
+        """Configure class count field with conditional editability."""
+        self.leClassCount.setMinimum(1)
+        self.leClassCount.setMaximum(self.MAX_CLASSES)
+        self.leClassCount.valueChanged.connect(self.onClassCountChanged)
+        self.setClassCountEditable(False)
+
+    def setClassCountEditable(self, editable):
+        """Set class count spinbox editability and appearance."""
+        if editable:
+            self.leClassCount.setReadOnly(False)
+            self.leClassCount.setButtonSymbols(QSpinBox.UpDownArrows)
+            self.leClassCount.setStyleSheet("QSpinBox { background-color: white; color: #2b2b2b; }")
+        else:
+            self.leClassCount.setReadOnly(True)
+            self.leClassCount.setButtonSymbols(QSpinBox.NoButtons)
+            self.leClassCount.setStyleSheet("QSpinBox { background-color: #F0F0F0; color: #808080; }")
+
+    def modeHasVariableClassCount(self):
+        """Determine if the current mode allows variable class count."""
+        if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
+            return False
+        
+        modeId = self.cbMode.currentData()
+        fixedModes = ["FixedInterval", "StdDev"]
+        return modeId not in fixedModes
+
+    def onClassCountChanged(self, newValue):
+        """Handle spin box value change to add/remove classes."""
+        if not self.currentLayer or self.currentFieldType != self.FIELD_TYPE_NUMERIC:
+            return
+        
+        if not self.modeHasVariableClassCount():
+            return
+        
+        currentCount = self.tableView.rowCount()
+        if newValue == currentCount:
+            return
+        
+        self.leClassCount.blockSignals(True)
+        
+        if newValue > currentCount:
+            while self.tableView.rowCount() < newValue:
+                self.addNumericClass()
+        elif newValue < currentCount:
+            while self.tableView.rowCount() > newValue and self.tableView.rowCount() > 1:
+                self.tableView.removeRow(self.tableView.rowCount() - 1)
+        
+        self.leClassCount.setValue(self.tableView.rowCount())
+        self.leClassCount.blockSignals(False)
+        
+        modeId = self.cbMode.currentData()
+        if modeId and modeId not in [None, "Manual"]:
+            self.applyClassificationMethod(modeId)
 
     def setupAdvancedUi(self):
         self.cbSizes.addItems(["Manual", "Equal", "Linear", "Quadratic", "Exponential"])
@@ -1339,6 +1388,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.labelFrameLegends.setVisible(isNum or isCat)
         
         self.btClassifyAll.setVisible(isCat)
+        
+        # Toggle class count editability based on mode
+        self.setClassCountEditable(isNum and self.modeHasVariableClassCount())
         
         # Update tooltip based on layer type
         if isCat:
