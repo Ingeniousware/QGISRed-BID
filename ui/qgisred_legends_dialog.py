@@ -252,7 +252,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def modeHasVariableClassCount(self):
         """Determine if the current mode allows variable class count."""
         if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
-            return False
+            return True
         
         modeId = self.cbMode.currentData()
         fixedModes = ["FixedInterval", "StdDev"]
@@ -260,7 +260,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def onClassCountChanged(self, newValue):
         """Handle spin box value change to add/remove classes."""
-        if not self.currentLayer or self.currentFieldType != self.FIELD_TYPE_NUMERIC:
+        if not self.currentLayer:
             return
         
         if not self.modeHasVariableClassCount():
@@ -272,19 +272,32 @@ class QGISRedLegendsDialog(QDialog, formClass):
         
         self.leClassCount.blockSignals(True)
         
-        if newValue > currentCount:
-            while self.tableView.rowCount() < newValue:
-                self.addNumericClass()
-        elif newValue < currentCount:
-            while self.tableView.rowCount() > newValue and self.tableView.rowCount() > 1:
-                self.tableView.removeRow(self.tableView.rowCount() - 1)
+        if self.currentFieldType == self.FIELD_TYPE_NUMERIC:
+            if newValue > currentCount:
+                while self.tableView.rowCount() < newValue:
+                    self.addNumericClass()
+            elif newValue < currentCount:
+                while self.tableView.rowCount() > newValue and self.tableView.rowCount() > 1:
+                    self.tableView.removeRow(self.tableView.rowCount() - 1)
+            
+            self.leClassCount.setValue(self.tableView.rowCount())
+            self.leClassCount.blockSignals(False)
+            
+            modeId = self.cbMode.currentData()
+            if modeId and modeId not in [None, "Manual"]:
+                self.applyClassificationMethod(modeId)
         
-        self.leClassCount.setValue(self.tableView.rowCount())
-        self.leClassCount.blockSignals(False)
-        
-        modeId = self.cbMode.currentData()
-        if modeId and modeId not in [None, "Manual"]:
-            self.applyClassificationMethod(modeId)
+        elif self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
+            if newValue > currentCount:
+                while self.tableView.rowCount() < newValue and self.availableUniqueValues:
+                    self.addCategoricalClass()
+            elif newValue < currentCount:
+                while self.tableView.rowCount() > newValue and self.tableView.rowCount() > 0:
+                    self._removeCategoricalRow(self.tableView.rowCount() - 1)
+            
+            self.leClassCount.setValue(self.tableView.rowCount())
+            self.leClassCount.blockSignals(False)
+            self.updateClassCountLimits()
 
     def setupAdvancedUi(self):
         self.cbSizes.addItems(["Manual", "Equal", "Linear", "Quadratic", "Exponential"])
@@ -1390,7 +1403,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btClassifyAll.setVisible(isCat)
         
         # Toggle class count editability based on mode
-        self.setClassCountEditable(isNum and self.modeHasVariableClassCount())
+        if isCat:
+            self.setClassCountEditable(True)
+            self.updateClassCountLimits()
+        else:
+            self.setClassCountEditable(isNum and self.modeHasVariableClassCount())
         
         # Update tooltip based on layer type
         if isCat:
@@ -1468,6 +1485,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.availableUniqueValues = [v for v in self.availableUniqueValues if v not in self.usedUniqueValues]
         self.updateClassCount()
         self.updateButtonStates()
+        self.updateClassCountLimits()
 
     def setRowWidgets(self, row, symbol, visible, valText, legendText, geom, isReadOnlyVal=False):
         """Helper to create and set widgets for a row."""
@@ -1775,6 +1793,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.tableView.clearSelection()
         self.tableView.selectRow(row)
         self.updateClassCount()
+        self.updateButtonStates()
+        self.updateClassCountLimits()
 
     def removeClass(self):
         """Remove selected classes."""
@@ -1807,6 +1827,38 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # NEW: Re-apply generic logic
         self.applyColorLogic()
         self.applySizeLogic()
+        
+        # Update spinbox limits for categorized layers
+        if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
+            self.updateClassCountLimits()
+
+    def _removeCategoricalRow(self, row):
+        """Remove a single categorical row and return its value to available pool."""
+        w = self.tableView.cellWidget(row, 3)
+        if isinstance(w, QLineEdit):
+            val = w.text()
+            if val != self.tr("Other Values") and val in self.usedUniqueValues:
+                self.usedUniqueValues.remove(val)
+                self.availableUniqueValues.append(val)
+        self.tableView.removeRow(row)
+        self.availableUniqueValues.sort()
+        self.updateButtonStates()
+
+    def updateClassCountLimits(self):
+        """Update spinbox limits for categorized layers based on available unique values."""
+        if self.currentFieldType != self.FIELD_TYPE_CATEGORICAL:
+            return
+        
+        currentCount = self.tableView.rowCount()
+        maxPossible = currentCount + len(self.availableUniqueValues)
+        
+        if not self.hasOtherValuesCategory():
+            maxPossible += 1
+        
+        self.leClassCount.blockSignals(True)
+        self.leClassCount.setMinimum(0)
+        self.leClassCount.setMaximum(maxPossible)
+        self.leClassCount.blockSignals(False)
 
     def moveClassUp(self):
         self._moveRow(-1)
