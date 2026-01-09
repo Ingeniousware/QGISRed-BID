@@ -242,17 +242,58 @@ class QGISRedColorRampSelector(QWidget):
     
     def _initUi(self):
         """Initialize the user interface."""
-        # Set fixed height for the widget
-        self.setFixedHeight(20)
+        # Set fixed size for the widget (150 width, 24 height)
+        self.setFixedWidth(150)
+        self.setFixedHeight(24)
         
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         
-        # Create button with dropdown arrow
+        # Create button with dropdown arrow styled like QComboBox
         self._button = QPushButton(self)
         self._button.clicked.connect(self._showRampMenu)
+        self._button.setFixedWidth(150)
+        self._button.setFixedHeight(24)
+        
+        # Style to look like a QComboBox with dropdown arrow
+        self._button.setStyleSheet("""
+            QPushButton {
+                background-color: white;
+                border: 1px solid #ababab;
+                border-radius: 2px;
+                padding: 2px 20px 2px 4px;
+                text-align: left;
+            }
+            QPushButton:hover {
+                border: 1px solid #0078d4;
+            }
+            QPushButton::menu-indicator {
+                image: none;
+            }
+            QPushButton:after {
+                content: '';
+            }
+        """)
+        
+        # Create dropdown arrow indicator
+        self._arrowLabel = QLabel(self)
+        self._arrowLabel.setText("▼")
+        self._arrowLabel.setStyleSheet("""
+            QLabel {
+                color: #666666;
+                font-size: 8px;
+                background: transparent;
+            }
+        """)
+        self._arrowLabel.setFixedSize(16, 24)
+        self._arrowLabel.setAlignment(Qt.AlignCenter)
+        self._arrowLabel.setAttribute(Qt.WA_TransparentForMouseEvents)
         
         layout.addWidget(self._button)
+        
+        # Position arrow on the right side of button
+        self._arrowLabel.setParent(self._button)
+        self._arrowLabel.move(self._button.width() - 18, 0)
         
         # Initial display
         self._updateButtonDisplay()
@@ -368,11 +409,11 @@ class QGISRedColorRampSelector(QWidget):
         if self._currentRampName and self._currentRampName in self._ramps:
             ramp = self._ramps[self._currentRampName]
             
-            # Get button size
-            width = max(100, self._button.width())
-            height = max(20, self._button.height() - 4)
+            # Fixed size for gradient preview (leaving space for arrow)
+            width = 120
+            height = 16
             
-            # Create gradient preview
+            # Create gradient preview with transparent background
             pixmap = self._renderGradientPreview(ramp, width, height)
             
             # Set as button icon
@@ -383,10 +424,14 @@ class QGISRedColorRampSelector(QWidget):
             # No ramp selected - show placeholder
             self._button.setIcon(QIcon())
             self._button.setText("No ramp")
+        
+        # Ensure arrow stays positioned correctly
+        if hasattr(self, '_arrowLabel'):
+            self._arrowLabel.move(self._button.width() - 18, 0)
     
     def _renderGradientPreview(self, ramp, width, height):
         """
-        Render a color ramp as a horizontal gradient.
+        Render a color ramp as a horizontal gradient with transparent background.
         
         Args:
             ramp: QgsColorRamp instance
@@ -394,12 +439,13 @@ class QGISRedColorRampSelector(QWidget):
             height: Pixmap height in pixels
             
         Returns:
-            QPixmap with gradient preview
+            QPixmap with gradient preview (transparent background)
         """
         pixmap = QPixmap(width, height)
-        pixmap.fill(QColor(255, 255, 255))
+        pixmap.fill(Qt.transparent)  # Transparent background instead of white
         
         painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
         
         # Draw gradient by sampling the ramp
         for x in range(width):

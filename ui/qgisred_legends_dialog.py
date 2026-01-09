@@ -264,8 +264,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
         """Initialize and add QGISRedColorRampSelector to the UI."""
         self.btnColorRamp = QGISRedColorRampSelector(self)
         self.btnColorRamp.setVisible(False)
-        # Use existing layout created in UI
+        # Add with horizontal centering using stretch spacers
+        self.palletesHorizontalLayout.addStretch(1)
         self.palletesHorizontalLayout.addWidget(self.btnColorRamp)
+        self.palletesHorizontalLayout.addStretch(1)
         # Connect signal to handle ramp changes
         self.btnColorRamp.colorRampChanged.connect(self.onCustomColorRampChanged)
     
