@@ -456,15 +456,15 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if iface and iface.layerTreeView():
             self.layerTreeViewConnection = iface.layerTreeView().currentLayerChanged.connect(self.onQgisLayerSelectionChanged)
 
-        # --- NEW: Project and Tree Signals ---
-        # Watch for global visibility changes (recursive from root)
-        self.layerTreeRoot = QgsProject.instance().layerTreeRoot()
-        self.layerTreeRoot.visibilityChanged.connect(self.onTreeNodeVisibilityChanged)
+        # # --- NEW: Project and Tree Signals ---
+        # # Watch for global visibility changes (recursive from root)
+        # self.layerTreeRoot = QgsProject.instance().layerTreeRoot()
+        # self.layerTreeRoot.visibilityChanged.connect(self.onTreeNodeVisibilityChanged)
 
-        # Watch for layer additions and removals
-        QgsProject.instance().layersWillBeRemoved.connect(self.onLayersWillBeRemoved)
-        QgsProject.instance().layersAdded.connect(self.onProjectLayersChanged)
-        QgsProject.instance().layersRemoved.connect(self.onProjectLayersChanged)
+        # # Watch for layer additions and removals
+        # QgsProject.instance().layersWillBeRemoved.connect(self.onLayersWillBeRemoved)
+        # QgsProject.instance().layersAdded.connect(self.onProjectLayersChanged)
+        # QgsProject.instance().layersRemoved.connect(self.onProjectLayersChanged)
 
     def loadInitialState(self):
         """Preselect group/layer and set initial state."""
