@@ -28,7 +28,7 @@ from qgis.utils import iface
 
 # Local imports
 from ..tools.qgisred_utils import QGISRedUtils
-from .qgisred_custom_dialogs import RangeEditDialog, SymbolColorSelector, QGISRedColorRampSelector
+from .qgisred_custom_dialogs import QGISRedRangeEditDialog, QGISRedSymbolColorSelector, QGISRedColorRampSelector
 
 # Load UI
 formClass, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_legends_dialog.ui"))
@@ -1032,7 +1032,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         for r in range(rows):
             sw = self.tableView.cellWidget(r, 2)  # Size Widget (column 2)
             colorContainer = self.tableView.cellWidget(r, 1)  # Color container (column 1)
-            cw = colorContainer.findChild(SymbolColorSelector) if colorContainer else None
+            cw = colorContainer.findChild(QGISRedSymbolColorSelector) if colorContainer else None
             if sw:
                 sw.blockSignals(True)
                 sw.setText(f"{sizes[r]:.2f}")
@@ -1080,7 +1080,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         # Update Table
         for r in range(rows):
             colorContainer = self.tableView.cellWidget(r, 1)  # Color container (column 1)
-            cw = colorContainer.findChild(SymbolColorSelector) if colorContainer else None
+            cw = colorContainer.findChild(QGISRedSymbolColorSelector) if colorContainer else None
             if cw:
                 cw.setColor(colors[r])
 
@@ -1526,7 +1526,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.tableView.setCellWidget(row, 0, containerWidget)
 
         # Column 1: Color/Symbol (centered, double-click to open dialog)
-        cw = SymbolColorSelector(self.tableView, geom, symbol.color(), True, "Pick color", doubleClickOnly=True)
+        cw = QGISRedSymbolColorSelector(self.tableView, geom, symbol.color(), True, "Pick color", doubleClickOnly=True)
         cw.setEnabled(self.isEditing)
         size = symbol.width() if geom == "line" else symbol.size()
         cw.updateSymbolSize(size, geom == "line")
@@ -1898,9 +1898,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 else:
                     data.append(None)
             elif c == 1:
-                # Column 1: Container with SymbolColorSelector
+                # Column 1: Container with QGISRedSymbolColorSelector
                 if w:
-                    colorSelector = w.findChild(SymbolColorSelector)
+                    colorSelector = w.findChild(QGISRedSymbolColorSelector)
                     if colorSelector:
                         data.append(('cs', colorSelector.color(), colorSelector.symbolSize, colorSelector.geometryHint()))
                     else:
@@ -1960,12 +1960,12 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 self.tableView.setCellWidget(row, c, containerWidget)
 
             elif dtype == 'cs':
-                # Column 1: SymbolColorSelector in container
+                # Column 1: QGISRedSymbolColorSelector in container
                 color = d[1]
                 symbolSize = d[2]
                 geomHint = d[3]
 
-                cw = SymbolColorSelector(self.tableView, geomHint, color, True, "Pick color", doubleClickOnly=True)
+                cw = QGISRedSymbolColorSelector(self.tableView, geomHint, color, True, "Pick color", doubleClickOnly=True)
                 cw.setEnabled(self.isEditing)
                 cw.updateSymbolSize(symbolSize, geomHint == "line")
                 cw.setAutoFillBackground(False)
@@ -2305,7 +2305,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             if layerIdent:
                 unitAbbr = self.utils.getUnitAbbreviationForLayer(layerIdent)
         
-        dlg = RangeEditDialog(curr[0], curr[1], self, unitAbbr=unitAbbr)
+        dlg = QGISRedRangeEditDialog(curr[0], curr[1], self, unitAbbr=unitAbbr)
         if dlg.exec_():
             nl, nu = dlg.getValues()
 
@@ -2340,7 +2340,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         try:
             s = float(text)
             colorContainer = self.tableView.cellWidget(row, 1)  # Color container (column 1)
-            cw = colorContainer.findChild(SymbolColorSelector) if colorContainer else None
+            cw = colorContainer.findChild(QGISRedSymbolColorSelector) if colorContainer else None
             if cw:
                 cw.updateSymbolSize(s, self.currentLayer.geometryType() == 1)
         except: pass
@@ -2364,7 +2364,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 # Get checkbox from container
                 ckw = ckContainer.findChild(QCheckBox) if ckContainer else None
                 # Get color widget from container
-                cw = colorContainer.findChild(SymbolColorSelector) if colorContainer else None
+                cw = colorContainer.findChild(QGISRedSymbolColorSelector) if colorContainer else None
                 
                 sym = QgsSymbol.defaultSymbol(self.currentLayer.geometryType())
                 if cw:
@@ -2393,7 +2393,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 # Get checkbox from container
                 ckw = ckContainer.findChild(QCheckBox) if ckContainer else None
                 # Get color widget from container
-                cw = colorContainer.findChild(SymbolColorSelector) if colorContainer else None
+                cw = colorContainer.findChild(QGISRedSymbolColorSelector) if colorContainer else None
                 
                 val = vw.text() if isinstance(vw, QLineEdit) else ""
                 label = lw.text()

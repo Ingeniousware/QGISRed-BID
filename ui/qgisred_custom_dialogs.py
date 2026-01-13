@@ -8,8 +8,7 @@ from qgis.gui import QgsSymbolButton, QgsColorDialog
 from qgis.core import QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, QgsColorRamp
 
 
-class RangeEditDialog(QDialog):
-
+class QGISRedRangeEditDialog(QDialog):
     def __init__(self, lowerValue, upperValue, parent=None, unitAbbr=""):
         super().__init__(parent)
         self.unitAbbr = unitAbbr
@@ -23,9 +22,11 @@ class RangeEditDialog(QDialog):
         lowerLabelText = self.buildLabel("Lower Value")
         upperLabelText = self.buildLabel("Upper Value")
         layout.addWidget(QLabel(lowerLabelText))
+
         self.lowerSpinBox = self.createSpinBox(lower)
         layout.addWidget(self.lowerSpinBox)
         layout.addWidget(QLabel(upperLabelText))
+
         self.upperSpinBox = self.createSpinBox(upper)
         layout.addWidget(self.upperSpinBox)
         self.addDialogButtons(layout)
@@ -51,7 +52,7 @@ class RangeEditDialog(QDialog):
     def getValues(self):
         return self.lowerSpinBox.value(), self.upperSpinBox.value()
 
-class SymbolColorSelector(QgsSymbolButton):
+class QGISRedSymbolColorSelector(QgsSymbolButton):
     colorChanged = pyqtSignal(QColor)
 
     GEOMETRY_MARKER = "marker"
@@ -92,6 +93,7 @@ class SymbolColorSelector(QgsSymbolButton):
 
     def normalizeGeometryHint(self, geometry):
         normalized = (geometry or "").strip().lower()
+
         if normalized in ("point", "marker", "pts"):
             return self.GEOMETRY_MARKER
         if normalized in ("line", "polyline", "ln"):
@@ -145,6 +147,7 @@ class SymbolColorSelector(QgsSymbolButton):
     def updateSymbolSize(self, size, isWidth=False):
         if size <= 0:
             return
+        
         self.symbolSize = size
         currentSymbol = self.symbol()
         if currentSymbol:
@@ -214,72 +217,7 @@ class SymbolColorSelector(QgsSymbolButton):
         if chosenColor.isValid():
             self.setColor(chosenColor)
 
-
-class SymbolColorSelectorWithCheckbox(QWidget):
-    colorChanged = pyqtSignal(QColor)
-    enabledChanged = pyqtSignal(bool)
-
-    def __init__(self, parent=None, geometryHint="fill", initialColor=None,
-                 allowAlpha=True, dialogTitle="Pick color", checked=True, checkboxLabel=""):
-        super().__init__(parent)
-        self.checkbox = None
-        self.colorSelector = None
-        self.initUi(geometryHint, initialColor, allowAlpha, dialogTitle, checked, checkboxLabel)
-
-    def initUi(self, geometryHint, color, allowAlpha, dialogTitle, checked, label):
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(2)
-
-        self.checkbox = self.createCheckbox(label, checked)
-        self.colorSelector = self.createColorSelector(geometryHint, color, allowAlpha, dialogTitle)
-
-        layout.addWidget(self.checkbox, 0, Qt.AlignVCenter | Qt.AlignHCenter)
-        layout.addWidget(self.colorSelector, 0, Qt.AlignVCenter | Qt.AlignHCenter)
-
-    def createCheckbox(self, label, checked):
-        checkbox = QCheckBox(label, self)
-        checkbox.setChecked(checked)
-        checkbox.toggled.connect(self.enabledChanged.emit)
-        return checkbox
-
-    def createColorSelector(self, geometryHint, color, allowAlpha, dialogTitle):
-        selector = SymbolColorSelector(
-            self, geometryHint, color, allowAlpha, dialogTitle, doubleClickOnly=True
-        )
-        selector.colorChanged.connect(self.colorChanged.emit)
-        selector.setFixedSize(30, 20)
-        return selector
-
-    def isChecked(self):
-        return self.checkbox.isChecked()
-
-    def setChecked(self, value):
-        self.checkbox.setChecked(value)
-
-    def color(self):
-        return self.colorSelector.color()
-
-    def setColor(self, value):
-        self.colorSelector.setColor(value)
-
-    def setGeometryHint(self, value):
-        self.colorSelector.setGeometryHint(value)
-
-    def geometryHint(self):
-        return self.colorSelector.geometryHint()
-
-    def setAllowAlpha(self, value):
-        self.colorSelector.setAllowAlpha(value)
-
-    def updateSymbolSize(self, size, isWidth=False):
-        self.colorSelector.updateSymbolSize(size, isWidth)
-
-    def setCheckboxLabel(self, value):
-        self.checkbox.setText(value)
-
-
-class QgisColorRampSelector(QWidget):
+class QGISRedColorRampSelector(QWidget):
     colorRampChanged = pyqtSignal(QgsColorRamp)
 
     BUTTON_WIDTH = 150
