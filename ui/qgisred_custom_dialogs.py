@@ -2,8 +2,9 @@
 from PyQt5.QtGui import QColor, QPixmap, QPainter, QIcon
 from PyQt5.QtWidgets import (QDialog, QDialogButtonBox, QDoubleSpinBox, QLabel,
                              QVBoxLayout, QWidget, QHBoxLayout, QCheckBox,
-                             QToolButton, QPushButton, QMenu, QAction)
+                             QToolButton, QPushButton, QComboBox)
 from PyQt5.QtCore import pyqtSignal, Qt, QEvent, QSize
+
 from qgis.gui import QgsSymbolButton, QgsColorDialog
 from qgis.core import QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, QgsColorRamp
 
@@ -216,88 +217,63 @@ class QGISRedSymbolColorSelector(QgsSymbolButton):
         if chosenColor.isValid():
             self.setColor(chosenColor)
 
-class QGISRedColorRampSelector(QWidget):
+class QGISRedColorRampSelector(QComboBox):
     colorRampChanged = pyqtSignal(QgsColorRamp)
 
-    BUTTON_WIDTH = 150
-    BUTTON_HEIGHT = 24
-    GRADIENT_PREVIEW_WIDTH = 120
-    GRADIENT_PREVIEW_HEIGHT = 16
+    WIDGET_WIDTH = 150
+    WIDGET_HEIGHT = 24
     MENU_ICON_WIDTH = 50
     MENU_ICON_HEIGHT = 16
-    ARROW_WIDTH = 18
+    ARROW_WIDTH = 20
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.ramps = {}
         self.currentRampNameValue = None
-        self.button = None
-        self.arrowLabel = None
         self.initUi()
 
     def initUi(self):
-        self.setFixedWidth(self.BUTTON_WIDTH)
-        self.setFixedHeight(self.BUTTON_HEIGHT)
+        self.setFixedWidth(self.WIDGET_WIDTH)
+        self.setFixedHeight(self.WIDGET_HEIGHT)
+        self.setIconSize(QSize(self.MENU_ICON_WIDTH, self.MENU_ICON_HEIGHT))
+        self.currentIndexChanged.connect(self.onComboIndexChanged)
 
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+    def paintEvent(self, event):
+        from PyQt5.QtWidgets import QStylePainter, QStyleOptionComboBox, QStyle
+        painter = QStylePainter(self)
+        opt = QStyleOptionComboBox()
+        self.initStyleOption(opt)
+        opt.currentText = ""
+        painter.drawComplexControl(QStyle.CC_ComboBox, opt)
+        painter.drawControl(QStyle.CE_ComboBoxLabel, opt)
 
-        self.button = self.createButton()
-        self.arrowLabel = self.createArrowLabel()
+        ramp = self.currentRamp()
+        if ramp:
+            arrowWidth = self.ARROW_WIDTH
+            margin = 4
+            rampRect = self.rect().adjusted(margin, margin, -arrowWidth - margin, -margin)
+            if rampRect.isValid() and rampRect.width() > 0 and rampRect.height() > 0:
+                pixmap = self.renderGradientPreview(ramp, rampRect.width(), rampRect.height())
+                painter.drawPixmap(rampRect.topLeft(), pixmap)
 
-        layout.addWidget(self.button)
-
-        self.arrowLabel.setParent(self.button)
-        self.positionArrowLabel()
-        self.updateButtonDisplay()
-
-    def createButton(self):
-        button = QPushButton(self)
-        button.clicked.connect(self.showRampMenu)
-        button.setFixedWidth(self.BUTTON_WIDTH)
-        button.setFixedHeight(self.BUTTON_HEIGHT)
-        button.setStyleSheet(
-            "QPushButton {"
-            "    background-color: white;"
-            "    border: 1px solid #ababab;"
-            "    border-radius: 2px;"
-            "    padding: 2px 20px 2px 4px;"
-            "    text-align: left;"
-            "}"
-            "QPushButton:hover {"
-            "    border: 1px solid #0078d4;"
-            "}"
-            "QPushButton::menu-indicator {"
-            "    image: none;"
-            "}"
-        )
-        return button
-
-    def createArrowLabel(self):
-        label = QLabel(self)
-        label.setText("▼")
-        label.setStyleSheet(
-            "QLabel {"
-            "    color: #666666;"
-            "    font-size: 8px;"
-            "    background: transparent;"
-            "}"
-        )
-        label.setFixedSize(16, self.BUTTON_HEIGHT)
-        label.setAlignment(Qt.AlignCenter)
-        label.setAttribute(Qt.WA_TransparentForMouseEvents)
-        return label
-
-    def positionArrowLabel(self):
-        if self.arrowLabel and self.button:
-            self.arrowLabel.move(self.button.width() - self.ARROW_WIDTH, 0)
+    def onComboIndexChanged(self, index):
+        if index < 0:
+            return
+        name = self.itemData(index)
+        if name and name in self.ramps:
+            self.currentRampNameValue = name
+            ramp = self.currentRamp()
+            if ramp:
+                self.colorRampChanged.emit(ramp)
 
     def addColorRamp(self, name, ramp):
         if not isinstance(ramp, QgsColorRamp):
             return
         self.ramps[name] = ramp.clone()
+        icon = self.createRampIcon(ramp, self.MENU_ICON_WIDTH, self.MENU_ICON_HEIGHT)
+        self.addItem(icon, name, name)
         if self.currentRampNameValue is None:
-            self.setCurrentRamp(name)
+            self.setCurrentRampByName(name)
 
     def addColorRamps(self, ramps):
         for name, ramp in ramps.items():
@@ -306,31 +282,42 @@ class QGISRedColorRampSelector(QWidget):
     def clearRamps(self):
         self.ramps.clear()
         self.currentRampNameValue = None
-        self.updateButtonDisplay()
+        self.blockSignals(True)
+        self.clear()
+        self.blockSignals(False)
 
     def removeRamp(self, name):
         if name not in self.ramps:
             return
         del self.ramps[name]
+        index = self.findData(name)
+        if index >= 0:
+            self.removeItem(index)
         if self.currentRampNameValue == name:
             self.selectFirstAvailableRamp()
 
     def selectFirstAvailableRamp(self):
         if self.ramps:
             firstName = list(self.ramps.keys())[0]
-            self.setCurrentRamp(firstName)
+            self.setCurrentRampByName(firstName)
         else:
             self.currentRampNameValue = None
-            self.updateButtonDisplay()
 
-    def setCurrentRamp(self, name):
+    def setCurrentRampByName(self, name):
         if name not in self.ramps:
             return
         self.currentRampNameValue = name
-        self.updateButtonDisplay()
+        index = self.findData(name)
+        if index >= 0:
+            self.blockSignals(True)
+            self.setCurrentIndex(index)
+            self.blockSignals(False)
         ramp = self.currentRamp()
         if ramp:
             self.colorRampChanged.emit(ramp)
+
+    def setCurrentRamp(self, name):
+        self.setCurrentRampByName(name)
 
     def currentRampName(self):
         return self.currentRampNameValue
@@ -339,49 +326,6 @@ class QGISRedColorRampSelector(QWidget):
         if self.currentRampNameValue and self.currentRampNameValue in self.ramps:
             return self.ramps[self.currentRampNameValue].clone()
         return None
-
-    def showRampMenu(self):
-        if not self.ramps:
-            return
-        
-        menu = QMenu(self)
-        for name in sorted(self.ramps.keys()):
-            ramp = self.ramps[name]
-            icon = self.createRampIcon(ramp, self.MENU_ICON_WIDTH, self.MENU_ICON_HEIGHT)
-            action = self.createMenuAction(menu, icon, name)
-            menu.addAction(action)
-        menuPosition = self.button.mapToGlobal(self.button.rect().bottomLeft())
-        menu.exec_(menuPosition)
-
-    def createMenuAction(self, menu, icon, name):
-        action = QAction(icon, name, self)
-        action.triggered.connect(lambda checked, rampName=name: self.setCurrentRamp(rampName))
-
-        if name == self.currentRampNameValue:
-            action.setCheckable(True)
-            action.setChecked(True)
-        return action
-
-    def updateButtonDisplay(self):
-        if self.hasValidCurrentRamp():
-            self.displayCurrentRampGradient()
-        else:
-            self.displayPlaceholder()
-        self.positionArrowLabel()
-
-    def hasValidCurrentRamp(self):
-        return self.currentRampNameValue and self.currentRampNameValue in self.ramps
-
-    def displayCurrentRampGradient(self):
-        ramp = self.ramps[self.currentRampNameValue]
-        pixmap = self.renderGradientPreview(ramp, self.GRADIENT_PREVIEW_WIDTH, self.GRADIENT_PREVIEW_HEIGHT)
-        self.button.setIcon(QIcon(pixmap))
-        self.button.setIconSize(QSize(self.GRADIENT_PREVIEW_WIDTH, self.GRADIENT_PREVIEW_HEIGHT))
-        self.button.setText("")
-
-    def displayPlaceholder(self):
-        self.button.setIcon(QIcon())
-        self.button.setText("No ramp")
 
     def renderGradientPreview(self, ramp, width, height):
         pixmap = QPixmap(width, height)
