@@ -955,10 +955,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 if isinstance(ramp, QgsGradientColorRamp):
                     ramps[name] = ramp
 
-        # If no ramps found, add default gradient
+        # If no ramps found, add 2 fallback gradients
         if not ramps:
-            defaultRamp = QgsGradientColorRamp(QColor(0, 0, 255), QColor(255, 0, 0))
-            ramps["Default (Blue to Red)"] = defaultRamp
+            ramps["Default (Blue to Red)"] = QgsGradientColorRamp(QColor(0, 0, 255), QColor(255, 0, 0))
+            ramps["Default (Green to Yellow)"] = QgsGradientColorRamp(QColor(0, 128, 0), QColor(255, 255, 0))
 
         return ramps
 
@@ -975,13 +975,15 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 if isinstance(ramp, QgsPresetSchemeColorRamp):
                     ramps[name] = ramp
 
-        # If no palettes found, create a default one
+        # If no palettes found, create 2 fallback palettes
         if not ramps:
-            # Create a simple default palette
-            defaultColors = [QColor(255, 0, 0), QColor(0, 255, 0), QColor(0, 0, 255),
-                           QColor(255, 255, 0), QColor(255, 0, 255), QColor(0, 255, 255)]
-            defaultPalette = QgsPresetSchemeColorRamp(defaultColors)
-            ramps["Default Palette"] = defaultPalette
+            primaryColors = [QColor(255, 0, 0), QColor(0, 255, 0), QColor(0, 0, 255),
+                             QColor(255, 255, 0), QColor(255, 0, 255), QColor(0, 255, 255)]
+            ramps["Primary Colors"] = QgsPresetSchemeColorRamp(primaryColors)
+            
+            warmColors = [QColor(255, 87, 51), QColor(255, 140, 0), QColor(255, 195, 0),
+                          QColor(220, 60, 60), QColor(255, 165, 79), QColor(238, 130, 98)]
+            ramps["Warm Colors"] = QgsPresetSchemeColorRamp(warmColors)
 
         return ramps
 
