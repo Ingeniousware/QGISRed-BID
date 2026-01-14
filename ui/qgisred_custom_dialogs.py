@@ -7,7 +7,6 @@ from PyQt5.QtCore import pyqtSignal, Qt, QEvent, QSize
 from qgis.gui import QgsSymbolButton, QgsColorDialog
 from qgis.core import QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, QgsColorRamp
 
-
 class QGISRedRangeEditDialog(QDialog):
     def __init__(self, lowerValue, upperValue, parent=None, unitAbbr=""):
         super().__init__(parent)

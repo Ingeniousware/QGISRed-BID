@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (QDialog, QMessageBox, QHeaderView,
                              QCheckBox, QDoubleSpinBox, QSpinBox, QApplication, QProgressDialog,
                              QWidget, QHBoxLayout)
 from PyQt5.QtCore import (QVariant, Qt, QTimer, QObject, QEvent,
-                          QItemSelectionModel, QItemSelection)
+                          QItemSelectionModel, QItemSelection, QPoint)
 from qgis.PyQt import uic
 
 # QGIS imports
@@ -43,9 +43,10 @@ class RowSelectionFilter(QObject):
         self.table = table
 
     def eventFilter(self, widget, event):
-        if event.type() == QEvent.FocusIn:
-            # Find the widget's position in the table
-            index = self.table.indexAt(widget.pos())
+        if event.type() == QEvent.FocusIn or (event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton):
+            # Find the widget's position in the table using mapTo for robustness (handles nested widgets)
+            pos = widget.mapTo(self.table.viewport(), QPoint(0, 0))
+            index = self.table.indexAt(pos)
             if index.isValid():
                 selectionModel = self.table.selectionModel()
                 modifiers = QApplication.keyboardModifiers()
@@ -1537,11 +1538,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
         colorLayout = QHBoxLayout(colorContainer)
         colorLayout.setContentsMargins(0, 0, 0, 0)
         colorLayout.setSpacing(0)
+        cw.installEventFilter(self.rowSelectionFilter)
         colorLayout.addStretch()
-        colorLayout.addWidget(cw)
+        colorLayout.addWidget(cw, 0, Qt.AlignVCenter)
         colorLayout.addStretch()
         colorContainer.setAutoFillBackground(False)
         self.tableView.setCellWidget(row, 1, colorContainer)
+        colorContainer.installEventFilter(self.rowSelectionFilter)
 
         # Column 2: Size
         sw = QLineEdit(str(size))
