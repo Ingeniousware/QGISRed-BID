@@ -1741,10 +1741,21 @@ class QGISRedLegendsDialog(QDialog, formClass):
             row = self.tableView.rowCount() # Append to end
 
         lower, upper = self.calculateInitialRangeForNewRow(row)
+        
+        # Determine color based on mode settings
+        modeId = self.cbMode.currentData()
+        colorMode = self.cbColors.currentText() if hasattr(self, 'cbColors') else "Manual"
+        
+        # Use smart color when both intervals and colors are in Manual mode
+        if (modeId == "Manual" or modeId is None) and colorMode == "Manual":
+            newColor = self.getSmartColorForNewRow(row)
+        else:
+            newColor = self.generateRandomColor()
+        
         self.tableView.insertRow(row)
 
         sym = QgsSymbol.defaultSymbol(self.currentLayer.geometryType())
-        sym.setColor(self.generateRandomColor())
+        sym.setColor(newColor)
 
         self.setRowWidgets(row, sym, True, f"{lower:.2f} - {upper:.2f}", f"{lower:.2f} - {upper:.2f}", self.getGeometryHint())
         self.updateAdjacentRowsAfterInsertion(row, lower, upper)
@@ -2558,6 +2569,67 @@ class QGISRedLegendsDialog(QDialog, formClass):
         c = QColor()
         c.setHsl(random.randint(0, 359), random.randint(178, 255), random.randint(102, 178))
         return c
+
+    def getRowColor(self, row):
+        """Get the color from a specific row's color widget."""
+        if row < 0 or row >= self.tableView.rowCount():
+            return None
+        colorContainer = self.tableView.cellWidget(row, 1)
+        if colorContainer:
+            cw = colorContainer.findChild(QGISRedSymbolColorSelector)
+            if cw:
+                return cw.color()
+        return None
+
+    def calculateIntermediateColor(self, color1, color2):
+        """Calculate the intermediate color between two colors."""
+        r = (color1.red() + color2.red()) // 2
+        g = (color1.green() + color2.green()) // 2
+        b = (color1.blue() + color2.blue()) // 2
+        return QColor(r, g, b)
+
+    def getSmartColorForNewRow(self, insertionRow):
+        """
+        Determine the color for a new row based on its position when both
+        intervals and colors are in manual mode.
+        
+        Rules:
+        - If inserting between two classes: use intermediate color of neighbors
+        - If inserting at end (last class): use color of current last class
+        - If inserting at first position:
+            - If 0 or 1 existing classes: random color
+            - If 2+ existing classes: use color of current first class
+        """
+        rowCount = self.tableView.rowCount()
+        
+        # Empty table or single row - use random
+        if rowCount <= 1:
+            return self.generateRandomColor()
+        
+        # Inserting at position 0 (first)
+        if insertionRow == 0:
+            # Use the color of the current first row (which will become second)
+            firstColor = self.getRowColor(0)
+            return firstColor if firstColor else self.generateRandomColor()
+        
+        # Inserting at end (after all existing rows)
+        if insertionRow >= rowCount:
+            # Use the color of the current last row
+            lastColor = self.getRowColor(rowCount - 1)
+            return lastColor if lastColor else self.generateRandomColor()
+        
+        # Inserting between two existing rows
+        prevColor = self.getRowColor(insertionRow - 1)
+        nextColor = self.getRowColor(insertionRow)
+        
+        if prevColor and nextColor:
+            return self.calculateIntermediateColor(prevColor, nextColor)
+        elif prevColor:
+            return prevColor
+        elif nextColor:
+            return nextColor
+        else:
+            return self.generateRandomColor()
 
     def getSelectedRows(self):
         return [i.row() for i in self.tableView.selectionModel().selectedRows()]
