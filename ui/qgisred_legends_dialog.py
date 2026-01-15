@@ -1386,6 +1386,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         isNum = self.currentFieldType == self.FIELD_TYPE_NUMERIC
         isCat = self.currentFieldType == self.FIELD_TYPE_CATEGORICAL
         isFixed = isNum and self.cbMode.currentData() == "FixedInterval"
+        isManual = isNum and (self.cbMode.currentData() is None or self.cbMode.currentData() == "Manual")
 
         self.cbMode.setVisible(isNum)
         self.labelMode.setVisible(isNum)
@@ -1402,15 +1403,18 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btUp.setVisible(isCat)
         self.btDown.setVisible(isCat)
         self.labelFrameLegends.setVisible(isNum or isCat)
-        
+
         self.btClassifyAll.setVisible(isCat)
-        
+
         # Toggle class count editability based on mode
         if isCat:
             self.setClassCountEditable(True)
             self.updateClassCountLimits()
+        elif isNum:
+            # For numeric: disable editing when in Manual mode, enable for other variable-count modes
+            self.setClassCountEditable(not isManual and self.modeHasVariableClassCount())
         else:
-            self.setClassCountEditable(isNum and self.modeHasVariableClassCount())
+            self.setClassCountEditable(False)
         
         # Update tooltip based on layer type
         if isCat:
