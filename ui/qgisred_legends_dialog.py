@@ -234,7 +234,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def setupClassCountField(self):
         """Configure class count field with conditional editability."""
-        self.leClassCount.setMinimum(1)
+        self.leClassCount.setMinimum(0)
         self.leClassCount.setMaximum(self.MAX_CLASSES)
         self.leClassCount.valueChanged.connect(self.onClassCountChanged)
         self.setClassCountEditable(False)
@@ -278,14 +278,14 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 while self.tableView.rowCount() < newValue:
                     self.addNumericClass()
             elif newValue < currentCount:
-                while self.tableView.rowCount() > newValue and self.tableView.rowCount() > 1:
+                while self.tableView.rowCount() > newValue and self.tableView.rowCount() > 0:
                     self.tableView.removeRow(self.tableView.rowCount() - 1)
             
             self.leClassCount.setValue(self.tableView.rowCount())
             self.leClassCount.blockSignals(False)
             
             modeId = self.cbMode.currentData()
-            if modeId and modeId not in [None, "Manual"]:
+            if modeId and modeId not in [None, "Manual"] and newValue > currentCount:
                 self.applyClassificationMethod(modeId)
         
         elif self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
