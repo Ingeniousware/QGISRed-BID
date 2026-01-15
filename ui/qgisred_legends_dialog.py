@@ -1763,6 +1763,14 @@ class QGISRedLegendsDialog(QDialog, formClass):
         sym = QgsSymbol.defaultSymbol(self.currentLayer.geometryType())
         sym.setColor(newColor)
 
+        # Set default size
+        if self.currentLayer.geometryType() == 0:  # Point
+            sym.setSize(3)
+        elif self.currentLayer.geometryType() == 1:  # Line
+            sym.setWidth(0.4)
+        else:  # Polygon
+            sym.setSize(1.5)
+
         self.setRowWidgets(row, sym, True, f"{lower:.2f} - {upper:.2f}", f"{lower:.2f} - {upper:.2f}", self.getGeometryHint())
         self.updateAdjacentRowsAfterInsertion(row, lower, upper)
 
@@ -1803,7 +1811,15 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.tableView.insertRow(row)
         sym = QgsSymbol.defaultSymbol(self.currentLayer.geometryType())
         sym.setColor(self.generateRandomColor())
-        
+
+        # Set default size
+        if self.currentLayer.geometryType() == 0:  # Point
+            sym.setSize(3)
+        elif self.currentLayer.geometryType() == 1:  # Line
+            sym.setWidth(0.4)
+        else:  # Polygon
+            sym.setSize(1.5)
+
         disp = str(val)
         # Add unit abbreviation to legend if available
         unitAbbr = self.getCurrentLayerUnitAbbr()
