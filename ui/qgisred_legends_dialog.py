@@ -1594,11 +1594,23 @@ class QGISRedLegendsDialog(QDialog, formClass):
             v = f[self.currentFieldName]
             vals.add(str(v) if v is not None else "NULL")
         
-        lst = sorted(list(vals))
-        if "NULL" in lst: # Move NULL to front
-            lst.remove("NULL")
-            lst.insert(0, "NULL")
+        # Special values that should be added last (before "Other Values")
+        specialValues = ["NULL", "#NA"]
+        
+        # Separate special values from regular values
+        regularVals = [v for v in vals if v not in specialValues]
+        foundSpecials = [v for v in specialValues if v in vals]
+        
+        # Sort regular values, then append special values at the end
+        lst = sorted(regularVals) + foundSpecials
         return lst
+
+    def _sortAvailableUniqueValues(self):
+        """Sort availableUniqueValues keeping NULL and #NA at the end."""
+        specialValues = ["NULL", "#NA"]
+        regularVals = [v for v in self.availableUniqueValues if v not in specialValues]
+        foundSpecials = [v for v in specialValues if v in self.availableUniqueValues]
+        self.availableUniqueValues = sorted(regularVals) + foundSpecials
 
     # --- Table Manipulation ---
 
@@ -1846,7 +1858,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                         self.usedUniqueValues.remove(val)
                         self.availableUniqueValues.append(val)
                 self.tableView.removeRow(r)
-            self.availableUniqueValues.sort()
+            self._sortAvailableUniqueValues()
         else:
             lowest = rows[-1]
             for r in rows: self.tableView.removeRow(r)
@@ -1877,7 +1889,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 self.usedUniqueValues.remove(val)
                 self.availableUniqueValues.append(val)
         self.tableView.removeRow(row)
-        self.availableUniqueValues.sort()
+        self._sortAvailableUniqueValues()
         self.updateButtonStates()
 
     def updateClassCountLimits(self):
