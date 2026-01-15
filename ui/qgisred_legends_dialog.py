@@ -1785,6 +1785,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         self.setRowWidgets(row, sym, True, f"{lower:.2f} - {upper:.2f}", f"{lower:.2f} - {upper:.2f}", self.getGeometryHint())
         self.updateAdjacentRowsAfterInsertion(row, lower, upper)
+        
+        # Edge color smoothing: recolor the old edge row using interpolation
+        if (modeId == "Manual" or modeId is None) and colorMode == "Manual":
+            self.smoothEdgeColorAfterInsertion(row)
 
         self.tableView.clearSelection()
         self.tableView.selectRow(row)
@@ -2751,6 +2755,60 @@ class QGISRedLegendsDialog(QDialog, formClass):
             return nextColor
         else:
             return self.generateRandomColor()
+
+    def smoothEdgeColorAfterInsertion(self, insertedRow):
+        """
+        Apply edge color smoothing after insertion when there are ≥3 classes.
+        
+        When inserting at the top:
+        - New first row already has the old first's color
+        - Old first (now row 1) gets interpolated color between new first and last
+        
+        When inserting at the bottom:
+        - New last row already has the old last's color  
+        - Old last (now second-to-last) gets interpolated color between
+          new last and the antepenultimate (row before old last)
+        """
+        rowCount = self.tableView.rowCount()
+        
+        # Need at least 3 classes for edge smoothing to apply
+        if rowCount < 3:
+            return
+        
+        # Case: Inserted at first position (row 0)
+        if insertedRow == 0:
+            # Old first is now at row 1
+            newFirstColor = self.getRowColor(0)  # New first row color (same as old first was)
+            lastColor = self.getRowColor(rowCount - 1)  # Last row color
+            
+            if newFirstColor and lastColor:
+                interpolatedColor = self.calculateIntermediateColor(newFirstColor, lastColor)
+                self.setRowColor(1, interpolatedColor)
+        
+        # Case: Inserted at last position (after all existing rows)
+        elif insertedRow == rowCount - 1:
+            # Old last is now at row (rowCount - 2)
+            newLastColor = self.getRowColor(rowCount - 1)  # New last row color (same as old last was)
+            
+            # Antepenultimate is the row before old last, which is now at (rowCount - 3)
+            if rowCount >= 3:
+                antepenultimateColor = self.getRowColor(rowCount - 3)
+            else:
+                antepenultimateColor = None
+            
+            if newLastColor and antepenultimateColor:
+                interpolatedColor = self.calculateIntermediateColor(newLastColor, antepenultimateColor)
+                self.setRowColor(rowCount - 2, interpolatedColor)
+
+    def setRowColor(self, row, color):
+        """Set the color of a specific row's color widget."""
+        if row < 0 or row >= self.tableView.rowCount():
+            return
+        colorContainer = self.tableView.cellWidget(row, 1)
+        if colorContainer:
+            cw = colorContainer.findChild(QGISRedSymbolColorSelector)
+            if cw:
+                cw.setColor(color)
 
     def getSelectedRows(self):
         return [i.row() for i in self.tableView.selectionModel().selectedRows()]
