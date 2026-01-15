@@ -2061,23 +2061,73 @@ class QGISRedLegendsDialog(QDialog, formClass):
     # --- Numeric Logic & Classification ---
 
     def calculateInitialRangeForNewRow(self, row):
-        """Determine smart default range for new row."""
+        """
+        Determine deterministic range for new row using half-splitting logic.
+        
+        Rules:
+        - If no rows exist → create [min, max] from layer data
+        - If 1 row exists → split that row in half at midpoint
+        - For further additions → split the selected row's range in half
+        """
         total = self.tableView.rowCount()
+        
+        # Case 1: No rows exist - create first class with [min, max] from layer
+        if total == 0:
+            return self._getLayerMinMax()
+        
+        # Case 2: 1 row exists - we need to split it
+        if total == 1:
+            existing = self.getRangeValues(0)
+            if existing:
+                lower, upper = existing
+                mid = (lower + upper) / 2.0
+                # The new row will be inserted, and we'll update the existing row
+                if row == 0:
+                    # Inserting before: new row gets [lower, mid], existing gets [mid, upper]
+                    return (lower, mid)
+                else:
+                    # Inserting after: existing stays [lower, mid], new row gets [mid, upper]
+                    return (mid, upper)
+            return self._getLayerMinMax()
+        
+        # Case 3: Multiple rows - split the selected or target row in half
+        # Determine which row to split based on insertion position
         if row == 0:
-            if total > 0:
-                first = self.getRangeValues(0)
-                return (first[0] - 1.0, first[0]) if first else (0.0, 1.0)
-            return 0.0, 1.0
+            # Inserting at the beginning - split the first row
+            splitRow = 0
         elif row >= total:
-            last = self.getRangeValues(total - 1)
-            return (last[1], last[1] + 1.0) if last else (0.0, 1.0)
+            # Inserting at the end - split the last row
+            splitRow = total - 1
         else:
-            prev = self.getRangeValues(row - 1)
-            nxt = self.getRangeValues(row) # Technically row before insertion becomes next
-            if prev and nxt:
-                mid = (prev[1] + nxt[0]) / 2.0
-                return prev[1], mid
-        return 0.0, 1.0
+            # Inserting in the middle
+            if self.btClassPlusAddBefore:
+                # Add Before: split the row we're inserting before
+                splitRow = row
+            else:
+                # Add After: split the row we're inserting after
+                splitRow = row - 1
+        
+        targetRange = self.getRangeValues(splitRow)
+        if targetRange:
+            lower, upper = targetRange
+            mid = (lower + upper) / 2.0
+            
+            if row <= splitRow:
+                # Inserting before/at split position: new row gets lower half [lower, mid]
+                return (lower, mid)
+            else:
+                # Inserting after split position: new row gets upper half [mid, upper]
+                return (mid, upper)
+        
+        # Fallback
+        return self._getLayerMinMax()
+    
+    def _getLayerMinMax(self):
+        """Get min and max values from the current layer's numeric field."""
+        vals = self.getNumericValues()
+        if vals and len(vals) > 0:
+            return (min(vals), max(vals))
+        return (0.0, 1.0)
 
     def getRangeValues(self, row):
         """Parse range string from table."""
@@ -2089,9 +2139,46 @@ class QGISRedLegendsDialog(QDialog, formClass):
         except: return None
 
     def updateAdjacentRowsAfterInsertion(self, row, newLower, newUpper):
-        """Maintain contiguity after insert."""
-        if row > 0: self.updateRangeValue(row - 1, None, newLower)
-        if row < self.tableView.rowCount() - 1: self.updateRangeValue(row + 1, newUpper, None)
+        """
+        Maintain contiguity after insert using half-splitting logic.
+        
+        When a row is split:
+        - Update the adjacent row to the other half of the original range
+        - Ensure neighbors maintain proper contiguity
+        """
+        total = self.tableView.rowCount()
+        
+        # Handle 2-row case (just split from single row)
+        if total == 2:
+            # One row was split into two - ensure proper ranges
+            # Row 0 should end where Row 1 starts
+            r0 = self.getRangeValues(0)
+            r1 = self.getRangeValues(1)
+            if r0 and r1:
+                # If the new row is row 0, update row 1 to start at newUpper
+                # If the new row is row 1, update row 0 to end at newLower
+                if row == 0:
+                    self.updateRangeValue(1, newUpper, None)
+                else:
+                    self.updateRangeValue(0, None, newLower)
+            return
+        
+        # General case: Update the row that was split to its remaining half
+        if row > 0:
+            prevRange = self.getRangeValues(row - 1)
+            if prevRange:
+                prevLower, prevUpper = prevRange
+                # If we took the upper half from prev, update prev to end at newLower
+                if abs(prevUpper - newLower) < 0.0001 or prevUpper > newLower:
+                    self.updateRangeValue(row - 1, None, newLower)
+                    
+        if row < total - 1:
+            nextRange = self.getRangeValues(row + 1)
+            if nextRange:
+                nextLower, nextUpper = nextRange
+                # If we took the lower half from next, update next to start at newUpper
+                if abs(nextLower - newUpper) < 0.0001 or nextLower < newUpper:
+                    self.updateRangeValue(row + 1, newUpper, None)
 
     def mergeAdjacentRowsAfterDeletion(self, rowPos):
         """Fill gap after delete."""
