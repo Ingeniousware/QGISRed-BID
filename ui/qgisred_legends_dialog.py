@@ -1408,7 +1408,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         # Toggle class count editability based on mode
         if isCat:
-            self.setClassCountEditable(True)
+            # For categorized: always display-only (no spin buttons)
+            self.setClassCountEditable(False)
             self.updateClassCountLimits()
         elif isNum:
             # For numeric: disable editing when in Manual mode, enable for other variable-count modes
