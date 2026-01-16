@@ -2713,23 +2713,41 @@ class QGISRedLegendsDialog(QDialog, formClass):
         b = (color1.blue() + color2.blue()) // 2
         return QColor(r, g, b)
 
+    def calculateComplementaryColor(self, color):
+        """Calculate the complementary color (opposite on the color wheel)."""
+        h, s, l, a = color.getHsl()
+        # Add 180 degrees to hue for complementary color (opposite on color wheel)
+        complementary_h = (h + 180) % 360
+        complementary_color = QColor()
+        complementary_color.setHsl(complementary_h, s, l, a)
+        return complementary_color
+
     def getSmartColorForNewRow(self, insertionRow):
         """
         Determine the color for a new row based on its position when both
         intervals and colors are in manual mode.
-        
+
         Rules:
+        - First class (rowCount == 0): totally random color
+        - Second class (rowCount == 1): complementary color of the first class
         - If inserting between two classes: use intermediate color of neighbors
         - If inserting at end (last class): use color of current last class
         - If inserting at first position:
-            - If 0 or 1 existing classes: random color
             - If 2+ existing classes: use color of current first class
         """
         rowCount = self.tableView.rowCount()
-        
-        # Empty table or single row - use random
-        if rowCount <= 1:
+
+        # Empty table - first class gets totally random color
+        if rowCount == 0:
             return self.generateRandomColor()
+
+        # Single row - second class gets complementary color of first
+        if rowCount == 1:
+            firstColor = self.getRowColor(0)
+            if firstColor:
+                return self.calculateComplementaryColor(firstColor)
+            else:
+                return self.generateRandomColor()
         
         # Inserting at position 0 (first)
         if insertionRow == 0:
