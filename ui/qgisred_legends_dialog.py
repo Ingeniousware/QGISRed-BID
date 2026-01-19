@@ -316,7 +316,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         # Setup refresh colors button
         self.btRefreshColors.setIcon(QIcon(":/images/themes/default/mActionRefresh.svg"))
-        self.btRefreshColors.clicked.connect(self.applyColorLogic)
+        self.btRefreshColors.clicked.connect(lambda: self.applyColorLogic(forceRefresh=True))
 
         self.setupColorRampButton()
 
@@ -1043,8 +1043,12 @@ class QGISRedLegendsDialog(QDialog, formClass):
             if cw:
                 cw.updateSymbolSize(sizes[r], isLine)
 
-    def applyColorLogic(self):
-        """Apply color algorithm based on selected mode."""
+    def applyColorLogic(self, forceRefresh=False):
+        """Apply color algorithm based on selected mode.
+        
+        Args:
+            forceRefresh: If True, regenerate all colors even for existing rows (used by refresh button).
+        """
         if not hasattr(self, 'cbColors'):
             return
 
@@ -1060,14 +1064,18 @@ class QGISRedLegendsDialog(QDialog, formClass):
             colors = [c] * rows
 
         elif mode == "Random":
-            # Preserve existing colors; only generate new random colors for rows without valid colors
-            colors = []
-            for r in range(rows):
-                existingColor = self.getRowColor(r)
-                if existingColor and existingColor.isValid():
-                    colors.append(existingColor)
-                else:
-                    colors.append(self.generateRandomColor())
+            if forceRefresh:
+                # Force refresh: generate new random colors for all rows
+                colors = [self.generateRandomColor() for _ in range(rows)]
+            else:
+                # Preserve existing colors; only generate new random colors for rows without valid colors
+                colors = []
+                for r in range(rows):
+                    existingColor = self.getRowColor(r)
+                    if existingColor and existingColor.isValid():
+                        colors.append(existingColor)
+                    else:
+                        colors.append(self.generateRandomColor())
 
         elif mode == "Ramp":
             ramp = self.btnColorRamp.currentRamp()
