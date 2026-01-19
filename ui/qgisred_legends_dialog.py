@@ -1060,7 +1060,14 @@ class QGISRedLegendsDialog(QDialog, formClass):
             colors = [c] * rows
 
         elif mode == "Random":
-            colors = [self.generateRandomColor() for _ in range(rows)]
+            # Preserve existing colors; only generate new random colors for rows without valid colors
+            colors = []
+            for r in range(rows):
+                existingColor = self.getRowColor(r)
+                if existingColor and existingColor.isValid():
+                    colors.append(existingColor)
+                else:
+                    colors.append(self.generateRandomColor())
 
         elif mode == "Ramp":
             ramp = self.btnColorRamp.currentRamp()
