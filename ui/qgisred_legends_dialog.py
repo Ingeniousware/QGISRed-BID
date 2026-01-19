@@ -305,8 +305,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.cbSizes.currentIndexChanged.connect(self.onSizeModeChanged)
         self.spinSizeEqual.valueChanged.connect(self.applySizeLogic)
         self.spinSizeMin.valueChanged.connect(self.applySizeLogic)
+        self.spinSizeMin.valueChanged.connect(self.updateSizeSpinBoxConstraints)
         self.spinSizeMax.valueChanged.connect(self.applySizeLogic)
+        self.spinSizeMax.valueChanged.connect(self.updateSizeSpinBoxConstraints)
         self.ckSizeInvert.toggled.connect(self.applySizeLogic)
+
+        # Initialize constraints
+        self.updateSizeSpinBoxConstraints()
 
         self.cbColors.addItems(["Manual", "Equal", "Random", "Ramp", "Palette"])
         self.cbColors.currentIndexChanged.connect(self.onColorModeChanged)
@@ -902,7 +907,18 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.ckSizeInvert.setVisible(mode != "Manual" and mode != "Equal")
         self.applySizeLogic()
 
+    def updateSizeSpinBoxConstraints(self):
+        minVal = self.spinSizeMin.value()
+        maxVal = self.spinSizeMax.value()
 
+        self.spinSizeMin.blockSignals(True)
+        self.spinSizeMax.blockSignals(True)
+
+        self.spinSizeMin.setMaximum(maxVal)
+        self.spinSizeMax.setMinimum(minVal)
+
+        self.spinSizeMin.blockSignals(False)
+        self.spinSizeMax.blockSignals(False)
 
     def syncColorRampButton(self):
         """Update CustomColorRampSelector with ramps from style database."""
