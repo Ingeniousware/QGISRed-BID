@@ -301,7 +301,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             self.updateClassCountLimits()
 
     def setupAdvancedUi(self):
-        self.cbSizes.addItems(["Manual", "Equal", "Linear", "Quadratic", "Exponential"])
+        self.cbSizes.addItems(["Manual", "Equal", "Linear", "Quadratic", "Exponential", "Proportional to Value"])
         self.cbSizes.currentIndexChanged.connect(self.onSizeModeChanged)
         self.spinSizeEqual.valueChanged.connect(self.applySizeLogic)
         self.spinSizeMin.valueChanged.connect(self.applySizeLogic)
@@ -892,7 +892,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         """Handle size mode change."""
         mode = self.cbSizes.currentText()
         showEqual = mode == "Equal"
-        showMinMax = mode in ["Linear", "Quadratic", "Exponential"]
+        showMinMax = mode in ["Linear", "Quadratic", "Exponential", "Proportional to Value"]
         self.spinSizeEqual.setVisible(showEqual)
         self.labelSizeValue.setVisible(showEqual)
         self.spinSizeMin.setVisible(showMinMax)
@@ -1004,6 +1004,42 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if mode == "Equal":
             val = self.spinSizeEqual.value()
             sizes = [val] * rows
+        elif mode == "Proportional to Value":
+            # Proportional to Value mode - size scales based on actual range values
+            minSize = self.spinSizeMin.value()
+            maxSize = self.spinSizeMax.value()
+
+            # Calculate average value for each range (midpoint between lower and upper bounds)
+            rangeAverageValues = []
+            for row in range(rows):
+                rangeValues = self.getRangeValues(row)
+                if rangeValues:
+                    lowerBound, upperBound = rangeValues
+                    rangeAverageValues.append((lowerBound + upperBound) / 2.0)
+                else:
+                    rangeAverageValues.append(0.0)
+
+            # Determine global min from first average, and max from the lower bound of last class
+            if rangeAverageValues:
+                globalValueMin = min(rangeAverageValues)
+                # Get the lower bound of the last class as globalValueMax
+                lastClassRange = self.getRangeValues(rows - 1)
+                if lastClassRange:
+                    globalValueMax = lastClassRange[0]  # Lower bound of last class
+                else:
+                    globalValueMax = max(rangeAverageValues)
+            else:
+                globalValueMin = 0.0
+                globalValueMax = 1.0
+
+            # Apply proportional algorithm to each range
+            for averageValue in rangeAverageValues:
+                calculatedSize = self.calculateProportionalSize(minSize, maxSize, globalValueMin, globalValueMax, averageValue)
+                sizes.append(calculatedSize)
+
+            # Apply inversion if checked
+            if self.ckSizeInvert.isChecked():
+                sizes.reverse()
         else:
             min_s = self.spinSizeMin.value()
             max_s = self.spinSizeMax.value()
@@ -1042,6 +1078,28 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 sw.blockSignals(False)
             if cw:
                 cw.updateSymbolSize(sizes[r], isLine)
+
+    def calculateProportionalSize(self, minSize, maxSize, globalValueMin, globalValueMax, averageValue):
+        """
+        Calculate proportional size based on the average value of a range.
+
+        Args:
+            minSize: Minimum size (from spinSizeMin)
+            maxSize: Maximum size (from spinSizeMax)
+            globalValueMin: Minimum average value across all ranges
+            globalValueMax: Maximum average value across all ranges
+            averageValue: Average value of the current range
+
+        Returns:
+            float: The calculated size proportional to the value
+        """
+        if globalValueMax == globalValueMin:
+            return minSize
+
+        normalizedPosition = (averageValue - globalValueMin) / (globalValueMax - globalValueMin)
+        normalizedPosition = max(0.0, min(1.0, normalizedPosition))
+
+        return minSize + normalizedPosition * (maxSize - minSize)
 
     def applyColorLogic(self, forceRefresh=False):
         """Apply color algorithm based on selected mode.
