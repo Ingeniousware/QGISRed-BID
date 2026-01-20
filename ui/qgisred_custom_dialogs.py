@@ -8,7 +8,7 @@ from PyQt5.QtCore import pyqtSignal, Qt, QEvent, QSize, QObject, QPoint, QItemSe
 from qgis.gui import QgsSymbolButton, QgsColorDialog
 from qgis.core import QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, QgsColorRamp
 
-class RangeEditDialog(QDialog):
+class QGISRedRangeEditDialog(QDialog):
     def __init__(self, lowerValue, upperValue, parent=None, unitAbbreviation=""):
         super().__init__(parent)
 
@@ -54,7 +54,7 @@ class RangeEditDialog(QDialog):
     def getRangeValues(self):
         return self.lowerValueSpinBox.value(), self.upperValueSpinBox.value()
 
-class SymbolColorSelector(QgsSymbolButton):
+class QGISRedSymbolColorSelector(QgsSymbolButton):
     colorChanged = pyqtSignal(QColor)
 
     markerType = "marker"
@@ -189,7 +189,7 @@ class SymbolColorSelector(QgsSymbolButton):
         if newColor.isValid():
             self.setSelectorColor(newColor)
 
-class ColorRampSelector(QComboBox):
+class QGISRedColorRampSelector(QComboBox):
     rampChanged = pyqtSignal(QgsColorRamp)
 
     preferredWidth = 150
@@ -297,7 +297,7 @@ class ColorRampSelector(QComboBox):
             painter.setPen(ramp.color(x / maxWidth))
             painter.drawLine(x, 0, x, height)
 
-class RowSelectionFilter(QObject):
+class QGISRedRowSelectionFilter(QObject):
     def __init__(self, table):
         super().__init__(table)
         self.targetTable = table
