@@ -28,52 +28,10 @@ from qgis.utils import iface
 
 # Local imports
 from ..tools.qgisred_utils import QGISRedUtils
-from .qgisred_custom_dialogs import QGISRedRangeEditDialog, QGISRedSymbolColorSelector, QGISRedColorRampSelector
+from .qgisred_custom_dialogs import QGISRedRangeEditDialog, QGISRedSymbolColorSelector, QGISRedColorRampSelector, QGISRedRowSelectionFilter
 
 # Load UI
 formClass, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_legends_dialog.ui"))
-
-class RowSelectionFilter(QObject):
-    """
-    Event filter to ensure clicking a cell widget selects the underlying table row
-    while respecting Ctrl/Shift modifiers for multi-selection.
-    """
-    def __init__(self, table):
-        super(RowSelectionFilter, self).__init__(table)
-        self.table = table
-
-    def eventFilter(self, widget, event):
-        if event.type() == QEvent.FocusIn or (event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton):
-            # Find the widget's position in the table using mapTo for robustness (handles nested widgets)
-            pos = widget.mapTo(self.table.viewport(), QPoint(0, 0))
-            index = self.table.indexAt(pos)
-            if index.isValid():
-                selectionModel = self.table.selectionModel()
-                modifiers = QApplication.keyboardModifiers()
-
-                # Define selection behavior based on modifiers
-                if modifiers & Qt.ControlModifier:
-                    command = QItemSelectionModel.Toggle
-                elif modifiers & Qt.ShiftModifier:
-                    # Treat focus on widget with Shift as adding to selection
-                    command = QItemSelectionModel.Select
-                else:
-                    command = QItemSelectionModel.ClearAndSelect
-
-                # Create a selection range covering the entire row (all columns)
-                topLeft = self.table.model().index(index.row(), 0)
-                bottomRight = self.table.model().index(index.row(), self.table.columnCount() - 1)
-                selection = QItemSelection(topLeft, bottomRight)
-
-                # Apply selection
-                selectionModel.select(selection, command)
-
-                # Update current index so Shift+Click range selection logic works nicely later
-                self.table.setCurrentIndex(index)
-
-                # Ensure the selection color shows immediately
-                self.table.viewport().update()
-        return False
 
 class QGISRedLegendsDialog(QDialog, formClass):
     FIELD_TYPE_NUMERIC = 'numeric'
@@ -178,7 +136,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.tableView.setHorizontalHeaderLabels(["", "Color", "Size", "Value", "Legend"])
 
         # Initialize Event Filter for row selection logic
-        self.rowSelectionFilter = RowSelectionFilter(self.tableView)
+        self.rowSelectionFilter = QGISRedRowSelectionFilter(self.tableView)
 
         header = self.tableView.horizontalHeader()
 
