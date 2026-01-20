@@ -102,9 +102,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btClassPlus.installEventFilter(self)
 
     def configureWindow(self):
-        iconPath = os.path.join(
-            os.path.dirname(__file__), "..", "images", "iconThematicMaps.png"
-        )
+        iconPath = os.path.join(os.path.dirname(__file__), "..", "images", "iconThematicMaps.png")
         self.setWindowIcon(QIcon(iconPath))
         self.setWindowTitle("QGISRed Legend Editor")
         self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint | Qt.WindowCloseButtonHint)
@@ -117,14 +115,21 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.rowSelectionFilter = QGISRedRowSelectionFilter(self.tableView)
 
         header = self.tableView.horizontalHeader()
+
+        # Visibility checkbox
         header.setSectionResizeMode(0, QHeaderView.Fixed)
         self.tableView.setColumnWidth(0, 30)
+
+        # Color
         header.setSectionResizeMode(1, QHeaderView.Fixed)
         self.tableView.setColumnWidth(1, 40)
+
+        # Size
         header.setSectionResizeMode(2, QHeaderView.Fixed)
         self.tableView.setColumnWidth(2, 60)
-        header.setSectionResizeMode(3, QHeaderView.Stretch)
-        header.setSectionResizeMode(4, QHeaderView.Stretch)
+
+        header.setSectionResizeMode(3, QHeaderView.Stretch) # Value
+        header.setSectionResizeMode(4, QHeaderView.Stretch) # Legend
 
         self.tableView.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tableView.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -150,9 +155,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.setClassCountEditable(False)
 
     def setupClassifyAllButton(self):
-        iconPath = os.path.join(
-            os.path.dirname(__file__), "..", "images", "iconClassifyAll.png"
-        )
+        iconPath = os.path.join(os.path.dirname(__file__), "..", "images", "iconClassifyAll.png")
         self.btClassifyAll.setIcon(QIcon(iconPath))
         self.btClassifyAll.setToolTip(self.tr("Classify All Unique Values"))
         self.btClassifyAll.clicked.connect(self.classifyAllUniqueValues)
@@ -173,6 +176,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             "Exponential",
             "Proportional to Value",
         ]
+
         self.cbSizes.addItems(sizeModes)
         self.cbSizes.currentIndexChanged.connect(self.onSizeModeChanged)
         self.spinSizeEqual.valueChanged.connect(self.applySizeLogic)
@@ -190,12 +194,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btColorEqual.setColor(QColor("red"))
         self.btColorEqual.colorChanged.connect(self.applyColorLogic)
         self.ckColorInvert.toggled.connect(self.applyColorLogic)
-        self.btRefreshColors.setIcon(
-            QIcon(":/images/themes/default/mActionRefresh.svg")
-        )
-        self.btRefreshColors.clicked.connect(
-            lambda: self.applyColorLogic(forceRefresh=True)
-        )
+        self.btRefreshColors.setIcon(QIcon(":/images/themes/default/mActionRefresh.svg"))
+        self.btRefreshColors.clicked.connect(lambda: self.applyColorLogic(forceRefresh=True))
 
     def setupColorRampButton(self):
         self.btnColorRamp = QGISRedColorRampSelector(self)
@@ -228,28 +228,16 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btUp.setToolTip(self.tr("Move selected class up"))
         self.btDown.setToolTip(self.tr("Move selected class down"))
         self.btClassMinus.setToolTip(self.tr("Remove selected class(es)"))
-        self.btClassifyAll.setToolTip(
-            self.tr("Add all unique values as separate classes")
-        )
+        self.btClassifyAll.setToolTip(self.tr("Add all unique values as separate classes"))
 
         if hasattr(self, "btRefreshColors"):
             self.btRefreshColors.setToolTip(self.tr("Refresh color ramp"))
 
-        self.btLoadDefault.setToolTip(
-            self.tr("Load default style for this layer")
-        )
-        self.btLoadGlobal.setToolTip(
-            self.tr("Load style from global database")
-        )
-        self.btSaveGlobal.setToolTip(
-            self.tr("Save current style to global database")
-        )
-        self.btLoadProject.setToolTip(
-            self.tr("Load style from project database")
-        )
-        self.btSaveProject.setToolTip(
-            self.tr("Save current style to project database")
-        )
+        self.btLoadDefault.setToolTip(self.tr("Load default style for this layer"))
+        self.btLoadGlobal.setToolTip(self.tr("Load style from global database"))
+        self.btSaveGlobal.setToolTip(self.tr("Save current style to global database"))
+        self.btLoadProject.setToolTip(self.tr("Load style from project database"))
+        self.btSaveProject.setToolTip(self.tr("Save current style to project database"))
         self.btApplyLegend.setToolTip(self.tr("Apply changes to layer"))
         self.btCancelLegend.setToolTip(self.tr("Cancel and close dialog"))
 
@@ -259,9 +247,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def loadStyleDatabase(self):
         self.style = QgsStyle()
-        dbPath = os.path.join(
-            self.pluginFolder, "defaults", "symbology-style_QGISRed.db"
-        )
+        dbPath = os.path.join(self.pluginFolder, "defaults", "symbology-style_QGISRed.db")
 
         if os.path.exists(dbPath):
             try:
@@ -314,9 +300,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def connectLayerTreeSignal(self):
         if iface and iface.layerTreeView():
-            self.layerTreeViewConnection = iface.layerTreeView().currentLayerChanged.connect(
-                self.onQgisLayerSelectionChanged
-            )
+            self.layerTreeViewConnection = iface.layerTreeView().currentLayerChanged.connect(self.onQgisLayerSelectionChanged)
 
     def loadInitialState(self):
         self.preselectGroupAndLayer()
@@ -403,9 +387,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def handleValidLayerSelection(self, layer):
         self.lastValidLayerId = layer.id()
         self.currentLayer = layer
-        self.originalRenderer = (
-            layer.renderer().clone() if layer.renderer() else None
-        )
+        self.originalRenderer = layer.renderer().clone() if layer.renderer() else None
         self.currentFieldType, self.currentFieldName = self.detectFieldType(layer)
         self.frameLegends.setEnabled(True)
 
@@ -471,11 +453,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             return
 
         newType = self.cbLegendsType.currentData()
-        currentType = (
-            self.currentLayer.renderer().type()
-            if self.currentLayer.renderer()
-            else None
-        )
+        currentType = self.currentLayer.renderer().type() if self.currentLayer.renderer() else None
 
         if newType == currentType:
             return
@@ -512,9 +490,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             return True
 
         uniqueValues = self.currentLayer.uniqueValues(fieldIdx)
-        uniqueCount = len(
-            [v for v in uniqueValues if v is not None and str(v) != "NULL"]
-        )
+        uniqueCount = len([v for v in uniqueValues if v is not None and str(v) != "NULL"])
 
         if uniqueCount > self.MAX_CLASSES:
             QMessageBox.critical(
@@ -709,9 +685,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         sizes = []
         for averageValue in rangeAverageValues:
-            calculatedSize = self.computeProportionalSize(
-                minSize, maxSize, globalValueMin, globalValueMax, averageValue
-            )
+            calculatedSize = self.computeProportionalSize(minSize, maxSize, globalValueMin, globalValueMax, averageValue)
             sizes.append(calculatedSize)
 
         if self.ckSizeInvert.isChecked():
@@ -719,15 +693,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         return sizes
 
-    def computeProportionalSize(
-        self, minSize, maxSize, globalValueMin, globalValueMax, averageValue
-    ):
+    def computeProportionalSize(self, minSize, maxSize, globalValueMin, globalValueMax, averageValue):
         if globalValueMax == globalValueMin:
             return minSize
 
-        normalizedPosition = (averageValue - globalValueMin) / (
-            globalValueMax - globalValueMin
-        )
+        normalizedPosition = (averageValue - globalValueMin) / (globalValueMax - globalValueMin)
         normalizedPosition = max(0.0, min(1.0, normalizedPosition))
 
         return minSize + normalizedPosition * (maxSize - minSize)
@@ -762,11 +732,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         for row in range(self.tableView.rowCount()):
             sizeWidget = self.tableView.cellWidget(row, 2)
             colorContainer = self.tableView.cellWidget(row, 1)
-            colorWidget = (
-                colorContainer.findChild(QGISRedSymbolColorSelector)
-                if colorContainer
-                else None
-            )
+            colorWidget = colorContainer.findChild(QGISRedSymbolColorSelector) if colorContainer else None
 
             if sizeWidget:
                 sizeWidget.blockSignals(True)
@@ -847,11 +813,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def applyColorsToTable(self, colors):
         for row in range(self.tableView.rowCount()):
             colorContainer = self.tableView.cellWidget(row, 1)
-            colorWidget = (
-                colorContainer.findChild(QGISRedSymbolColorSelector)
-                if colorContainer
-                else None
-            )
+            colorWidget = colorContainer.findChild(QGISRedSymbolColorSelector) if colorContainer else None
             if colorWidget:
                 colorWidget.setColor(colors[row])
 
@@ -957,12 +919,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     ramps[name] = ramp
 
         if not ramps:
-            ramps["Default (Blue to Red)"] = QgsGradientColorRamp(
-                QColor(0, 0, 255), QColor(255, 0, 0)
-            )
-            ramps["Default (Green to Yellow)"] = QgsGradientColorRamp(
-                QColor(0, 128, 0), QColor(255, 255, 0)
-            )
+            ramps["Default (Blue to Red)"] = QgsGradientColorRamp(QColor(0, 0, 255), QColor(255, 0, 0))
+            ramps["Default (Green to Yellow)"] = QgsGradientColorRamp(QColor(0, 128, 0), QColor(255, 255, 0))
 
         return ramps
 
@@ -1008,9 +966,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.cbGroups.clear()
 
         groups = []
-        self.collectGroupsRecursive(
-            QgsProject.instance().layerTreeRoot(), [], groups
-        )
+        self.collectGroupsRecursive(QgsProject.instance().layerTreeRoot(), [], groups)
 
         for name, path, _ in groups:
             self.cbGroups.addItem(name, path)
@@ -1024,9 +980,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.cbGroups.setCurrentIndex(-1)
 
         self.cbLegendLayer.blockSignals(True)
-        self.cbLegendLayer.setExceptedLayerList(
-            list(QgsProject.instance().mapLayers().values())
-        )
+        self.cbLegendLayer.setExceptedLayerList(list(QgsProject.instance().mapLayers().values()))
         self.cbLegendLayer.setLayer(None)
         self.cbLegendLayer.blockSignals(False)
 
@@ -1045,9 +999,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     and identifier in self.ALLOWED_GROUP_IDENTIFIERS
                 ):
                     if self.groupHasVisibleLayers(child):
-                        results.append(
-                            (currentPath[-1], " / ".join(currentPath), child)
-                        )
+                        results.append((currentPath[-1], " / ".join(currentPath), child))
 
                 self.collectGroupsRecursive(child, currentPath, results)
 
@@ -1083,15 +1035,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def findGroupByPath(self, pathStr):
         current = QgsProject.instance().layerTreeRoot()
         for part in pathStr.split(" / "):
-            found = next(
-                (
-                    child
-                    for child in current.children()
-                    if isinstance(child, QgsLayerTreeGroup)
-                    and child.name().strip() == part.strip()
-                ),
-                None,
-            )
+            found = next((child for child in current.children() if isinstance(child, QgsLayerTreeGroup) and child.name().strip() == part.strip()), None)
             if not found:
                 return None
             current = found
@@ -1127,9 +1071,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if iface and iface.layerTreeView():
             selectedLayers = iface.layerTreeView().selectedLayers()
             if selectedLayers:
-                return QgsProject.instance().layerTreeRoot().findLayer(
-                    selectedLayers[0]
-                )
+                return QgsProject.instance().layerTreeRoot().findLayer(selectedLayers[0])
         return None
 
     def findGroupPathForLayer(self, layerNode):
@@ -1200,15 +1142,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def addLayerSpecificLegendTypes(self, layer):
         layerIdentifier = layer.customProperty("qgisred_identifier")
-        currentRendererType = (
-            layer.renderer().type() if layer.renderer() else "singleSymbol"
-        )
+        currentRendererType = layer.renderer().type() if layer.renderer() else "singleSymbol"
 
         supportsCategorized = False
         if self.utils:
-            supportsCategorized = self.utils.getLayerSupportsCategorized(
-                layerIdentifier
-            )
+            supportsCategorized = self.utils.getLayerSupportsCategorized(layerIdentifier)
 
         if supportsCategorized:
             self.cbLegendsType.addItem(self.tr("Graduated"), "graduatedSymbol")
@@ -1306,11 +1244,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     otherCategory = category
                     continue
 
-                valueStr = (
-                    str(category.value())
-                    if category.value() is not None
-                    else "NULL"
-                )
+                valueStr = str(category.value()) if category.value() is not None else "NULL"
 
                 if valueStr in self.availableUniqueValues:
                     self.usedUniqueValues.append(valueStr)
@@ -1340,9 +1274,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     isReadOnlyValue=True,
                 )
 
-        self.availableUniqueValues = [
-            v for v in self.availableUniqueValues if v not in self.usedUniqueValues
-        ]
+        self.availableUniqueValues = [v for v in self.availableUniqueValues if v not in self.usedUniqueValues]
         self.updateClassCount()
         self.updateButtonStates()
         self.updateClassCountLimits()
@@ -1786,10 +1718,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def sortAvailableUniqueValues(self):
         specialValues = ["NULL", "#NA"]
-        regularValues = [
-            v for v in self.availableUniqueValues if v not in specialValues
-        ]
-        foundSpecials = [v for v in specialValues if v in self.availableUniqueValues]
+        regularValues = [value for value in self.availableUniqueValues if value not in specialValues]
+        foundSpecials = [value for value in specialValues if value in self.availableUniqueValues]
         self.availableUniqueValues = sorted(regularValues) + foundSpecials
 
     def moveClassUp(self):
@@ -2083,9 +2013,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         elif row == totalRows - 1:
             newLegendText = self.formatLastRowLegend(lower, formatString, unitAbbr)
         else:
-            newLegendText = self.formatMiddleRowLegend(
-                lower, upper, formatString, unitAbbr
-            )
+            newLegendText = self.formatMiddleRowLegend(lower, upper, formatString, unitAbbr)
 
         legendWidget.setText(newLegendText)
 
@@ -2094,9 +2022,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if values and len(values) > 0:
             minValue, maxValue = min(values), max(values)
             try:
-                precision = self.calculateLegendRoundingPrecision(
-                    minValue, maxValue, totalRows
-                )
+                precision = self.calculateLegendRoundingPrecision(minValue, maxValue, totalRows)
                 return max(0, -precision)
             except ValueError:
                 return 2
@@ -2174,9 +2100,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         numClasses = self.tableView.rowCount() or 5
         minValue, maxValue = min(values), max(values)
 
-        breaks = self.calculateBreaksForMethod(
-            methodId, values, numClasses, minValue, maxValue
-        )
+        breaks = self.calculateBreaksForMethod(methodId, values, numClasses, minValue, maxValue)
 
         if len(breaks) < 2:
             return
@@ -2189,29 +2113,21 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.applyColorLogic()
         self.applySizeLogic()
 
-    def calculateBreaksForMethod(
-        self, methodId, values, numClasses, minValue, maxValue
-    ):
+    def calculateBreaksForMethod(self, methodId, values, numClasses, minValue, maxValue):
         if methodId == "EqualInterval":
-            return self.calculateEqualIntervalBreaks(
-                numClasses, minValue, maxValue
-            )
+            return self.calculateEqualIntervalBreaks(numClasses, minValue, maxValue)
 
         if methodId == "FixedInterval":
             return self.calculateFixedIntervalBreaks(minValue, maxValue)
 
         if methodId == "Quantile":
-            return self.calculateQuantileBreaks(
-                values, numClasses, minValue, maxValue
-            )
+            return self.calculateQuantileBreaks(values, numClasses, minValue, maxValue)
 
         if methodId == "Jenks":
             return self.calculateJenksBreaks(numClasses, minValue)
 
         if methodId == "StdDev":
-            return self.calculateStdDevBreaks(
-                values, numClasses, minValue, maxValue
-            )
+            return self.calculateStdDevBreaks(values, numClasses, minValue, maxValue)
 
         if methodId == "Pretty":
             return self.calculatePrettyBreaks(numClasses, minValue)
@@ -2242,9 +2158,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def calculateJenksBreaks(self, numClasses, minValue):
         classifier = QgsClassificationJenks()
         classifier.setLabelFormat("%1 - %2")
-        classes = classifier.classes(
-            self.currentLayer, self.currentFieldName, numClasses
-        )
+        classes = classifier.classes(self.currentLayer, self.currentFieldName, numClasses)
         return [minValue] + [cls.upperBound() for cls in classes]
 
     def calculateStdDevBreaks(self, values, numClasses, minValue, maxValue):
@@ -2261,9 +2175,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def calculatePrettyBreaks(self, numClasses, minValue):
         classifier = QgsClassificationPrettyBreaks()
-        classes = classifier.classes(
-            self.currentLayer, self.currentFieldName, numClasses
-        )
+        classes = classifier.classes(self.currentLayer, self.currentFieldName, numClasses)
         return [minValue] + [cls.upperBound() for cls in classes]
 
     def adjustTableRowCount(self, targetCount):
@@ -2274,9 +2186,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def applyBreaksToTable(self, breaks, numClasses, minValue, maxValue):
         try:
-            precision = self.calculateLegendRoundingPrecision(
-                minValue, maxValue, numClasses
-            )
+            precision = self.calculateLegendRoundingPrecision(minValue, maxValue, numClasses)
             decimalPlaces = max(0, -precision)
         except ValueError:
             decimalPlaces = 2
@@ -2292,16 +2202,12 @@ class QGISRedLegendsDialog(QDialog, formClass):
             if isinstance(valueWidget, QLineEdit):
                 valueWidget.setText(valueText)
 
-            legendText = self.formatLegendForBreaks(
-                i, numClasses, lower, upper, formatString, unitAbbr
-            )
+            legendText = self.formatLegendForBreaks(i, numClasses, lower, upper, formatString, unitAbbr)
             legendWidget = self.tableView.cellWidget(i, 4)
             if isinstance(legendWidget, QLineEdit):
                 legendWidget.setText(legendText)
 
-    def formatLegendForBreaks(
-        self, index, numClasses, lower, upper, formatString, unitAbbr
-    ):
+    def formatLegendForBreaks(self, index, numClasses, lower, upper, formatString, unitAbbr):
         if index == 0:
             return self.formatFirstRowLegend(upper, formatString, unitAbbr)
         if index == numClasses - 1:
@@ -2335,9 +2241,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             return
 
         unitAbbr = self.getCurrentLayerUnitAbbr()
-        dialog = QGISRedRangeEditDialog(
-            currentRange[0], currentRange[1], self, unitAbbr=unitAbbr
-        )
+        dialog = QGISRedRangeEditDialog(currentRange[0], currentRange[1], self, unitAbbr=unitAbbr)
 
         if dialog.exec_():
             newLower, newUpper = dialog.getValues()
@@ -2385,15 +2289,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
         try:
             size = float(text)
             colorContainer = self.tableView.cellWidget(row, 1)
-            colorWidget = (
-                colorContainer.findChild(QGISRedSymbolColorSelector)
-                if colorContainer
-                else None
-            )
+            colorWidget = colorContainer.findChild(QGISRedSymbolColorSelector) if colorContainer else None
             if colorWidget:
-                colorWidget.updateSymbolSize(
-                    size, self.currentLayer.geometryType() == 1
-                )
+                colorWidget.updateSymbolSize(size, self.currentLayer.geometryType() == 1)
         except:
             pass
 
@@ -2523,16 +2421,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
             legendWidget = self.tableView.cellWidget(row, 4)
             sizeWidget = self.tableView.cellWidget(row, 2)
 
-            checkbox = (
-                checkboxContainer.findChild(QCheckBox)
-                if checkboxContainer
-                else None
-            )
-            colorWidget = (
-                colorContainer.findChild(QGISRedSymbolColorSelector)
-                if colorContainer
-                else None
-            )
+            checkbox = checkboxContainer.findChild(QCheckBox) if checkboxContainer else None
+            colorWidget = colorContainer.findChild(QGISRedSymbolColorSelector) if colorContainer else None
 
             symbol = QgsSymbol.defaultSymbol(self.currentLayer.geometryType())
 
@@ -2555,9 +2445,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             ranges.append(rangeObj)
 
         if ranges:
-            self.currentLayer.setRenderer(
-                QgsGraduatedSymbolRenderer(self.currentFieldName, ranges)
-            )
+            self.currentLayer.setRenderer(QgsGraduatedSymbolRenderer(self.currentFieldName, ranges))
 
     def applyCategoricalLegend(self):
         categories = []
@@ -2569,16 +2457,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
             valueWidget = self.tableView.cellWidget(row, 3)
             sizeWidget = self.tableView.cellWidget(row, 2)
 
-            checkbox = (
-                checkboxContainer.findChild(QCheckBox)
-                if checkboxContainer
-                else None
-            )
-            colorWidget = (
-                colorContainer.findChild(QGISRedSymbolColorSelector)
-                if colorContainer
-                else None
-            )
+            checkbox = checkboxContainer.findChild(QCheckBox) if checkboxContainer else None
+            colorWidget = colorContainer.findChild(QGISRedSymbolColorSelector) if colorContainer else None
 
             value = valueWidget.text() if isinstance(valueWidget, QLineEdit) else ""
             label = legendWidget.text()
@@ -2604,9 +2484,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             categories.append(category)
 
         if categories:
-            self.currentLayer.setRenderer(
-                QgsCategorizedSymbolRenderer(self.currentFieldName, categories)
-            )
+            self.currentLayer.setRenderer(QgsCategorizedSymbolRenderer(self.currentFieldName, categories))
 
     def determineRealCategoricalValue(self, value, label):
         if value == "NULL":
@@ -2707,9 +2585,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             return
 
         filename = name.replace(" ", "") + ".qml" + (".bak" if isDefault else "")
-        subfolder = (
-            os.path.join("defaults", "layerStyles") if isDefault else "layerStyles"
-        )
+        subfolder = os.path.join("defaults", "layerStyles") if isDefault else "layerStyles"
         path = os.path.join(self.pluginFolder, subfolder, filename)
 
         if not os.path.exists(path):
@@ -2790,9 +2666,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.labelIntervalRange.setVisible(isFixedInterval)
         self.spinIntervalRange.setVisible(isFixedInterval)
 
-    def updateClassButtonsVisibility(
-        self, isCategorical, isNumeric, isFixedInterval
-    ):
+    def updateClassButtonsVisibility(self, isCategorical, isNumeric, isFixedInterval):
         self.btClassPlus.setVisible(isCategorical or isNumeric)
         self.btClassMinus.setVisible(isCategorical or isNumeric)
         self.btClassPlus.setEnabled(not isFixedInterval)
@@ -2806,16 +2680,12 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.btUp.setVisible(isCategorical)
         self.btDown.setVisible(isCategorical)
 
-    def updateClassCountEditability(
-        self, isCategorical, isNumeric, isManualNumeric
-    ):
+    def updateClassCountEditability(self, isCategorical, isNumeric, isManualNumeric):
         if isCategorical:
             self.setClassCountEditable(False)
             self.updateClassCountLimits()
         elif isNumeric:
-            self.setClassCountEditable(
-                not isManualNumeric and self.modeHasVariableClassCount()
-            )
+            self.setClassCountEditable(not isManualNumeric and self.modeHasVariableClassCount())
         else:
             self.setClassCountEditable(False)
 
@@ -2885,27 +2755,18 @@ class QGISRedLegendsDialog(QDialog, formClass):
         isManualNumeric = self.currentFieldType == self.FIELD_TYPE_NUMERIC and (
             modeId is None or modeId == "Manual"
         )
-        isAutoNumeric = (
-            self.currentFieldType == self.FIELD_TYPE_NUMERIC and not isManualNumeric
-        )
+        isAutoNumeric = self.currentFieldType == self.FIELD_TYPE_NUMERIC and not isManualNumeric
 
-        self.updateAddButtonState(
-            isCategorical, isAutoNumeric, isManualNumeric, selectionCount
-        )
+        self.updateAddButtonState(isCategorical, isAutoNumeric, isManualNumeric, selectionCount)
         self.updateRemoveButtonState(modeId, selectionCount)
         self.updateMoveButtonsState(isCategorical, selectionCount, selectedRows)
 
-    def updateAddButtonState(
-        self, isCategorical, isAutoNumeric, isManualNumeric, selectionCount
-    ):
+    def updateAddButtonState(self, isCategorical, isAutoNumeric, isManualNumeric, selectionCount):
         if isCategorical:
             if selectionCount > 1:
                 self.btClassPlus.setEnabled(False)
             else:
-                self.btClassPlus.setEnabled(
-                    len(self.availableUniqueValues) > 0
-                    or not self.hasOtherValuesCategory()
-                )
+                self.btClassPlus.setEnabled(len(self.availableUniqueValues) > 0 or not self.hasOtherValuesCategory())
         elif isAutoNumeric:
             self.btClassPlus.setEnabled(True)
         else:
@@ -2933,10 +2794,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def updateAddClassButtonState(self):
         if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
-            self.btClassPlus.setEnabled(
-                len(self.availableUniqueValues) > 0
-                or not self.hasOtherValuesCategory()
-            )
+            self.btClassPlus.setEnabled(len(self.availableUniqueValues) > 0 or not self.hasOtherValuesCategory())
 
     def updateClassCount(self):
         self.leClassCount.setValue(self.tableView.rowCount())
@@ -3059,9 +2917,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         lastColor = self.getRowColor(rowCount - 1)
 
         if newFirstColor and lastColor:
-            interpolatedColor = self.calculateIntermediateColor(
-                newFirstColor, lastColor
-            )
+            interpolatedColor = self.calculateIntermediateColor(newFirstColor, lastColor)
             self.setRowColor(1, interpolatedColor)
 
     def smoothLastRowInsertion(self, rowCount):
@@ -3072,13 +2928,11 @@ class QGISRedLegendsDialog(QDialog, formClass):
             antepenultimateColor = self.getRowColor(rowCount - 3)
 
         if newLastColor and antepenultimateColor:
-            interpolatedColor = self.calculateIntermediateColor(
-                newLastColor, antepenultimateColor
-            )
+            interpolatedColor = self.calculateIntermediateColor(newLastColor, antepenultimateColor)
             self.setRowColor(rowCount - 2, interpolatedColor)
 
     def getSelectedRows(self):
-        return [index.row() for index in self.tableView.selectionModel().selectedRows()]
+        return [idx.row() for idx in self.tableView.selectionModel().selectedRows()]
 
     def hasOtherValuesCategory(self):
         for row in range(self.tableView.rowCount()):
@@ -3155,9 +3009,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def disconnectLayerTreeSignal(self):
         if self.layerTreeViewConnection and iface and iface.layerTreeView():
             try:
-                iface.layerTreeView().currentLayerChanged.disconnect(
-                    self.onQgisLayerSelectionChanged
-                )
+                iface.layerTreeView().currentLayerChanged.disconnect(self.onQgisLayerSelectionChanged)
             except:
                 pass
 
