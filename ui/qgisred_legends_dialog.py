@@ -203,7 +203,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.palletesHorizontalLayout.addStretch(1)
         self.palletesHorizontalLayout.addWidget(self.btnColorRamp)
         self.palletesHorizontalLayout.addStretch(1)
-        self.btnColorRamp.colorRampChanged.connect(self.onCustomColorRampChanged)
+        self.btnColorRamp.rampChanged.connect(self.onCustomColorChanged)
 
     def applyConsistentStyling(self):
         comboStyle = "QComboBox { background-color: white; }"
@@ -618,7 +618,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         self.applyColorLogic()
 
-    def onCustomColorRampChanged(self, ramp):
+    def onCustomColorChanged(self, ramp):
         self.applyColorLogic()
 
     def updateSizeSpinBoxConstraints(self):
@@ -787,7 +787,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         return colors
 
     def calculateRampColors(self, rows):
-        ramp = self.btnColorRamp.currentRamp()
+        ramp = self.btnColorRamp.getActiveRampClone()
         if isinstance(ramp, QgsGradientColorRamp):
             colors = self.algorithmRamp(ramp, rows)
         else:
@@ -799,7 +799,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         return colors
 
     def calculatePaletteColors(self, rows):
-        palette = self.btnColorRamp.currentRamp()
+        palette = self.btnColorRamp.getActiveRampClone()
         if isinstance(palette, QgsPresetSchemeColorRamp):
             colors = self.algorithmPalette(palette, rows)
         else:
@@ -815,7 +815,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             colorContainer = self.tableView.cellWidget(row, 1)
             colorWidget = colorContainer.findChild(QGISRedSymbolColorSelector) if colorContainer else None
             if colorWidget:
-                colorWidget.setColor(colors[row])
+                colorWidget.setSelectorColor(colors[row])
 
     def algorithmPalette(self, paletteRamp, numClasses):
         """Interpolates colors from a discrete palette for the specified number of classes."""
@@ -906,7 +906,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if ramps:
             self.btnColorRamp.addColorRamps(ramps)
             firstName = list(ramps.keys())[0]
-            self.btnColorRamp.setCurrentRamp(firstName)
+            self.btnColorRamp.setActiveRampByName(firstName)
 
     def loadGradientRampsFromStyle(self):
         ramps = {}
@@ -1781,9 +1781,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
             if colorSelector:
                 return (
                     "cs",
-                    colorSelector.color(),
-                    colorSelector.symbolSize,
-                    colorSelector.geometryHint(),
+                    colorSelector.activeColor,
+                    colorSelector.currentSymbolSize,
+                    colorSelector.geometryType,
                 )
         return None
 
@@ -2241,10 +2241,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
             return
 
         unitAbbr = self.getCurrentLayerUnitAbbr()
-        dialog = QGISRedRangeEditDialog(currentRange[0], currentRange[1], self, unitAbbr=unitAbbr)
+        dialog = QGISRedRangeEditDialog(currentRange[0], currentRange[1], self, unitAbbreviation=unitAbbr)
 
         if dialog.exec_():
-            newLower, newUpper = dialog.getValues()
+            newLower, newUpper = dialog.getRangeValues()
 
             if not self.validateRangeEdit(row, newLower, newUpper):
                 return
@@ -2255,6 +2255,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 self.updateRangeValue(row - 1, None, newLower)
             if row < self.tableView.rowCount() - 1:
                 self.updateRangeValue(row + 1, newUpper, None)
+
+            if self.cbSizes.currentText() == "Proportional to Value":
+                self.applySizeLogic()
 
     def validateRangeEdit(self, row, newLower, newUpper):
         if newLower >= newUpper:
@@ -2427,7 +2430,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             symbol = QgsSymbol.defaultSymbol(self.currentLayer.geometryType())
 
             if colorWidget:
-                symbol.setColor(colorWidget.color())
+                symbol.setColor(colorWidget.activeColor)
 
             try:
                 size = float(sizeWidget.text())
@@ -2468,7 +2471,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             symbol = QgsSymbol.defaultSymbol(self.currentLayer.geometryType())
 
             if colorWidget:
-                symbol.setColor(colorWidget.color())
+                symbol.setColor(colorWidget.activeColor)
 
             try:
                 size = float(sizeWidget.text())
@@ -2840,7 +2843,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if colorContainer:
             colorWidget = colorContainer.findChild(QGISRedSymbolColorSelector)
             if colorWidget:
-                return colorWidget.color()
+                return colorWidget.activeColor
         return None
 
     def setRowColor(self, row, color):
@@ -2851,7 +2854,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if colorContainer:
             colorWidget = colorContainer.findChild(QGISRedSymbolColorSelector)
             if colorWidget:
-                colorWidget.setColor(color)
+                colorWidget.setSelectorColor(color)
 
     def calculateIntermediateColor(self, color1, color2):
         return QColor(

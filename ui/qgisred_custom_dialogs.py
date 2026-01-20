@@ -141,7 +141,7 @@ class QGISRedSymbolColorSelector(QgsSymbolButton):
         else:
             symbol.setSize(self.currentSymbolSize)
 
-    def updateSymbolSize(self, newSize):
+    def updateSymbolSize(self, newSize, isLine=False):
         if newSize > 0:
             self.currentSymbolSize = newSize
             self.refreshSymbolDisplay()
@@ -245,6 +245,15 @@ class QGISRedColorRampSelector(QComboBox):
         if name in self.colorRampCache:
             self.activeRampName = name
             self.rampChanged.emit(self.getActiveRampClone())
+
+    def clearRamps(self):
+        self.clear()
+        self.colorRampCache.clear()
+        self.activeRampName = None
+
+    def addColorRamps(self, ramps):
+        for name, ramp in ramps.items():
+            self.registerColorRamp(name, ramp)
 
     def registerColorRamp(self, name, ramp):
         if not isinstance(ramp, QgsColorRamp):
