@@ -998,7 +998,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     child.isVisible()
                     and identifier in self.ALLOWED_GROUP_IDENTIFIERS
                 ):
-                    if self.groupHasVisibleLayers(child):
+                    isResultsGroup = identifier == "qgisred_results" # Results group bypasses empty layer check (layers are in subgroups)
+                    if isResultsGroup or self.groupHasVisibleLayers(child):
                         results.append((currentPath[-1], " / ".join(currentPath), child))
 
                 self.collectGroupsRecursive(child, currentPath, results)
@@ -1018,7 +1019,17 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if not group:
             return []
 
+        # Check if this is a qgisred_results group to enable recursive layer collection
+        identifier = group.customProperty("qgisred_identifier")
+        isResultsGroup = identifier == "qgisred_results"
+
         layers = []
+        self.collectRenderableLayersRecursive(group, layers, isResultsGroup)
+
+        return layers
+
+    def collectRenderableLayersRecursive(self, group, layers, recurseIntoSubgroups):
+        """Collects renderable layers from a group, optionally recursing into subgroups."""
         for child in group.children():
             if isinstance(child, QgsLayerTreeLayer) and child.isVisible():
                 layer = child.layer()
@@ -1029,8 +1040,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
                     in ("graduatedSymbol", "categorizedSymbol")
                 ):
                     layers.append(layer)
-
-        return layers
+            elif isinstance(child, QgsLayerTreeGroup) and recurseIntoSubgroups:
+                # Recursively collect layers from nested subgroups
+                self.collectRenderableLayersRecursive(child, layers, recurseIntoSubgroups)
 
     def findGroupByPath(self, pathStr):
         current = QgsProject.instance().layerTreeRoot()
