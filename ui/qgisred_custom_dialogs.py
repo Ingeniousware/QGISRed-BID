@@ -353,7 +353,13 @@ class QGISRedRowSelectionFilter(QObject):
         return QItemSelection(firstColumn, lastColumn)
 
 class QGISRedPaletteEmulator(QObject):
-    """Generates interpolated colors for N classes from a customizable palette."""
+    """Generates interpolated colors for N classes from a customizable palette.
+
+    The algorithm distributes palette colors across the requested number of classes,
+    keeping the first palette color as the first class color and the last palette
+    color as the last class color. Intermediate colors are interpolated between
+    adjacent palette colors.
+    """
 
     paletteChanged = pyqtSignal()
     colorsGenerated = pyqtSignal(list)
@@ -409,11 +415,20 @@ class QGISRedPaletteEmulator(QObject):
             self.colors = list(newPalette)
             self.paletteChanged.emit()
 
+    def setPaletteFromQColors(self, qcolors: List[QColor]):
+        if len(qcolors) >= 2:
+            self.colors = [(c.red(), c.green(), c.blue()) for c in qcolors if c and c.isValid()]
+            if len(self.colors) >= 2:
+                self.paletteChanged.emit()
+
     def getPaletteCount(self):
         return len(self.colors)
 
     def generate(self, totalClasses: int) -> List[dict]:
         if not self.isValidPalette():
+            return []
+
+        if totalClasses < 1:
             return []
 
         if totalClasses == 1:
@@ -437,54 +452,33 @@ class QGISRedPaletteEmulator(QObject):
         }]
 
     def computeInterpolatedColors(self, totalClasses):
-        totalPaletteColors = len(self.colors)
-        increment = (totalPaletteColors - 1) / (totalClasses - 1)
+        paletteSize = len(self.colors)
         results = []
 
-        for classIndex in range(1, totalClasses + 1):
-            interpolatedRgb = self.interpolateColorForClass(classIndex, increment, totalClasses, totalPaletteColors)
-            results.append(self.createColorResult(classIndex, interpolatedRgb))
+        for classIdx in range(totalClasses):
+            if totalClasses == 1:
+                position = 0.0
+            else:
+                position = classIdx / (totalClasses - 1) * (paletteSize - 1)
+
+            lowerIdx = int(position)
+            upperIdx = min(lowerIdx + 1, paletteSize - 1)
+            fraction = position - lowerIdx
+
+            interpolatedRgb = self.linearInterpolate(
+                self.colors[lowerIdx],
+                self.colors[upperIdx],
+                fraction
+            )
+
+            results.append(self.createColorResult(classIdx + 1, interpolatedRgb))
 
         return results
 
-    def interpolateColorForClass(self, classIndex, increment, totalClasses, totalPaletteColors):
-        colorGroupIndex = self.computeColorGroupIndex(classIndex, increment, totalPaletteColors)
-        groupStartClass = self.findGroupStart(colorGroupIndex, increment, totalClasses)
-        nextGroupStartClass = self.findNextGroupStart(colorGroupIndex, increment, totalClasses, totalPaletteColors)
-
-        groupSize = nextGroupStartClass - groupStartClass
-        interpolationFactor = self.computeInterpolationFactor(classIndex, groupStartClass, groupSize)
-
-        previousColor = self.colors[colorGroupIndex - 1]
-        nextColor = self.colors[min(colorGroupIndex, totalPaletteColors - 1)]
-
-        return self.linearInterpolate(previousColor, nextColor, interpolationFactor)
-
-    def computeColorGroupIndex(self, classIndex, increment, totalPaletteColors):
-        rawIndex = int(1 + increment * (classIndex - 1))
-        return min(rawIndex, totalPaletteColors)
-
-    def findGroupStart(self, targetColorIndex, increment, totalClasses):
-        for classIndex in range(1, totalClasses + 1):
-            currentColorIndex = int(1 + increment * (classIndex - 1))
-            if currentColorIndex >= targetColorIndex:
-                return classIndex
-        return totalClasses + 1
-
-    def findNextGroupStart(self, colorGroupIndex, increment, totalClasses, totalPaletteColors):
-        if colorGroupIndex >= totalPaletteColors:
-            return totalClasses + 1
-        return self.findGroupStart(colorGroupIndex + 1, increment, totalClasses)
-
-    def computeInterpolationFactor(self, classIndex, groupStartClass, groupSize):
-        if groupSize <= 0:
-            return 0
-        return (classIndex - groupStartClass) / groupSize
-
-    def linearInterpolate(self, previousColor, nextColor, factor):
-        red = int(previousColor[0] + (nextColor[0] - previousColor[0]) * factor)
-        green = int(previousColor[1] + (nextColor[1] - previousColor[1]) * factor)
-        blue = int(previousColor[2] + (nextColor[2] - previousColor[2]) * factor)
+    def linearInterpolate(self, color1, color2, factor):
+        red = int(color1[0] + (color2[0] - color1[0]) * factor)
+        green = int(color1[1] + (color2[1] - color1[1]) * factor)
+        blue = int(color1[2] + (color2[2] - color1[2]) * factor)
 
         return (
             self.clampColorValue(red),

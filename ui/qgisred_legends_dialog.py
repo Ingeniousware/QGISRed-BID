@@ -20,6 +20,7 @@ from qgis.utils import iface
 from ..tools.qgisred_utils import QGISRedUtils
 from .qgisred_custom_dialogs import QGISRedRangeEditDialog, QGISRedSymbolColorSelector
 from .qgisred_custom_dialogs import QGISRedColorRampSelector, QGISRedRowSelectionFilter
+from .qgisred_custom_dialogs import QGISRedPaletteEmulator
 
 formClass, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_legends_dialog.ui"))
 
@@ -70,6 +71,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.projectDirectory = ""
         self.networkName = ""
         self.utils = None
+        self.paletteEmulator = QGISRedPaletteEmulator(self)
+        self.previousClassificationMode = None
 
     def config(self, qgisInterface, projectDirectory, networkName, parentPlugin):
         self.parentPlugin = parentPlugin
@@ -436,6 +439,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.updateUiBasedOnFieldType()
         methodId = self.cbMode.currentData()
 
+        if self.previousClassificationMode is None and methodId is not None:
+            currentColors = self.collectCurrentTableColors()
+            if len(currentColors) >= 2:
+                self.paletteEmulator.setPaletteFromQColors(currentColors)
+
+        self.previousClassificationMode = methodId
+
         if not methodId:
             return
 
@@ -742,15 +752,22 @@ class QGISRedLegendsDialog(QDialog, formClass):
     # COLOR LOGIC
     # ============================================================
 
-    def applyColorLogic(self, forceRefresh=False):
+    def applyColorLogic(self, forceRefresh=False, previousColors=None):
         if not hasattr(self, "cbColors"):
             return
 
         mode = self.cbColors.currentText()
-        if mode == "Manual" or self.tableView.rowCount() == 0:
+        rows = self.tableView.rowCount()
+
+        if rows == 0:
             return
 
-        rows = self.tableView.rowCount()
+        if mode == "Manual":
+            if previousColors and len(previousColors) >= 2:
+                colors = self.calculateEmulatedPaletteColors(rows, previousColors)
+                self.applyColorsToTable(colors)
+            return
+
         colors = self.calculateColorsForMode(mode, rows, forceRefresh)
         self.applyColorsToTable(colors)
 
@@ -806,12 +823,35 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         return colors
 
+    def calculateEmulatedPaletteColors(self, rows, previousColors):
+        """Generates interpolated colors using the palette emulator from existing colors."""
+        if self.paletteEmulator.getPaletteCount() >= 2:
+            pass
+        elif previousColors and len(previousColors) >= 2:
+            self.paletteEmulator.setPaletteFromQColors(previousColors)
+        else:
+            self.paletteEmulator.reset()
+            return [self.generateRandomColor() for _ in range(rows)]
+
+        self.paletteEmulator.generate(rows)
+
+        return self.paletteEmulator.getQColorList()
+
     def applyColorsToTable(self, colors):
         for row in range(self.tableView.rowCount()):
             colorContainer = self.tableView.cellWidget(row, 1)
             colorWidget = colorContainer.findChild(QGISRedSymbolColorSelector) if colorContainer else None
             if colorWidget:
                 colorWidget.setSelectorColor(colors[row])
+
+    def collectCurrentTableColors(self):
+        """Collects all current colors from the table rows."""
+        colors = []
+        for row in range(self.tableView.rowCount()):
+            color = self.getRowColor(row)
+            if color and color.isValid():
+                colors.append(color)
+        return colors
 
     def algorithmPalette(self, paletteRamp, numClasses):
         """Interpolates colors from a discrete palette for the specified number of classes."""
@@ -1499,9 +1539,6 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         self.updateAdjacentRowsAfterInsertion(insertionRow, lower, upper)
 
-        if (modeId == "Manual" or modeId is None) and colorMode == "Manual":
-            self.smoothEdgeColorAfterInsertion(insertionRow)
-
         self.tableView.clearSelection()
         self.tableView.selectRow(insertionRow)
         self.updateClassCount()
@@ -2108,6 +2145,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         numClasses = self.tableView.rowCount() or 5
         minValue, maxValue = min(values), max(values)
 
+        previousColors = self.collectCurrentTableColors()
+
         breaks = self.calculateBreaksForMethod(methodId, values, numClasses, minValue, maxValue)
 
         if len(breaks) < 2:
@@ -2118,7 +2157,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.applyBreaksToTable(breaks, numClasses, minValue, maxValue)
 
         self.updateClassCount()
-        self.applyColorLogic()
+        self.applyColorLogic(previousColors=previousColors)
         self.applySizeLogic()
 
     def calculateBreaksForMethod(self, methodId, values, numClasses, minValue, maxValue):
