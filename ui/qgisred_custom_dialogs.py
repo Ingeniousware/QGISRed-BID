@@ -7,6 +7,7 @@ from PyQt5.QtCore import pyqtSignal, Qt, QEvent, QSize, QObject, QPoint, QItemSe
 
 from qgis.gui import QgsSymbolButton, QgsColorDialog
 from qgis.core import QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, QgsColorRamp
+from typing import List, Tuple
 
 class QGISRedRangeEditDialog(QDialog):
     def __init__(self, lowerValue, upperValue, parent=None, unitAbbreviation=""):
@@ -350,3 +351,183 @@ class QGISRedRowSelectionFilter(QObject):
         firstColumn = model.index(rowIndex, 0)
         lastColumn = model.index(rowIndex, self.targetTable.columnCount() - 1)
         return QItemSelection(firstColumn, lastColumn)
+
+class QGISRedPaletteEmulator(QObject):
+    """Generates interpolated colors for N classes from a customizable palette."""
+
+    paletteChanged = pyqtSignal()
+    colorsGenerated = pyqtSignal(list)
+
+    basePalette = [
+        (255, 0, 0),
+        (0, 255, 0),
+        (0, 0, 255),
+        (255, 0, 255),
+        (0, 255, 255),
+        (255, 255, 0),
+    ]
+
+    def __init__(self, parent=None, customPrefix: List[Tuple[int, int, int]] = None, useBase: bool = True):
+        super().__init__(parent)
+
+        self.colors = []
+        self.generatedColors = []
+
+        self.initializePalette(customPrefix, useBase)
+
+    def initializePalette(self, customPrefix, useBase):
+        self.colors = []
+
+        if customPrefix:
+            self.colors.extend(customPrefix)
+        if useBase:
+            self.colors.extend(self.basePalette)
+
+    def prepend(self, newColors: List[Tuple[int, int, int]]):
+        self.colors = list(newColors) + self.colors
+        self.paletteChanged.emit()
+
+    def append(self, newColors: List[Tuple[int, int, int]]):
+        self.colors.extend(newColors)
+        self.paletteChanged.emit()
+
+    def insert(self, position: int, color: Tuple[int, int, int]):
+        self.colors.insert(position, color)
+        self.paletteChanged.emit()
+
+    def remove(self, position: int):
+        if len(self.colors) > 2:
+            self.colors.pop(position)
+            self.paletteChanged.emit()
+
+    def reset(self):
+        self.colors = list(self.basePalette)
+        self.paletteChanged.emit()
+
+    def setPalette(self, newPalette: List[Tuple[int, int, int]]):
+        if len(newPalette) >= 2:
+            self.colors = list(newPalette)
+            self.paletteChanged.emit()
+
+    def getPaletteCount(self):
+        return len(self.colors)
+
+    def generate(self, totalClasses: int) -> List[dict]:
+        if not self.isValidPalette():
+            return []
+
+        if totalClasses == 1:
+            return self.createSingleClassResult()
+
+        self.generatedColors = self.computeInterpolatedColors(totalClasses)
+        self.colorsGenerated.emit(self.generatedColors)
+
+        return self.generatedColors
+
+    def isValidPalette(self):
+        return len(self.colors) >= 2
+
+    def createSingleClassResult(self):
+        firstColor = self.colors[0]
+        return [{
+            "classIndex": 1,
+            "rgb": firstColor,
+            "hex": self.rgbToHex(firstColor),
+            "qcolor": self.rgbToQColor(firstColor)
+        }]
+
+    def computeInterpolatedColors(self, totalClasses):
+        totalPaletteColors = len(self.colors)
+        increment = (totalPaletteColors - 1) / (totalClasses - 1)
+        results = []
+
+        for classIndex in range(1, totalClasses + 1):
+            interpolatedRgb = self.interpolateColorForClass(classIndex, increment, totalClasses, totalPaletteColors)
+            results.append(self.createColorResult(classIndex, interpolatedRgb))
+
+        return results
+
+    def interpolateColorForClass(self, classIndex, increment, totalClasses, totalPaletteColors):
+        colorGroupIndex = self.computeColorGroupIndex(classIndex, increment, totalPaletteColors)
+        groupStartClass = self.findGroupStart(colorGroupIndex, increment, totalClasses)
+        nextGroupStartClass = self.findNextGroupStart(colorGroupIndex, increment, totalClasses, totalPaletteColors)
+
+        groupSize = nextGroupStartClass - groupStartClass
+        interpolationFactor = self.computeInterpolationFactor(classIndex, groupStartClass, groupSize)
+
+        previousColor = self.colors[colorGroupIndex - 1]
+        nextColor = self.colors[min(colorGroupIndex, totalPaletteColors - 1)]
+
+        return self.linearInterpolate(previousColor, nextColor, interpolationFactor)
+
+    def computeColorGroupIndex(self, classIndex, increment, totalPaletteColors):
+        rawIndex = int(1 + increment * (classIndex - 1))
+        return min(rawIndex, totalPaletteColors)
+
+    def findGroupStart(self, targetColorIndex, increment, totalClasses):
+        for classIndex in range(1, totalClasses + 1):
+            currentColorIndex = int(1 + increment * (classIndex - 1))
+            if currentColorIndex >= targetColorIndex:
+                return classIndex
+        return totalClasses + 1
+
+    def findNextGroupStart(self, colorGroupIndex, increment, totalClasses, totalPaletteColors):
+        if colorGroupIndex >= totalPaletteColors:
+            return totalClasses + 1
+        return self.findGroupStart(colorGroupIndex + 1, increment, totalClasses)
+
+    def computeInterpolationFactor(self, classIndex, groupStartClass, groupSize):
+        if groupSize <= 0:
+            return 0
+        return (classIndex - groupStartClass) / groupSize
+
+    def linearInterpolate(self, previousColor, nextColor, factor):
+        red = int(previousColor[0] + (nextColor[0] - previousColor[0]) * factor)
+        green = int(previousColor[1] + (nextColor[1] - previousColor[1]) * factor)
+        blue = int(previousColor[2] + (nextColor[2] - previousColor[2]) * factor)
+
+        return (
+            self.clampColorValue(red),
+            self.clampColorValue(green),
+            self.clampColorValue(blue)
+        )
+
+    def clampColorValue(self, value):
+        return max(0, min(255, value))
+
+    def createColorResult(self, classIndex, rgb):
+        return {
+            "classIndex": classIndex,
+            "rgb": rgb,
+            "hex": self.rgbToHex(rgb),
+            "qcolor": self.rgbToQColor(rgb)
+        }
+
+    def rgbToHex(self, rgb: Tuple[int, int, int]) -> str:
+        return f"#{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}"
+
+    def rgbToQColor(self, rgb: Tuple[int, int, int]) -> QColor:
+        return QColor(rgb[0], rgb[1], rgb[2])
+
+    def hexToRgb(self, hexColor: str) -> Tuple[int, int, int]:
+        cleanHex = hexColor.lstrip('#')
+        return tuple(int(cleanHex[i:i+2], 16) for i in (0, 2, 4))
+
+    def getColorAtIndex(self, index: int) -> dict:
+        if not self.generatedColors:
+            return None
+
+        adjustedIndex = index - 1
+        if 0 <= adjustedIndex < len(self.generatedColors):
+            return self.generatedColors[adjustedIndex]
+
+        return None
+
+    def getQColorList(self) -> List[QColor]:
+        return [color["qcolor"] for color in self.generatedColors]
+
+    def getRgbList(self) -> List[Tuple[int, int, int]]:
+        return [color["rgb"] for color in self.generatedColors]
+
+    def getHexList(self) -> List[str]:
+        return [color["hex"] for color in self.generatedColors]
