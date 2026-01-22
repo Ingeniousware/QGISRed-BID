@@ -672,32 +672,28 @@ class QGISRedLegendsDialog(QDialog, formClass):
             else:
                 rangeAverageValues.append(0.0)
 
-        if rangeAverageValues:
-            globalValueMin = min(rangeAverageValues)
-            lastClassRange = self.getRangeValues(rows - 1)
-            if lastClassRange:
-                globalValueMax = lastClassRange[0]
-            else:
-                globalValueMax = max(rangeAverageValues)
-        else:
-            globalValueMin = 0.0
-            globalValueMax = 1.0
+        _, globalValueMax = self.getLayerMinMax()
 
         sizes = []
-        for averageValue in rangeAverageValues:
-            calculatedSize = self.computeProportionalSize(minSize, maxSize, globalValueMin, globalValueMax, averageValue)
-            sizes.append(calculatedSize)
+        for index, averageValue in enumerate(rangeAverageValues):
+            if index == 0:
+                sizes.append(minSize)
+            elif index == rows - 1:
+                sizes.append(maxSize)
+            else:
+                calculatedSize = self.computeProportionalSize(minSize, maxSize, globalValueMax, averageValue)
+                sizes.append(calculatedSize)
 
         if self.ckSizeInvert.isChecked():
             sizes.reverse()
 
         return sizes
 
-    def computeProportionalSize(self, minSize, maxSize, globalValueMin, globalValueMax, averageValue):
-        if globalValueMax == globalValueMin:
+    def computeProportionalSize(self, minSize, maxSize, globalValueMax, averageValue):
+        if globalValueMax == 0:
             return minSize
 
-        normalizedPosition = (averageValue - globalValueMin) / (globalValueMax - globalValueMin)
+        normalizedPosition = averageValue / globalValueMax
         normalizedPosition = max(0.0, min(1.0, normalizedPosition))
 
         return minSize + normalizedPosition * (maxSize - minSize)
