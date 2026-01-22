@@ -138,6 +138,7 @@ class QGISRedResultsDock(QDockWidget, FORM_CLASS):
                 root = QgsProject.instance().layerTreeRoot()
                 netGroup = root.addGroup(self.NetworkName)
             resultGroup = netGroup.insertGroup(0, "Results")
+            resultGroup.setCustomProperty("qgisred_identifier", "qgisred_results")
         resultGroup.setItemVisibilityChecked(True)
         return resultGroup
 
