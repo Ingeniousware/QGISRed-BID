@@ -14,7 +14,7 @@ from qgis.PyQt import uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsMessageLog, Qgis, QgsGraduatedSymbolRenderer
 from qgis.core import QgsCategorizedSymbolRenderer, QgsRendererRange, QgsRendererCategory, QgsSymbol
 from qgis.core import QgsLayerTreeGroup, QgsLayerTreeLayer, QgsGradientColorRamp, QgsClassificationJenks
-from qgis.core import QgsClassificationPrettyBreaks, QgsStyle, QgsPresetSchemeColorRamp
+from qgis.core import QgsClassificationPrettyBreaks, QgsStyle, QgsPresetSchemeColorRamp, QgsProperty, QgsSymbolLayer
 from qgis.utils import iface
 
 from ..tools.qgisred_utils import QGISRedUtils
@@ -2421,6 +2421,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
     def applyNumericLegend(self):
         ranges = []
+        isProportionalMode = self.cbSizes.currentText() == "Proportional to Value"
 
         for row in range(self.tableView.rowCount()):
             values = self.getRangeValues(row)
@@ -2449,6 +2450,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
             except:
                 pass
 
+            if isProportionalMode:
+                self.applyProportionalSizeExpression(symbol)
+
             rangeObj = QgsRendererRange(
                 values[0], values[1], symbol, legendWidget.text()
             )
@@ -2457,6 +2461,31 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         if ranges:
             self.currentLayer.setRenderer(QgsGraduatedSymbolRenderer(self.currentFieldName, ranges))
+
+    def applyProportionalSizeExpression(self, symbol):
+        minSize = self.spinSizeMin.value()
+        maxSize = self.spinSizeMax.value()
+        _, globalValueMax = self.getLayerMinMax()
+
+        if globalValueMax == 0:
+            return
+
+        fieldName = self.currentFieldName
+        isLine = self.currentLayer.geometryType() == 1
+
+        if self.ckSizeInvert.isChecked():
+            expression = f'{maxSize} - ("{fieldName}" / {globalValueMax}) * ({maxSize} - {minSize})'
+        else:
+            expression = f'{minSize} + ("{fieldName}" / {globalValueMax}) * ({maxSize} - {minSize})'
+
+        sizeProperty = QgsProperty.fromExpression(expression)
+
+        for i in range(symbol.symbolLayerCount()):
+            symbolLayer = symbol.symbolLayer(i)
+            if isLine:
+                symbolLayer.setDataDefinedProperty(QgsSymbolLayer.PropertyStrokeWidth, sizeProperty)
+            else:
+                symbolLayer.setDataDefinedProperty(QgsSymbolLayer.PropertySize, sizeProperty)
 
     def applyCategoricalLegend(self):
         categories = []
