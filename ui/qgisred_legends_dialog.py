@@ -572,6 +572,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
         modeId = self.cbMode.currentData()
         if modeId and modeId not in [None, "Manual"] and newValue > currentCount:
             self.applyClassificationMethod(modeId)
+        else:
+            self.handleColorLogicOnClassChange()
+            self.applySizeLogic()
 
     def adjustCategoricalClassCount(self, newValue, currentCount):
         if newValue > currentCount:
@@ -585,6 +588,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         self.leClassCount.setValue(self.tableView.rowCount())
         self.updateClassCountLimits()
+        self.handleColorLogicOnClassChange()
+        self.applySizeLogic()
 
     def onCellDoubleClicked(self, row, column):
         if column == 2 and self.currentFieldType == self.FIELD_TYPE_NUMERIC:
@@ -852,6 +857,29 @@ class QGISRedLegendsDialog(QDialog, formClass):
             if color and color.isValid():
                 colors.append(color)
         return colors
+
+    def handleColorLogicOnClassChange(self):
+        """Handles color logic when adding or removing classes.
+
+        When in automatic interval mode with manual colors, regenerates
+        the palette emulation based on current colors and applies it.
+        Otherwise, falls back to standard color logic.
+        """
+        colorMode = self.cbColors.currentText() if hasattr(self, "cbColors") else "Manual"
+        modeId = self.cbMode.currentData()
+        isAutomaticIntervalMode = modeId is not None and modeId != "Manual"
+
+        if isAutomaticIntervalMode and colorMode == "Manual":
+            currentColors = self.collectCurrentTableColors()
+            if len(currentColors) >= 2:
+                self.paletteEmulator.setPaletteFromQColors(currentColors)
+                rows = self.tableView.rowCount()
+                if rows > 0:
+                    colors = self.calculateEmulatedPaletteColors(rows, currentColors)
+                    self.applyColorsToTable(colors)
+            return
+
+        self.applyColorLogic()
 
     def algorithmPalette(self, paletteRamp, numClasses):
         """Interpolates colors from a discrete palette for the specified number of classes."""
@@ -1497,7 +1525,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
                 self.applyClassificationMethod(modeId)
 
         self.updateButtonStates()
-        self.applyColorLogic()
+        self.handleColorLogicOnClassChange()
         self.applySizeLogic()
 
     def addNumericClass(self):
@@ -1686,7 +1714,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
             self.updateClassCount()
             self.updateButtonStates()
-            self.applyColorLogic()
+            self.handleColorLogicOnClassChange()
             self.applySizeLogic()
 
     def removeOtherValuesRows(self):
@@ -1722,7 +1750,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.updateClassCount()
         self.refreshAllLegendLabels()
         self.updateButtonStates()
-        self.applyColorLogic()
+        self.handleColorLogicOnClassChange()
         self.applySizeLogic()
 
         if self.currentFieldType == self.FIELD_TYPE_CATEGORICAL:
