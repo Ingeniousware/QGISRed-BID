@@ -139,7 +139,7 @@ class QGISRedSymbolColorSelector(QgsSymbolButton):
     def applySizeScaling(self, symbol):
         if self.geometryType == self.lineType:
             symbol.setWidth(self.currentSymbolSize)
-        else:
+        elif self.geometryType == self.markerType:
             symbol.setSize(self.currentSymbolSize)
 
     def updateSymbolSize(self, newSize, isLine=False):
