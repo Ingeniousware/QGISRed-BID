@@ -636,6 +636,22 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def onCustomColorChanged(self, ramp):
         self.applyColorLogic()
 
+    def onRowColorChanged(self, _color):
+        """Handles when a user manually changes a row's color via the color picker.
+
+        When in automatic interval mode with manual colors, updates the palette
+        emulator with current colors so subsequent class additions/removals
+        will interpolate from the updated palette.
+        """
+        colorMode = self.cbColors.currentText() if hasattr(self, "cbColors") else "Manual"
+        modeId = self.cbMode.currentData()
+        isAutomaticIntervalMode = modeId is not None and modeId != "Manual"
+
+        if isAutomaticIntervalMode and colorMode == "Manual":
+            currentColors = self.collectCurrentTableColors()
+            if len(currentColors) >= 2:
+                self.paletteEmulator.setPaletteFromQColors(currentColors)
+
     def updateSizeSpinBoxConstraints(self):
         minVal = self.spinSizeMin.value()
         maxVal = self.spinSizeMax.value()
@@ -1395,6 +1411,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
             doubleClickOnly=True,
         )
         colorSelector.setEnabled(self.isEditing)
+        colorSelector.colorChanged.connect(self.onRowColorChanged)
 
         size = symbol.width() if geometryHint == "line" else symbol.size()
         colorSelector.updateSymbolSize(size, geometryHint == "line")
