@@ -720,7 +720,8 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if valueRange == 0:
             return minSize
 
-        return minSize + ((maxSize - minSize) / valueRange) * (averageValue - globalValueMin)
+        calculatedSize = minSize + ((maxSize - minSize) / valueRange) * (averageValue - globalValueMin)
+        return max(minSize, min(maxSize, calculatedSize))
 
     def calculateInterpolatedSizes(self, mode, rows):
         minSize = self.spinSizeMin.value()
