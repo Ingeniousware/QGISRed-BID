@@ -7,6 +7,7 @@ from qgis.PyQt import uic
 from qgis.core import QgsProject, QgsVectorLayer, QgsSettings, QgsGeometry, QgsPointXY, QgsRectangle, QgsFeature, QgsLayerMetadata, QgsSpatialIndex, Qgis
 from qgis.utils import iface
 from qgis.gui import QgsHighlight
+from ..tools.qgisred_utils import QGISRedUtils
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_element_explorer_dock.ui"))
 
@@ -931,8 +932,14 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         
         self.dataTableWidget.verticalHeader().setVisible(False)
         
+        # Get the layer identifier for pretty name lookup
+        layerIdentifier = self.currentLayer.customProperty("qgisred_identifier") if self.currentLayer else None
+        utils = QGISRedUtils()
+        
         for row, field in enumerate(fields):
-            fieldItem = QTableWidgetItem(field.name())
+            # Get pretty name for the field
+            prettyName = utils.getFieldPrettyName(layerIdentifier, field.name())
+            fieldItem = QTableWidgetItem(prettyName)
             valueItem = QTableWidgetItem(str(attributes[row]))
             self.dataTableWidget.setItem(row, 0, fieldItem)
             self.dataTableWidget.setItem(row, 1, valueItem)
