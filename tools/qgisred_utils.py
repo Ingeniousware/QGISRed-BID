@@ -333,7 +333,7 @@ class QGISRedUtils:
             vlayer = QgsVectorLayer(os.path.join(self.ProjectDirectory, layerName + ext), showName, "ogr")
             if not ext == ".dbf":
                 if results:
-                    self.setResultStyle(vlayer)
+                    self.setResultStyle(vlayer, originalName)
                 elif sectors:
                     self.setSectorsStyle(vlayer)
                 elif issues:
@@ -510,37 +510,62 @@ class QGISRedUtils:
         if os.path.exists(qmlPath):
                 layer.loadNamedStyle(qmlPath)
 
-    def setResultStyle(self, layer):
-        stylePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "defaults", "layerStyles")
+    def setResultStyle(self, layer, name=""):
+        # Convert result layer name to QML filename (e.g., "Link_Flow" -> "LinkFlow")
+        qmlName = name.replace("_", "") if name else ""
         
-        # default style
+        layerStylesPath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "layerStyles")
+        defaultStylePath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "defaults", "layerStyles")
+        
+        # Search order: project folder -> layerStyles -> defaults/layerStyles
+        if qmlName:
+            # project style
+            projectStylePath = os.path.join(self.ProjectDirectory, "layerStyles")
+            qmlPath = os.path.join(projectStylePath, qmlName + ".qml")
+            if os.path.exists(qmlPath):
+                layer.loadNamedStyle(qmlPath)
+                return
+            
+            # global layerStyles
+            qmlPath = os.path.join(layerStylesPath, qmlName + ".qml")
+            if os.path.exists(qmlPath):
+                layer.loadNamedStyle(qmlPath)
+                return
+            
+            # default .bak style
+            qmlPath = os.path.join(defaultStylePath, qmlName + ".qml.bak")
+            if os.path.exists(qmlPath):
+                layer.loadNamedStyle(qmlPath)
+                return
+        
+        #TODO -> remove this fallback
+        # Fallback to generic node/link results style
         if layer.geometryType() == 0:  # Point
-            qmlBasePath = os.path.join(stylePath, "nodeResults.qml.bak")
+            qmlBasePath = os.path.join(defaultStylePath, "nodeResults.qml.bak")
         else:
-            qmlBasePath = os.path.join(stylePath, "linkResults.qml.bak")
+            qmlBasePath = os.path.join(defaultStylePath, "linkResults.qml.bak")
         if os.path.exists(qmlBasePath):
             f = open(qmlBasePath, "r")
             contents = f.read()
             f.close()
             qmlPath = ""
             if layer.geometryType() == 0:  # Point
-                svgPath = os.path.join(stylePath, "tanksResults.svg")
+                svgPath = os.path.join(defaultStylePath, "tanksResults.svg")
                 contents = contents.replace("tanks.svg", svgPath)
-                svgPath = os.path.join(stylePath, "reservoirsResults.svg")
+                svgPath = os.path.join(defaultStylePath, "reservoirsResults.svg")
                 contents = contents.replace("reservoirs.svg", svgPath)
-                qmlPath = os.path.join(stylePath, "nodeResults.qml")
+                qmlPath = os.path.join(defaultStylePath, "nodeResults.qml")
             else:
-                svgPath = os.path.join(stylePath, "pumps.svg")
+                svgPath = os.path.join(defaultStylePath, "pumps.svg")
                 contents = contents.replace("pumps.svg", svgPath)
-                svgPath = os.path.join(stylePath, "valves.svg")
+                svgPath = os.path.join(defaultStylePath, "valves.svg")
                 contents = contents.replace("valves.svg", svgPath)
-                svgPath = os.path.join(stylePath, "arrow.svg")
+                svgPath = os.path.join(defaultStylePath, "arrow.svg")
                 contents = contents.replace("arrow.svg", svgPath)
-                qmlPath = os.path.join(stylePath, "linkResults.qml")
+                qmlPath = os.path.join(defaultStylePath, "linkResults.qml")
             f = open(qmlPath, "w+")
             f.write(contents)
             f.close()
-            # ret = layer.loadNamedStyle(qmlPath)
             layer.loadNamedStyle(qmlPath)
             os.remove(qmlPath)
 
