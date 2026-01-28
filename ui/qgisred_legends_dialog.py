@@ -2875,11 +2875,15 @@ class QGISRedLegendsDialog(QDialog, formClass):
         )
         isAutoNumeric = self.currentFieldType == self.FIELD_TYPE_NUMERIC and not isManualNumeric
 
-        self.updateAddButtonState(isCategorical, isAutoNumeric, isManualNumeric, selectionCount)
+        self.updateAddButtonState(isCategorical, isAutoNumeric, isManualNumeric, selectionCount, modeId)
         self.updateRemoveButtonState(modeId, selectionCount)
         self.updateMoveButtonsState(isCategorical, selectionCount, selectedRows)
 
-    def updateAddButtonState(self, isCategorical, isAutoNumeric, isManualNumeric, selectionCount):
+    def updateAddButtonState(self, isCategorical, isAutoNumeric, isManualNumeric, selectionCount, modeId):
+        if modeId == "FixedInterval":
+            self.btClassPlus.setEnabled(False)
+            return
+
         if isCategorical:
             if selectionCount > 1:
                 self.btClassPlus.setEnabled(False)
