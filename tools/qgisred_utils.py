@@ -1037,6 +1037,54 @@ class QGISRedUtils:
 
         return prettyName
 
+    def getFieldUnit(self, elementCategory, fieldName):
+        """Get the unit abbreviation for a field based on element category and field name."""
+        if not fieldName:
+            return ""
+
+        unitSystem = self.getUnits()
+        unitDefs = self.loadUnitDefinitions()
+
+        # Convert identifier to category name
+        category = self.identifierToElementName.get(elementCategory, elementCategory)
+        category = category.replace(" ", "") if category else None
+
+        if not category or category not in unitDefs:
+            return ""
+
+        categoryUnits = unitDefs[category]
+
+        # Get pretty name for the field
+        prettyName = self.getFieldPrettyName(elementCategory, fieldName)
+
+        # Search for matching property
+        for _, unitInfo in categoryUnits.items():
+            if not isinstance(unitInfo, dict):
+                continue
+            propertyName = unitInfo.get("property", "")
+            if not propertyName:
+                continue
+
+            # Try exact match with field name
+            if propertyName.lower() == fieldName.lower():
+                unitData = unitInfo.get(unitSystem)
+                if unitData:
+                    return unitData.get("abbr", "")
+
+            # Try exact match with pretty name
+            if propertyName.lower() == prettyName.lower():
+                unitData = unitInfo.get(unitSystem)
+                if unitData:
+                    return unitData.get("abbr", "")
+
+            # Try prefix match (property is prefix of pretty name)
+            if prettyName.lower().startswith(propertyName.lower()):
+                unitData = unitInfo.get(unitSystem)
+                if unitData:
+                    return unitData.get("abbr", "")
+
+        return ""
+
     def getAllFieldPrettyNames(self, elementCategory=None):
         """Get all field pretty name mappings for a category, merged with Common."""
         fieldPrettyNames = self.loadUnitDefinitions().get("FieldPrettyNames", {})
