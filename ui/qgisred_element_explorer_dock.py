@@ -926,9 +926,10 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         
         self.dataTableWidget.verticalHeader().setDefaultSectionSize(20)
         
-        totalWidth = self.dataTableWidget.viewport().width() + 20 
-        self.dataTableWidget.setColumnWidth(0, totalWidth // 2)
-        self.dataTableWidget.setColumnWidth(1, totalWidth // 2)
+        totalWidth = self.dataTableWidget.viewport().width() + 20
+        self.dataTableWidget.setColumnWidth(0, totalWidth // 3)
+        self.dataTableWidget.setColumnWidth(1, totalWidth // 3)
+        self.dataTableWidget.setColumnWidth(2, totalWidth // 3)
         
         self.dataTableWidget.verticalHeader().setVisible(False)
         
@@ -941,12 +942,16 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
             prettyName = utils.getFieldPrettyName(layerIdentifier, field.name())
             fieldItem = QTableWidgetItem(prettyName)
             valueItem = QTableWidgetItem(str(attributes[row]))
+            # Get unit for the field
+            fieldUnit = utils.getFieldUnit(layerIdentifier, field.name())
+            unitItem = QTableWidgetItem(fieldUnit)
             self.dataTableWidget.setItem(row, 0, fieldItem)
             self.dataTableWidget.setItem(row, 1, valueItem)
+            self.dataTableWidget.setItem(row, 2, unitItem)
 
     def setDataTableWidgetColumns(self):
-        self.dataTableWidget.setColumnCount(2)
-        self.dataTableWidget.setHorizontalHeaderLabels(["Property", "Value"])
+        self.dataTableWidget.setColumnCount(3)
+        self.dataTableWidget.setHorizontalHeaderLabels(["Property", "Value", "Units"])
 
     def loadFeature(self, layer, feature, featureIdText=""):
         if not layer or not feature:
