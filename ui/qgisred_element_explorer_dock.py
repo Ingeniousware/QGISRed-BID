@@ -940,6 +940,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
             # Get pretty name for the field
             prettyName = utils.getFieldPrettyName(layerIdentifier, fieldName)
             fieldItem = QTableWidgetItem(prettyName)
+            fieldItem.setToolTip(prettyName)
 
             # Get raw value and format display value
             rawValue = attributes[row]
