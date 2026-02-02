@@ -144,6 +144,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
 
         self.mElementPropertiesGroupBox.setCollapsed(True)
         self.mFindElementsGroupBox.setCollapsed(True)
+        self.mConnectedElementsGroupBox.setCollapsed(True)
         self.trackCollapsibleWidgetsEvents()
         
         self.topLevelChanged.connect(self.onTopLevelChanged)
@@ -911,47 +912,99 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         self.dataTableWidget.clearContents()
         self.dataTableWidget.setShowGrid(False)
         self.dataTableWidget.setStyleSheet("QTableWidget::item { padding: 1px; }")
-        
+
         self.dataTableWidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        
+
         fields = self.currentLayer.fields()
         attributes = self.currentFeature.attributes()
         numFields = len(fields)
         self.dataTableWidget.setRowCount(numFields)
-        self.setDataTableWidgetColumns()
 
         header = self.dataTableWidget.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Interactive)
         header.setStyleSheet("QHeaderView::section { font-weight: bold; }")
-        
+        self.setDataTableWidgetColumns()
+
         self.dataTableWidget.verticalHeader().setDefaultSectionSize(20)
-        
-        totalWidth = self.dataTableWidget.viewport().width() + 20
-        self.dataTableWidget.setColumnWidth(0, totalWidth // 3)
-        self.dataTableWidget.setColumnWidth(1, totalWidth // 3)
-        self.dataTableWidget.setColumnWidth(2, totalWidth // 3)
-        
         self.dataTableWidget.verticalHeader().setVisible(False)
-        
+
         # Get the layer identifier for pretty name lookup
         layerIdentifier = self.currentLayer.customProperty("qgisred_identifier") if self.currentLayer else None
         utils = QGISRedUtils()
-        
+
+        # Get headloss formula for roughness unit handling
+        headloss, _ = QgsProject.instance().readEntry("QGISRed", "project_headloss", "H-W")
+        unitSystem = utils.getUnits()  # Returns 'SI' or 'US'
+
         for row, field in enumerate(fields):
+            fieldName = field.name()
             # Get pretty name for the field
-            prettyName = utils.getFieldPrettyName(layerIdentifier, field.name())
+            prettyName = utils.getFieldPrettyName(layerIdentifier, fieldName)
             fieldItem = QTableWidgetItem(prettyName)
-            valueItem = QTableWidgetItem(str(attributes[row]))
-            # Get unit for the field
-            fieldUnit = utils.getFieldUnit(layerIdentifier, field.name())
+
+            # Get raw value and format display value
+            rawValue = attributes[row]
+            displayValue = str(rawValue) if rawValue is not None else ""
+
+            # Handle Energy Price with $ prefix
+            if fieldName in ["EnergyPric", "EnergyPrice"]:
+                if rawValue is not None and str(rawValue).strip() != "":
+                    try:
+                        displayValue = f"${rawValue}"
+                    except (ValueError, TypeError):
+                        pass
+
+            valueItem = QTableWidgetItem(displayValue)
+            # Center-align the Value column
+            valueItem.setTextAlignment(Qt.AlignCenter)
+            # Add tooltip with exact/complete value
+            valueItem.setToolTip(str(rawValue) if rawValue is not None else "")
+
+            # Get unit for the field with special handling for roughness
+            fieldUnit = self.getFieldUnitWithHeadlossLogic(utils, layerIdentifier, fieldName, headloss, unitSystem)
             unitItem = QTableWidgetItem(fieldUnit)
+            unitItem.setTextAlignment(Qt.AlignCenter)
+
+            # Info column - placeholder for contextual icons
+            infoItem = QTableWidgetItem("")
+            infoItem.setTextAlignment(Qt.AlignCenter)
+
             self.dataTableWidget.setItem(row, 0, fieldItem)
             self.dataTableWidget.setItem(row, 1, valueItem)
             self.dataTableWidget.setItem(row, 2, unitItem)
+            self.dataTableWidget.setItem(row, 3, infoItem)
+
+    def getFieldUnitWithHeadlossLogic(self, utils, layerIdentifier, fieldName, headloss, unitSystem):
+        """Get field unit with special handling for roughness based on headloss formula."""
+        # Check if this is a roughness field
+        roughnessFields = ["RoughCoeff", "Roughness", "roughcoeff", "roughness"]
+
+        if fieldName in roughnessFields:
+            # Roughness units only apply when headloss is Darcy-Weisbach (D-W)
+            if headloss == "D-W":
+                if unitSystem == "SI":
+                    return "mm"
+                else:  # US units
+                    return "millifeet"
+            else:
+                # For H-W (Hazen-Williams) and C-M (Chezy-Manning), roughness is dimensionless
+                return ""
+
+        # For all other fields, use the standard unit lookup
+        return utils.getFieldUnit(layerIdentifier, fieldName)
 
     def setDataTableWidgetColumns(self):
-        self.dataTableWidget.setColumnCount(3)
-        self.dataTableWidget.setHorizontalHeaderLabels(["Property", "Value", "Units"])
+        self.dataTableWidget.setColumnCount(4)
+        self.dataTableWidget.setHorizontalHeaderLabels([self.tr("Property"), self.tr("Value"), self.tr("Units"), self.tr("Info")])
+
+        header = self.dataTableWidget.horizontalHeader()
+        # Units and Info columns: fixed small width
+        header.setSectionResizeMode(2, QHeaderView.Fixed)
+        header.setSectionResizeMode(3, QHeaderView.Fixed)
+        self.dataTableWidget.setColumnWidth(2, 40)
+        self.dataTableWidget.setColumnWidth(3, 40)
+        # Property and Value columns: stretch to fill remaining space
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
 
     def loadFeature(self, layer, feature, featureIdText=""):
         if not layer or not feature:
