@@ -153,15 +153,19 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         self.mElementPropertiesGroupBox.collapsedStateChanged.connect(self.onElementPropertiesToggled)
         self.mFindElementsGroupBox.collapsedStateChanged.connect(self.onFindElementsToggled)
 
-    def updateCollapsibleWidgetsState(self, collapseElementProperties=None, collapseFindElements=None):
+    def updateCollapsibleWidgetsState(self, collapseElementProperties=None, collapseFindElements=None, collapseConnectedElements=None):
         self.mElementPropertiesGroupBox.blockSignals(True)
         self.mFindElementsGroupBox.blockSignals(True)
+        self.mConnectedElementsGroupBox.blockSignals(True)
 
         if collapseElementProperties is not None:
             self.mElementPropertiesGroupBox.setCollapsed(collapseElementProperties)
 
         if collapseFindElements is not None:
             self.mFindElementsGroupBox.setCollapsed(collapseFindElements)
+
+        if collapseConnectedElements is not None:
+            self.mConnectedElementsGroupBox.setCollapsed(collapseConnectedElements)
 
         ep_collapsed = self.mElementPropertiesGroupBox.isCollapsed()
         fe_collapsed = self.mFindElementsGroupBox.isCollapsed()
@@ -177,6 +181,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
 
         self.mElementPropertiesGroupBox.blockSignals(False)
         self.mFindElementsGroupBox.blockSignals(False)
+        self.mConnectedElementsGroupBox.blockSignals(False)
 
     def onTopLevelChanged(self, floating):
         if floating:
