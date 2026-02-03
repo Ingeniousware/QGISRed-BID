@@ -1023,7 +1023,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
 
     def setDataTableWidgetColumns(self):
         self.dataTableWidget.setColumnCount(4)
-        self.dataTableWidget.setHorizontalHeaderLabels([self.tr("Property"), self.tr("Value"), self.tr("Units"), self.tr("Info")])
+        self.dataTableWidget.setHorizontalHeaderLabels([self.tr("Property"), self.tr("Value"), self.tr("Units"), self.tr("")])
 
         header = self.dataTableWidget.horizontalHeader()
         # Units and Info columns: fixed small width
