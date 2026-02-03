@@ -969,6 +969,10 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
             fieldUnit = self.getFieldUnitWithHeadlossLogic(utils, layerIdentifier, fieldName, headloss, unitSystem)
             unitItem = QTableWidgetItem(fieldUnit)
             unitItem.setTextAlignment(Qt.AlignCenter)
+            # Add tooltip with full unit name
+            unitFullName = self.getFieldUnitFullNameWithHeadlossLogic(utils, layerIdentifier, fieldName, headloss, unitSystem)
+            if unitFullName:
+                unitItem.setToolTip(unitFullName)
 
             # Info column - placeholder for contextual icons
             infoItem = QTableWidgetItem("")
@@ -997,6 +1001,25 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
 
         # For all other fields, use the standard unit lookup
         return utils.getFieldUnit(layerIdentifier, fieldName)
+
+    def getFieldUnitFullNameWithHeadlossLogic(self, utils, layerIdentifier, fieldName, headloss, unitSystem):
+        """Get full unit name with special handling for roughness based on headloss formula (for tooltips)."""
+        # Check if this is a roughness field
+        roughnessFields = ["RoughCoeff", "Roughness", "roughcoeff", "roughness"]
+
+        if fieldName in roughnessFields:
+            # Roughness units only apply when headloss is Darcy-Weisbach (D-W)
+            if headloss == "D-W":
+                if unitSystem == "SI":
+                    return "Millimeters"
+                else:  # US units
+                    return "Millifeet"
+            else:
+                # For H-W (Hazen-Williams) and C-M (Chezy-Manning), roughness is dimensionless
+                return "Dimensionless"
+
+        # For all other fields, use the standard unit lookup
+        return utils.getFieldUnitFullName(layerIdentifier, fieldName)
 
     def setDataTableWidgetColumns(self):
         self.dataTableWidget.setColumnCount(4)
