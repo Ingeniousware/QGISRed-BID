@@ -782,6 +782,12 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         self.clearAllLayerSelections()
         self.listWidget.clear()
 
+        # Check if any layers are available
+        availableLayers, sourceGroup = self.getAvailableLayersForExplorer(checkVisibility=True)
+        if not availableLayers:
+            self.showLayerVisibilityWarning()
+            return
+
         selectedType = self.cbElementType.currentText()
         selectedId = self.extractNodeId(self.cbElementId.currentText())
         elementIdentifier = self.elementIdentifiers.get(selectedType)
@@ -803,6 +809,10 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
                         foundFeature = feature
                         foundFeatureLayer = layer
                         break
+
+        # If not found in Inputs, try Results group
+        if not foundFeature and sourceGroup == "Inputs":
+            foundFeature, foundFeatureLayer = self.findElementInResultsGroup(selectedId)
 
         if not foundFeature:
             QMessageBox.information(self, self.tr("Info"), self.tr("Feature not found"))
@@ -1460,10 +1470,10 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
     def findSourceOrDemandForNodeId(self, nodeId):
         nodeLayer, nodeFeat = self.findNodeLayer(nodeId)
         if not nodeLayer or not nodeFeat:
-            return None, None 
+            return None, None
         nodeGeom = nodeFeat.geometry()
         if nodeGeom.isEmpty():
-            return None, None 
+            return None, None
         for layer in self.getAllInputGroupLayers():
             identifier = layer.customProperty("qgisred_identifier", "")
             if identifier in self.sourcesAndDemands:
@@ -1473,6 +1483,42 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
                         continue
                     if self.areOverlappedPoints(nodeGeom, featGeom):
                         return feat, layer
+        return None, None
+
+    def findElementInResultsGroup(self, elementId):
+        """
+        Search for an element by ID in the Results group layers.
+        Results group typically contains nodes and lines layers without type separation.
+
+        Args:
+            elementId: The ID of the element to find.
+
+        Returns:
+            tuple: (feature, layer) if found, (None, None) otherwise.
+        """
+        resultsLayers = self.getAllResultsGroupLayers()
+        if not resultsLayers:
+            return None, None
+
+        for layer in resultsLayers:
+            # Results layers may have different field names for ID
+            idFieldNames = ["Id", "ID", "id", "fid", "FID"]
+            idFieldIndex = -1
+
+            for fieldName in idFieldNames:
+                idx = layer.fields().indexFromName(fieldName)
+                if idx >= 0:
+                    idFieldIndex = idx
+                    break
+
+            if idFieldIndex < 0:
+                continue
+
+            for feature in layer.getFeatures():
+                featureId = feature.attribute(idFieldIndex)
+                if featureId is not None and str(featureId) == str(elementId):
+                    return feature, layer
+
         return None, None
 
     def isLineElement(self, layer):
@@ -1731,13 +1777,24 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
                         return
 
     def findFeature(self, layer, feature):
+        # Safety check - verify layer and feature are valid
+        if not layer or not feature:
+            self.showLayerVisibilityWarning()
+            return
+
+        # Check if layers are available
+        availableLayers, _ = self.getAvailableLayersForExplorer(checkVisibility=True)
+        if not availableLayers:
+            self.showLayerVisibilityWarning()
+            return
+
         elementTypeText = layer.name()
         self.cbElementType.setCurrentText(elementTypeText)
-        
+
         self.updateElementIds()
-        
+
         featureIdText = self.getFeatureIdValue(feature, layer, specialNaming=True)
-        
+
         index = self.cbElementId.findText(featureIdText)
         if index >= 0:
             self.cbElementId.setCurrentIndex(index)
@@ -1789,3 +1846,83 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
             if layer and isinstance(layer, QgsVectorLayer):
                 layers.append(layer)
         return layers
+
+    def getAllResultsGroupLayers(self):
+        """Get all layers from Results group regardless of visibility/checked state."""
+        resultsGroup = QgsProject.instance().layerTreeRoot().findGroup("Results")
+        if not resultsGroup:
+            return []
+        layers = []
+        for layerNode in resultsGroup.findLayers():
+            layer = layerNode.layer()
+            if layer and isinstance(layer, QgsVectorLayer):
+                layers.append(layer)
+        return layers
+
+    def getCheckedResultsGroupLayers(self):
+        """Get checked/visible layers from Results group."""
+        resultsGroup = QgsProject.instance().layerTreeRoot().findGroup("Results")
+        if not resultsGroup:
+            return []
+        return resultsGroup.checkedLayers()
+
+    def isResultsDataAvailable(self):
+        """Check if results subfolder and results data block exist."""
+        projectPath = QgsProject.instance().readPath("./")
+        if not projectPath or projectPath == "./":
+            return False
+
+        resultsPath = os.path.join(projectPath, "Results")
+        if not os.path.exists(resultsPath):
+            return False
+
+        # Check if Results group has any layers
+        resultsLayers = self.getAllResultsGroupLayers()
+        return len(resultsLayers) > 0
+
+    def getAvailableLayersForExplorer(self, checkVisibility=True):
+        """
+        Get available layers for the Element Explorer.
+        First tries Inputs group, falls back to Results group if Inputs layers are not visible.
+
+        Args:
+            checkVisibility: If True, only returns layers from groups that have visible/checked layers.
+
+        Returns:
+            tuple: (layers_list, source_group_name) or ([], None) if no layers available
+        """
+        root = QgsProject.instance().layerTreeRoot()
+
+        # First, try Inputs group
+        inputsGroup = root.findGroup("Inputs")
+        if inputsGroup:
+            if checkVisibility:
+                checkedInputs = self.getCheckedInputGroupLayers()
+                if checkedInputs:
+                    return self.getAllInputGroupLayers(), "Inputs"
+            else:
+                inputLayers = self.getAllInputGroupLayers()
+                if inputLayers:
+                    return inputLayers, "Inputs"
+
+        # If Inputs not available/visible, try Results group
+        resultsGroup = root.findGroup("Results")
+        if resultsGroup:
+            if checkVisibility:
+                checkedResults = self.getCheckedResultsGroupLayers()
+                if checkedResults:
+                    return self.getAllResultsGroupLayers(), "Results"
+            else:
+                resultsLayers = self.getAllResultsGroupLayers()
+                if resultsLayers:
+                    return resultsLayers, "Results"
+
+        return [], None
+
+    def showLayerVisibilityWarning(self):
+        """Show warning message when no layers are visible in either Inputs or Results groups."""
+        QMessageBox.warning(
+            self,
+            self.tr("Layers Not Visible"),
+            self.tr("The layers in the Inputs or Results group must be visible in order to select an element.")
+        )
