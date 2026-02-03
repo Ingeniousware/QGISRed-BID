@@ -878,7 +878,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
             elementIdentifier = self.getIdentifierFromLayerName(singularType)
 
         matchingLayers = [
-            layer for layer in self.getCheckedInputGroupLayers()
+            layer for layer in self.getAllInputGroupLayers()
             if layer.customProperty("qgisred_identifier") == elementIdentifier
         ]
         for layer in matchingLayers:
@@ -1178,7 +1178,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         self.nodeLayerSpatialIndices.clear()
         supportedIds = ["qgisred_junctions", "qgisred_reservoirs", "qgisred_tanks"]
 
-        for layer in self.getCheckedInputGroupLayers():
+        for layer in self.getAllInputGroupLayers():
             identifier = layer.customProperty("qgisred_identifier", "")
             if identifier in supportedIds:
                 # Create spatial index for this layer
@@ -1232,7 +1232,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         return layerFound
 
     def getLayerByIdentifier(self, identifier):
-        for layer in self.getCheckedInputGroupLayers():
+        for layer in self.getAllInputGroupLayers():
             if layer.customProperty("qgisred_identifier") == identifier:
                 return layer
         return None
@@ -1386,7 +1386,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         return finalText
 
     def findNodeLayer(self, nodeId):
-        for layer in self.getCheckedInputGroupLayers():
+        for layer in self.getAllInputGroupLayers():
             identifier = layer.customProperty("qgisred_identifier", "")
             if identifier in self.nodeLayers:
                 if identifier in self.sourcesAndDemands:
@@ -1405,7 +1405,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         tolerance = 1e-6
         if supportedOnly:
             supportedIds = ["qgisred_junctions", "qgisred_reservoirs", "qgisred_tanks"]
-            for nodeLayer in self.getCheckedInputGroupLayers():
+            for nodeLayer in self.getAllInputGroupLayers():
                 if nodeLayer == currentLayer:
                     continue
                 nodeIdentifier = nodeLayer.customProperty("qgisred_identifier", "")
@@ -1420,7 +1420,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
                         return nodeFeature, nodeLayer
             return None, None
         else:
-            for nodeLayer in self.getCheckedInputGroupLayers():
+            for nodeLayer in self.getAllInputGroupLayers():
                 if nodeLayer == currentLayer:
                     continue
                 nodeIdentifier = nodeLayer.customProperty("qgisred_identifier", "")
@@ -1441,9 +1441,9 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         nodeGeom = nodeFeat.geometry()
         if nodeGeom.isEmpty():
             return None, None 
-        for layer in self.getCheckedInputGroupLayers():
+        for layer in self.getAllInputGroupLayers():
             identifier = layer.customProperty("qgisred_identifier", "")
-            if identifier in self.sourcesAndDemands: 
+            if identifier in self.sourcesAndDemands:
                 for feat in layer.getFeatures():
                     featGeom = feat.geometry()
                     if featGeom.isEmpty():
@@ -1481,7 +1481,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
 
     def addServiceConnectionAdjacencies(self, currentGeom, tolerance):
         serviceLayers = [
-            layer for layer in self.getCheckedInputGroupLayers()
+            layer for layer in self.getAllInputGroupLayers()
             if layer.customProperty("qgisred_identifier") == "qgisred_serviceconnections"
         ]
         for layer in serviceLayers:
@@ -1496,7 +1496,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
 
     def addIsolationValveAdjacencies(self, currentGeom, tolerance):
         isolationLayers = [
-            layer for layer in self.getCheckedInputGroupLayers()
+            layer for layer in self.getAllInputGroupLayers()
             if layer.customProperty("qgisred_identifier") == "qgisred_isolationvalves"
         ]
         for layer in isolationLayers:
@@ -1524,7 +1524,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         tolerance = 1e-6
         foundNodes = []
         nodeLayers = [
-            layer for layer in self.getCheckedInputGroupLayers()
+            layer for layer in self.getAllInputGroupLayers()
             if layer.customProperty("qgisred_identifier") in (self.nodeLayers + self.specialLayers)
         ]
         for nodeLayer in nodeLayers:
@@ -1567,12 +1567,15 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         nodeGeom = nodeFeature.geometry()
         if nodeGeom.isEmpty():
             return
+        # Check if the geometry is a point type (geometryType() == 0 for Point)
+        if nodeGeom.type() != 0:  # Not a point geometry
+            return
         nodePoint = QgsPointXY(nodeGeom.asPoint())
         nodeG = QgsGeometry.fromPointXY(nodePoint)
         tolerance = 1e-9
         foundLinks = []
         linkLayers = [
-            lyr for lyr in self.getCheckedInputGroupLayers()
+            lyr for lyr in self.getAllInputGroupLayers()
             if lyr.customProperty("qgisred_identifier") in (self.linkLayers + ["qgisred_meters"])
         ]
         for linkLayer in linkLayers:
@@ -1641,7 +1644,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
                 return
         for pt in endpoints:
             ptGeom = QgsGeometry.fromPointXY(pt)
-            for lyr in self.getCheckedInputGroupLayers():
+            for lyr in self.getAllInputGroupLayers():
                 if lyr.customProperty("qgisred_identifier") == "qgisred_pipes":
                     for f in lyr.getFeatures():
                         pipeGeom = f.geometry()
@@ -1666,7 +1669,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
             nodeFullName = singularName + ' ' + nodeItemText
             self.addAdjacencyItem(nodeFullName, nodeLayer.customProperty("qgisred_identifier"))
             return
-        for lyr in self.getCheckedInputGroupLayers():
+        for lyr in self.getAllInputGroupLayers():
             if lyr.customProperty("qgisred_identifier") == "qgisred_pipes":
                 for f in lyr.getFeatures():
                     pipeGeom = f.geometry()
@@ -1691,7 +1694,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
             nodeItemText = singularName + ' ' + nodeId
             self.addAdjacencyItem(nodeItemText, nodeLayer.customProperty("qgisred_identifier"))
             return
-        for lyr in self.getCheckedInputGroupLayers():
+        for lyr in self.getAllInputGroupLayers():
             if lyr.customProperty("qgisred_identifier") != "qgisred_meters":
                 for f in lyr.getFeatures():
                     linkGeom = f.geometry()
@@ -1751,3 +1754,15 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         if not inputsGroup:
             return []
         return inputsGroup.checkedLayers()
+
+    def getAllInputGroupLayers(self):
+        """Get all layers from Inputs group regardless of visibility/checked state."""
+        inputsGroup = QgsProject.instance().layerTreeRoot().findGroup("Inputs")
+        if not inputsGroup:
+            return []
+        layers = []
+        for layerNode in inputsGroup.findLayers():
+            layer = layerNode.layer()
+            if layer and isinstance(layer, QgsVectorLayer):
+                layers.append(layer)
+        return layers
