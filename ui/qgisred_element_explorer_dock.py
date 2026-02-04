@@ -170,13 +170,12 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         ep_collapsed = self.mElementPropertiesGroupBox.isCollapsed()
         fe_collapsed = self.mFindElementsGroupBox.isCollapsed()
 
-        if ep_collapsed and fe_collapsed:
-            self.close()
-            return
-        
+        # Panel should NOT close automatically when frames collapse
+        # It should only close when the X button is clicked
+
         if not fe_collapsed and ep_collapsed:
             self.moveWidgetsToFindElements()
-        else:
+        elif not ep_collapsed:
             self.moveWidgetsToElementProperties()
 
         self.mElementPropertiesGroupBox.blockSignals(False)
@@ -251,6 +250,70 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
         # Reset the scroll area position to the top
         if hasattr(self, 'scrollArea'):
             self.scrollArea.ensureVisible(0, 0, 0, 0)
+
+    def scrollToTop(self):
+        """Scroll the panel to show the top (Find Elements section)"""
+        if hasattr(self, 'scrollArea'):
+            self.scrollArea.verticalScrollBar().setValue(0)
+
+    def scrollToElementProperties(self):
+        """Scroll the panel to make the Element Properties section visible"""
+        if hasattr(self, 'scrollArea') and hasattr(self, 'mElementPropertiesGroupBox'):
+            # Ensure the element properties group box is visible
+            self.scrollArea.ensureWidgetVisible(self.mElementPropertiesGroupBox)
+
+    def refreshCurrentElement(self):
+        """Refresh the current element's data without changing collapsed state or scroll position.
+        This is useful after C# library operations that may have changed the element's data.
+        """
+        if not self.currentLayer or not self.currentFeature:
+            return False
+
+        # Save scroll position
+        scrollValue = self.scrollArea.verticalScrollBar().value() if hasattr(self, 'scrollArea') else 0
+
+        # Re-query the feature from the layer to get fresh data
+        try:
+            featureId = self.currentFeature.id()
+            freshFeature = self.currentLayer.getFeature(featureId)
+            if not freshFeature.isValid():
+                return False
+
+            # Update the feature reference
+            self.currentFeature = freshFeature
+
+            # Re-populate the data table
+            self.populateDataTableWidget()
+
+            # Update labels if they exist
+            if hasattr(self, 'labelFoundElementTag') and freshFeature.fields().indexFromName("Tag") != -1:
+                featureTag = freshFeature.attribute("Tag")
+                if featureTag and str(featureTag).strip() != "":
+                    self.labelFoundElementTag.setText(str(featureTag))
+                    self.labelFoundElementTag.show()
+                    self.isTagVisible = True
+                else:
+                    self.labelFoundElementTag.hide()
+                    self.isTagVisible = False
+
+            if hasattr(self, 'labelFoundElementDescription') and freshFeature.fields().indexFromName("Descrip") != -1:
+                featureDescription = freshFeature.attribute("Descrip")
+                if featureDescription and str(featureDescription).strip() != "":
+                    self.labelFoundElementDescription.setText(str(featureDescription))
+                    self.labelFoundElementDescription.show()
+                    self.isDescVisible = True
+                else:
+                    self.labelFoundElementDescription.hide()
+                    self.isDescVisible = False
+
+            # Restore scroll position
+            if hasattr(self, 'scrollArea'):
+                self.scrollArea.verticalScrollBar().setValue(scrollValue)
+
+            return True
+        except Exception as e:
+            print(f"Error refreshing current element: {str(e)}")
+            return False
 
     # ------------------------------
     # Event Filter Setup
@@ -977,7 +1040,7 @@ class QGISRedElementExplorerDock(QDockWidget, FORM_CLASS):
 
             # Get unit for the field with special handling for roughness
             fieldUnit = self.getFieldUnitWithHeadlossLogic(utils, layerIdentifier, fieldName, headloss, unitSystem)
-            unitItem = QTableWidgetItem(fieldUnit if fieldUnit else "-")
+            unitItem = QTableWidgetItem(fieldUnit if fieldUnit and fieldUnit != "-" and len(fieldUnit) > 1 else "")
             unitItem.setTextAlignment(Qt.AlignCenter)
             # Add tooltip with full unit name
             unitFullName = self.getFieldUnitFullNameWithHeadlossLogic(utils, layerIdentifier, fieldName, headloss, unitSystem)
