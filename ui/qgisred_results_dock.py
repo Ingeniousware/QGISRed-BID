@@ -150,14 +150,19 @@ class QGISRedResultsDock(QDockWidget, FORM_CLASS):
             self.cbFlowDirections.setVisible(True)
         if nameLayer == "Link_Velocity":
             self.cbLinks.setCurrentIndex(2)
+            self.cbFlowDirections.setVisible(True)
         if nameLayer == "Link_HeadLoss":
             self.cbLinks.setCurrentIndex(3)
+            self.cbFlowDirections.setVisible(True)
         if nameLayer == "Link_UnitHeadLoss":
             self.cbLinks.setCurrentIndex(4)
+            self.cbFlowDirections.setVisible(True)
         if nameLayer == "Link_Status":
             self.cbLinks.setCurrentIndex(5)
+            self.cbFlowDirections.setVisible(True)
         if nameLayer == "Link_Quality":
             self.cbLinks.setCurrentIndex(6)
+            self.cbFlowDirections.setVisible(True)
         if nameLayer == "Node_Pressure":
             self.cbNodes.setCurrentIndex(1)
         if nameLayer == "Node_Head":
@@ -176,7 +181,6 @@ class QGISRedResultsDock(QDockWidget, FORM_CLASS):
         self.Computing = True
         self.cbLinks.setCurrentIndex(0)
         self.cbNodes.setCurrentIndex(0)
-        self.cbFlowDirections.setVisible(False)
 
         for nameLayer in self.LabelsToOpRe:
             layerResult = self.generatePath(resultPath, self.NetworkName + "_" + self.Scenario + "_" + nameLayer + ".shp")
@@ -324,7 +328,7 @@ class QGISRedResultsDock(QDockWidget, FORM_CLASS):
 
     def setArrowsVisibility(self, symbol, layer, prop, field):
         try:
-            if "Flow" in layer.name() and self.cbFlowDirections.isChecked():
+            if "Link" in layer.name() and self.cbFlowDirections.isChecked():
                 # Show arrows in pipes
                 ss = symbol.symbolLayer(3)  # arrow positive flow
                 prop.setExpressionString("if(Type='PIPE', if(" + field + ">0,3,0),0)")
@@ -465,13 +469,13 @@ class QGISRedResultsDock(QDockWidget, FORM_CLASS):
     def linksChanged(self):
         if self.Computing:
             return
-        self.cbFlowDirections.setVisible(False)
         if not self.validationsOpenResult():
             return
+        self.cbFlowDirections.setVisible(self.cbLinks.currentIndex() != 0)
+        self.lbNotAvailable.setVisible(False)
         result = ""
         if self.cbLinks.currentIndex() == 1:
             result = "Flow"
-            self.cbFlowDirections.setVisible(True)
         if self.cbLinks.currentIndex() == 2:
             result = "Velocity"
         if self.cbLinks.currentIndex() == 3:
@@ -548,12 +552,15 @@ class QGISRedResultsDock(QDockWidget, FORM_CLASS):
                         layer.triggerRepaint()
 
     def flowDirectionsClicked(self):
-        if self.cbLinks.currentIndex() == 1:
+        linkIndex = self.cbLinks.currentIndex()
+        if linkIndex != 0:
             if not self.validationsOpenResult(True):
                 return
-            if self.cbLinks.currentIndex() == 1:
-                self.LabelsToOpRe.append("Link_Flow")
-                self.Variables = "Flow_Link"
+            linkTypes = {1: "Link_Flow", 2: "Link_Velocity", 3: "Link_HeadLoss", 4: "Link_UnitHeadLoss", 5: "Link_Status", 6: "Link_Quality"}
+            varTypes = {1: "Flow_Link", 2: "Velocity_Link", 3: "HeadLoss_Link", 4: "UnitHeadLoss_Link", 5: "Status_Link", 6: "Quality_Link"}
+            if linkIndex in linkTypes:
+                self.LabelsToOpRe.append(linkTypes[linkIndex])
+                self.Variables = varTypes[linkIndex]
                 value = self.cbTimes.currentIndex()
                 self.paintIntervalTimeResults(value, False)
 
