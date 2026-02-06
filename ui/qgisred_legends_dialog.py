@@ -76,6 +76,129 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.previousClassificationMode = None
         self.previousSizeMode = None
 
+    # ============================================================
+    # RESULTS LAYER DETECTION AND VALUE EXTRACTION
+    # ============================================================
+
+    def isResultsLayer(self):
+        """Check if the current layer is a results layer."""
+        if not self.currentLayer:
+            return False
+        identifier = self.currentLayer.customProperty("qgisred_identifier")
+        if not identifier:
+            return False
+        return identifier.startswith("qgisred_link_") or identifier.startswith("qgisred_node_")
+
+    def isLinkResultLayer(self):
+        """Check if current layer is a Link result layer."""
+        if not self.currentLayer:
+            return False
+        identifier = self.currentLayer.customProperty("qgisred_identifier")
+        return identifier and identifier.startswith("qgisred_link_")
+
+    def isNodeResultLayer(self):
+        """Check if current layer is a Node result layer."""
+        if not self.currentLayer:
+            return False
+        identifier = self.currentLayer.customProperty("qgisred_identifier")
+        return identifier and identifier.startswith("qgisred_node_")
+
+    def getResultFieldMapping(self):
+        """Map layer identifier to field name in the 'All' shapefile."""
+        mapping = {
+            "qgisred_link_flow": "Flow",
+            "qgisred_link_velocity": "Velocity",
+            "qgisred_link_headloss": "HeadLoss",
+            "qgisred_link_unitheadloss": "UnitHeadLo",
+            "qgisred_link_status": "Status",
+            "qgisred_link_quality": "Quality",
+            "qgisred_node_demand": "Demand",
+            "qgisred_node_head": "Head",
+            "qgisred_node_pressure": "Pressure",
+            "qgisred_node_quality": "Quality",
+        }
+        if not self.currentLayer:
+            return None
+        identifier = self.currentLayer.customProperty("qgisred_identifier")
+        return mapping.get(identifier)
+
+    def getResultsAllShapefilePath(self):
+        """Get path to the corresponding 'All' shapefile for results layers."""
+        if not self.projectDirectory or not self.networkName:
+            return None
+
+        resultsDir = os.path.join(self.projectDirectory, "Results")
+
+        if self.isLinkResultLayer():
+            return os.path.join(resultsDir, f"{self.networkName}_Base_Link_All.shp")
+        elif self.isNodeResultLayer():
+            return os.path.join(resultsDir, f"{self.networkName}_Base_Node_All.shp")
+        return None
+
+    def loadResultsAllLayer(self):
+        """Load the 'All' shapefile as a temporary QgsVectorLayer."""
+        shapefilePath = self.getResultsAllShapefilePath()
+        if not shapefilePath or not os.path.exists(shapefilePath):
+            return None
+
+        layer = QgsVectorLayer(shapefilePath, "temp_results_all", "ogr")
+        return layer if layer.isValid() else None
+
+    def getResultsNumericValues(self):
+        """Get numeric values from the 'All' shapefile for results layers."""
+        allLayer = self.loadResultsAllLayer()
+        if not allLayer:
+            return []
+
+        fieldName = self.getResultFieldMapping()
+        if not fieldName:
+            del allLayer
+            return []
+
+        fieldIdx = allLayer.fields().indexOf(fieldName)
+        if fieldIdx < 0:
+            del allLayer
+            return []
+
+        values = []
+        for feature in allLayer.getFeatures():
+            try:
+                val = float(feature[fieldName])
+                values.append(val)
+            except:
+                pass
+
+        del allLayer
+        return sorted(values)
+
+    def getResultsUniqueValues(self):
+        """Get unique values from the 'All' shapefile for categorical results."""
+        allLayer = self.loadResultsAllLayer()
+        if not allLayer:
+            return []
+
+        fieldName = self.getResultFieldMapping()
+        if not fieldName:
+            del allLayer
+            return []
+
+        fieldIdx = allLayer.fields().indexOf(fieldName)
+        if fieldIdx < 0:
+            del allLayer
+            return []
+
+        values = set()
+        for feature in allLayer.getFeatures():
+            value = feature[fieldName]
+            values.add(str(value) if value is not None else "NULL")
+
+        specialValues = ["NULL", "#NA"]
+        regularValues = [v for v in values if v not in specialValues]
+        foundSpecials = [v for v in specialValues if v in values]
+
+        del allLayer
+        return sorted(regularValues) + foundSpecials
+
     def config(self, qgisInterface, projectDirectory, networkName, parentPlugin):
         self.parentPlugin = parentPlugin
         self.qgisInterface = qgisInterface
@@ -1554,6 +1677,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if not self.currentLayer or not self.currentFieldName:
             return []
 
+        # For results layers, get values from the All shapefile
+        if self.isResultsLayer():
+            resultsValues = self.getResultsUniqueValues()
+            if resultsValues:
+                return resultsValues
+
+        # Original implementation for non-results layers
         fieldIdx = self.currentLayer.fields().indexOf(self.currentFieldName)
         if fieldIdx < 0:
             return []
@@ -2311,6 +2441,18 @@ class QGISRedLegendsDialog(QDialog, formClass):
         return breaks
 
     def calculateJenksBreaks(self, numClasses, minValue):
+        # For results layers, use values from All shapefile
+        if self.isResultsLayer():
+            allLayer = self.loadResultsAllLayer()
+            fieldName = self.getResultFieldMapping()
+            if allLayer and fieldName:
+                classifier = QgsClassificationJenks()
+                classifier.setLabelFormat("%1 - %2")
+                classes = classifier.classes(allLayer, fieldName, numClasses)
+                del allLayer
+                return [minValue] + [cls.upperBound() for cls in classes]
+
+        # Original implementation for non-results layers
         classifier = QgsClassificationJenks()
         classifier.setLabelFormat("%1 - %2")
         classes = classifier.classes(self.currentLayer, self.currentFieldName, numClasses)
@@ -2329,6 +2471,17 @@ class QGISRedLegendsDialog(QDialog, formClass):
         return sorted(list(set(breaks)))
 
     def calculatePrettyBreaks(self, numClasses, minValue):
+        # For results layers, use values from All shapefile
+        if self.isResultsLayer():
+            allLayer = self.loadResultsAllLayer()
+            fieldName = self.getResultFieldMapping()
+            if allLayer and fieldName:
+                classifier = QgsClassificationPrettyBreaks()
+                classes = classifier.classes(allLayer, fieldName, numClasses)
+                del allLayer
+                return [minValue] + [cls.upperBound() for cls in classes]
+
+        # Original implementation for non-results layers
         classifier = QgsClassificationPrettyBreaks()
         classes = classifier.classes(self.currentLayer, self.currentFieldName, numClasses)
         return [minValue] + [cls.upperBound() for cls in classes]
@@ -2373,6 +2526,13 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if not self.currentLayer or not self.currentFieldName:
             return []
 
+        # For results layers, get values from the All shapefile
+        if self.isResultsLayer():
+            resultsValues = self.getResultsNumericValues()
+            if resultsValues:
+                return resultsValues
+
+        # Original implementation for non-results layers
         values = []
         for feature in self.currentLayer.getFeatures():
             try:
