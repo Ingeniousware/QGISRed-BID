@@ -3341,10 +3341,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
     # ============================================================
 
     def cancelAndClose(self):
-        if self.currentLayer and self.originalRenderer and self.isEditing:
-            self.currentLayer.setRenderer(self.originalRenderer.clone())
-            self.currentLayer.triggerRepaint()
-        self.reject()
+        self.close()
 
     def eventFilter(self, obj, event):
         if obj == self.btClassPlus and event.type() == QEvent.MouseButtonPress:
