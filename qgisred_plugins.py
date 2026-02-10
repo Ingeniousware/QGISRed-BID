@@ -98,6 +98,7 @@ class QGISRed:
         # Save reference to the QGIS interface
         self.iface = iface
         self.storeQLRSucess = False
+        self.isUnloading = False  # Flag to prevent DLL calls during shutdown
 
         if not platform.system() == "Windows":
             self.iface.messageBar().pushMessage(self.tr("Error"), self.tr("QGISRed only works on Windows"), level=2, duration=5)
@@ -302,6 +303,45 @@ class QGISRed:
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
+        # Set flag to prevent DLL calls during shutdown
+        self.isUnloading = True
+
+        # Invalidate the DLL instance immediately
+        self.gisredDll = None
+
+        # Deactivate all map tools to prevent callbacks during shutdown
+        try:
+            if hasattr(self, 'myMapTools'):
+                for tool_name, tool in list(self.myMapTools.items()):
+                    try:
+                        if tool is not None:
+                            if self.iface.mapCanvas().mapTool() is tool:
+                                self.iface.mapCanvas().unsetMapTool(tool)
+                            tool.deactivate()
+                    except Exception:
+                        pass
+                self.myMapTools.clear()
+        except Exception:
+            pass
+
+        # Disconnect signal handlers to prevent callbacks during cleanup
+        try:
+            QgsProject.instance().projectSaved.disconnect(self.runSaveProject)
+        except Exception:
+            pass
+        try:
+            QgsProject.instance().cleared.disconnect(self.runClearedProject)
+        except Exception:
+            pass
+        try:
+            QgsProject.instance().layersRemoved.disconnect(self.runLegendChanged)
+        except Exception:
+            pass
+        try:
+            QgsProject.instance().readProject.disconnect(self.runOpenedQgisProject)
+        except Exception:
+            pass
+
         QGISRedUtils().removeFolder(self.tempFolder)
 
         if QGISRedUtils.DllTempoFolder is not None:
@@ -309,8 +349,15 @@ class QGISRed:
                 file.write(QGISRedUtils.DllTempoFolder + "\n")
 
         if self.ResultDockwidget is not None:
-            self.ResultDockwidget.close()
-            self.iface.removeDockWidget(self.ResultDockwidget)
+            try:
+                self.ResultDockwidget.visibilityChanged.disconnect(self.activeInputGroup)
+            except Exception:
+                pass
+            try:
+                self.ResultDockwidget.close()
+                self.iface.removeDockWidget(self.ResultDockwidget)
+            except Exception:
+                pass
             self.ResultDockwidget = None
 
         for action in self.actions:
@@ -2048,15 +2095,21 @@ class QGISRed:
     """Groups"""
 
     def activeInputGroup(self):
+        # Guard against calls during shutdown
+        if self.isUnloading:
+            return
         if self.ResultDockwidget is None:
             return
-        utils = QGISRedUtils(self.ProjectDirectory, self.NetworkName, self.iface)
-        group = utils.getOrCreateGroup("Inputs")
-        if group is not None:
-            group.setItemVisibilityChecked(not self.ResultDockwidget.isVisible())
-        group = utils.getOrCreateGroup("Results")
-        if group is not None:
-            group.setItemVisibilityChecked(self.ResultDockwidget.isVisible())
+        try:
+            utils = QGISRedUtils(self.ProjectDirectory, self.NetworkName, self.iface)
+            group = utils.getOrCreateGroup("Inputs")
+            if group is not None:
+                group.setItemVisibilityChecked(not self.ResultDockwidget.isVisible())
+            group = utils.getOrCreateGroup("Results")
+            if group is not None:
+                group.setItemVisibilityChecked(self.ResultDockwidget.isVisible())
+        except Exception:
+            pass
 
     def getInputGroup(self):
         utils = QGISRedUtils(self.ProjectDirectory, self.NetworkName, self.iface)
@@ -2772,6 +2825,8 @@ class QGISRed:
         self.iface.messageBar().pushMessage("QGISRed", self.tr("Backup stored in: " + path), level=0, duration=5)
 
     def runOpenedQgisProject(self):
+        # Reset the unloading flag since we're opening a new project
+        self.isUnloading = False
         self.defineCurrentProject()
         if self.ProjectDirectory == self.TemporalFolder:
             return
@@ -2800,9 +2855,37 @@ class QGISRed:
             self.updateMetadata()
 
     def runClearedProject(self):
+        # Set flag to prevent DLL calls during shutdown
+        self.isUnloading = True
+
+        # Invalidate the DLL instance
         self.gisredDll = None
+
+        # Deactivate all map tools to prevent callbacks during cleanup
+        try:
+            if hasattr(self, 'myMapTools'):
+                for tool_name, tool in list(self.myMapTools.items()):
+                    try:
+                        if tool is not None:
+                            if self.iface.mapCanvas().mapTool() is tool:
+                                self.iface.mapCanvas().unsetMapTool(tool)
+                            tool.deactivate()
+                    except Exception:
+                        pass
+                self.myMapTools.clear()
+        except Exception:
+            pass
+
+        # Disconnect and close the results dock widget
         if self.ResultDockwidget is not None:
-            self.ResultDockwidget.close()
+            try:
+                self.ResultDockwidget.visibilityChanged.disconnect(self.activeInputGroup)
+            except Exception:
+                pass
+            try:
+                self.ResultDockwidget.close()
+            except Exception:
+                pass
 
     def runAnalysisOptions(self):
         if not self.checkDependencies():
@@ -3008,6 +3091,9 @@ class QGISRed:
             self.iface.messageBar().pushMessage(self.tr("Error"), resMessage, level=2, duration=5)
 
     def runLegendChanged(self):
+        # Guard against calls during shutdown
+        if self.isUnloading:
+            return
         if not self.removingLayers:
             # Validations
             self.defineCurrentProject()
@@ -3545,6 +3631,9 @@ class QGISRed:
             self.iface.mapCanvas().setMapTool(self.myMapTools[tool])
 
     def runProperties(self, point):
+        # Guard against calls during shutdown
+        if self.isUnloading:
+            return
         if not self.checkDependencies():
             return
         # Validations
