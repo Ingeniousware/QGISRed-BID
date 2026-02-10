@@ -1588,10 +1588,17 @@ class QGISRedLegendsDialog(QDialog, formClass):
         self.tableView.setCellWidget(row, 0, container)
 
     def setColorWidget(self, row, symbol, geometryHint):
+        # For marker symbols, symbol.color() doesn't reliably return fill color
+        # Get color from symbol layer instead
+        if symbol.symbolLayerCount() > 0:
+            color = symbol.symbolLayer(0).color()
+        else:
+            color = symbol.color()
+
         colorSelector = QGISRedSymbolColorSelector(
             self.tableView,
             geometryHint,
-            symbol.color(),
+            color,
             True,
             "Pick color",
             doubleClickOnly=True,
@@ -1753,17 +1760,31 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         modeId = self.cbMode.currentData()
         colorMode = self.cbColors.currentText() if hasattr(self, "cbColors") else "Manual"
+        sizeMode = self.cbSizes.currentText() if hasattr(self, "cbSizes") else "Manual"
+        isManualMode = modeId is None or modeId == "Manual"
 
-        if (modeId == "Manual" or modeId is None) and colorMode == "Manual":
+        if isManualMode and colorMode == "Manual":
             newColor = self.getSmartColorForNewRow(insertionRow)
         else:
             newColor = self.generateRandomColor()
+
+        if isManualMode and sizeMode == "Manual":
+            smartSize = self.getSmartSizeForNewRow(insertionRow)
+        else:
+            smartSize = None
 
         self.tableView.insertRow(insertionRow)
 
         symbol = QgsSymbol.defaultSymbol(self.currentLayer.geometryType())
         symbol.setColor(newColor)
-        self.setDefaultSymbolSize(symbol)
+
+        if smartSize is not None:
+            if self.currentLayer.geometryType() == 1:
+                symbol.setWidth(smartSize)
+            else:
+                symbol.setSize(smartSize)
+        else:
+            self.setDefaultSymbolSize(symbol)
 
         valueText = f"{lower:.2f} - {upper:.2f}"
         self.setRowWidgets(
@@ -1776,6 +1797,9 @@ class QGISRedLegendsDialog(QDialog, formClass):
         )
 
         self.updateAdjacentRowsAfterInsertion(insertionRow, lower, upper)
+
+        if isManualMode and sizeMode == "Manual":
+            self.smoothEdgeSizeAfterInsertion(insertionRow)
 
         self.tableView.clearSelection()
         self.tableView.selectRow(insertionRow)
@@ -2777,17 +2801,18 @@ class QGISRedLegendsDialog(QDialog, formClass):
             checkbox = checkboxContainer.findChild(QCheckBox) if checkboxContainer else None
             colorWidget = colorContainer.findChild(QGISRedSymbolColorSelector) if colorContainer else None
 
-            symbol = QgsSymbol.defaultSymbol(self.currentLayer.geometryType())
+            # Clone existing symbol to preserve complex structure, fallback to default
+            if row < len(existingRanges) and existingRanges[row].symbol():
+                symbol = existingRanges[row].symbol().clone()
+            else:
+                symbol = QgsSymbol.defaultSymbol(self.currentLayer.geometryType())
 
             if colorWidget:
-                symbol.setColor(colorWidget.activeColor)
+                self.applyColorToSymbol(symbol, colorWidget.activeColor)
 
             try:
                 size = float(sizeWidget.text())
-                if self.currentLayer.geometryType() == 1:
-                    symbol.setWidth(size)
-                else:
-                    symbol.setSize(size)
+                self.applySizeToSymbol(symbol, size)
             except:
                 pass
 
@@ -2840,6 +2865,7 @@ class QGISRedLegendsDialog(QDialog, formClass):
         for cat in existingCategories:
             catValue = str(cat.value()) if cat.value() is not None else "NULL"
             existingSymbolMap[catValue] = cat.symbol()
+
         for row in range(self.tableView.rowCount()):
             checkboxContainer = self.tableView.cellWidget(row, 0)
             colorContainer = self.tableView.cellWidget(row, 1)
@@ -3249,6 +3275,48 @@ class QGISRedLegendsDialog(QDialog, formClass):
             if colorWidget:
                 colorWidget.setSelectorColor(color)
 
+    def getRowSize(self, row):
+        """Gets the size value from a table row."""
+        if row < 0 or row >= self.tableView.rowCount():
+            return None
+
+        sizeWidget = self.tableView.cellWidget(row, 2)
+        if sizeWidget and isinstance(sizeWidget, QLineEdit):
+            try:
+                return float(sizeWidget.text())
+            except (ValueError, TypeError):
+                return None
+        return None
+
+    def setRowSize(self, row, size):
+        """Sets the size value for a table row."""
+        if row < 0 or row >= self.tableView.rowCount():
+            return
+
+        sizeWidget = self.tableView.cellWidget(row, 2)
+        if sizeWidget and isinstance(sizeWidget, QLineEdit):
+            sizeWidget.blockSignals(True)
+            sizeWidget.setText(f"{size:.2f}")
+            sizeWidget.blockSignals(False)
+
+            colorContainer = self.tableView.cellWidget(row, 1)
+            colorWidget = colorContainer.findChild(QGISRedSymbolColorSelector) if colorContainer else None
+            if colorWidget:
+                colorWidget.updateSymbolSize(size, self.getGeometryHint() == "line")
+
+    def getDefaultSize(self):
+        """Returns the default size based on geometry type."""
+        if not self.currentLayer:
+            return 0.4
+
+        geometryType = self.currentLayer.geometryType()
+        if geometryType == 0:
+            return 3.0
+        elif geometryType == 1:
+            return 0.4
+        else:
+            return 1.5
+
     def calculateIntermediateColor(self, color1, color2):
         return QColor(
             (color1.red() + color2.red()) // 2,
@@ -3296,6 +3364,37 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
         return self.generateRandomColor()
 
+    def getSmartSizeForNewRow(self, insertionRow):
+        """Determines intelligent size for new row based on position and existing sizes."""
+        rowCount = self.tableView.rowCount()
+
+        if rowCount == 0:
+            return self.getDefaultSize()
+
+        if rowCount == 1:
+            existingSize = self.getRowSize(0)
+            return existingSize if existingSize is not None else self.getDefaultSize()
+
+        if insertionRow == 0:
+            firstSize = self.getRowSize(0)
+            return firstSize if firstSize is not None else self.getDefaultSize()
+
+        if insertionRow >= rowCount:
+            lastSize = self.getRowSize(rowCount - 1)
+            return lastSize if lastSize is not None else self.getDefaultSize()
+
+        prevSize = self.getRowSize(insertionRow - 1)
+        nextSize = self.getRowSize(insertionRow)
+
+        if prevSize is not None and nextSize is not None:
+            return (prevSize + nextSize) / 2.0
+        if prevSize is not None:
+            return prevSize
+        if nextSize is not None:
+            return nextSize
+
+        return self.getDefaultSize()
+
     def smoothEdgeColorAfterInsertion(self, insertedRow):
         """Applies edge color smoothing after insertion when there are 3+ classes."""
         rowCount = self.tableView.rowCount()
@@ -3326,6 +3425,36 @@ class QGISRedLegendsDialog(QDialog, formClass):
         if newLastColor and antepenultimateColor:
             interpolatedColor = self.calculateIntermediateColor(newLastColor, antepenultimateColor)
             self.setRowColor(rowCount - 2, interpolatedColor)
+
+    def smoothEdgeSizeAfterInsertion(self, insertedRow):
+        """Applies edge size smoothing after insertion when there are 3+ classes."""
+        rowCount = self.tableView.rowCount()
+
+        if rowCount < 3:
+            return
+
+        if insertedRow == 0:
+            self.smoothFirstRowSizeInsertion(rowCount)
+        elif insertedRow == rowCount - 1:
+            self.smoothLastRowSizeInsertion(rowCount)
+
+    def smoothFirstRowSizeInsertion(self, rowCount):
+        """Interpolate old first (now second) between new first and last."""
+        newFirstSize = self.getRowSize(0)
+        lastSize = self.getRowSize(rowCount - 1)
+
+        if newFirstSize is not None and lastSize is not None:
+            interpolatedSize = (newFirstSize + lastSize) / 2.0
+            self.setRowSize(1, interpolatedSize)
+
+    def smoothLastRowSizeInsertion(self, rowCount):
+        """Interpolate old last (now second-to-last) between first and new last."""
+        firstSize = self.getRowSize(0)
+        newLastSize = self.getRowSize(rowCount - 1)
+
+        if firstSize is not None and newLastSize is not None:
+            interpolatedSize = (firstSize + newLastSize) / 2.0
+            self.setRowSize(rowCount - 2, interpolatedSize)
 
     def getSelectedRows(self):
         return [idx.row() for idx in self.tableView.selectionModel().selectedRows()]
