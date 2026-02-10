@@ -2707,6 +2707,26 @@ class QGISRedLegendsDialog(QDialog, formClass):
         else:
             symbol.setSize(2.5)
 
+    def applyColorToSymbol(self, symbol, color):
+        """Applies color to all layers of a symbol, preserving its structure."""
+        for i in range(symbol.symbolLayerCount()):
+            symbolLayer = symbol.symbolLayer(i)
+            symbolLayer.setColor(color)
+            # Also set stroke color for fill symbols to maintain consistency
+            if hasattr(symbolLayer, 'setStrokeColor'):
+                symbolLayer.setStrokeColor(color)
+            # Handle sub-symbols (e.g., marker line's marker symbol)
+            if hasattr(symbolLayer, 'subSymbol') and symbolLayer.subSymbol():
+                self.applyColorToSymbol(symbolLayer.subSymbol(), color)
+
+    def applySizeToSymbol(self, symbol, size):
+        """Applies size to a symbol, preserving its structure."""
+        isLine = self.currentLayer.geometryType() == 1
+        if isLine:
+            symbol.setWidth(size)
+        else:
+            symbol.setSize(size)
+
     def getUnitAbbrForLayer(self):
         if self.utils:
             layerIdentifier = self.currentLayer.customProperty("qgisred_identifier")
@@ -2739,6 +2759,10 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def applyNumericLegend(self):
         ranges = []
         isProportionalMode = self.cbSizes.currentText() == "Proportional to Value"
+
+        # Get existing renderer to clone symbols from (preserving complex symbol structures)
+        existingRenderer = self.currentLayer.renderer()
+        existingRanges = existingRenderer.ranges() if isinstance(existingRenderer, QgsGraduatedSymbolRenderer) else []
 
         for row in range(self.tableView.rowCount()):
             values = self.getRangeValues(row)
@@ -2807,6 +2831,15 @@ class QGISRedLegendsDialog(QDialog, formClass):
     def applyCategoricalLegend(self):
         categories = []
 
+        # Get existing renderer to clone symbols from (preserving complex symbol structures)
+        existingRenderer = self.currentLayer.renderer()
+        existingCategories = existingRenderer.categories() if isinstance(existingRenderer, QgsCategorizedSymbolRenderer) else []
+
+        # Build a map of value -> symbol for quick lookup
+        existingSymbolMap = {}
+        for cat in existingCategories:
+            catValue = str(cat.value()) if cat.value() is not None else "NULL"
+            existingSymbolMap[catValue] = cat.symbol()
         for row in range(self.tableView.rowCount()):
             checkboxContainer = self.tableView.cellWidget(row, 0)
             colorContainer = self.tableView.cellWidget(row, 1)
@@ -2822,17 +2855,19 @@ class QGISRedLegendsDialog(QDialog, formClass):
 
             realValue = self.determineRealCategoricalValue(value, label)
 
-            symbol = QgsSymbol.defaultSymbol(self.currentLayer.geometryType())
+            # Clone existing symbol to preserve complex structure, fallback to default
+            lookupKey = value if value not in [self.tr("Other Values"), "Other Values"] else ""
+            if lookupKey in existingSymbolMap and existingSymbolMap[lookupKey]:
+                symbol = existingSymbolMap[lookupKey].clone()
+            else:
+                symbol = QgsSymbol.defaultSymbol(self.currentLayer.geometryType())
 
             if colorWidget:
-                symbol.setColor(colorWidget.activeColor)
+                self.applyColorToSymbol(symbol, colorWidget.activeColor)
 
             try:
                 size = float(sizeWidget.text())
-                if self.currentLayer.geometryType() == 1:
-                    symbol.setWidth(size)
-                else:
-                    symbol.setSize(size)
+                self.applySizeToSymbol(symbol, size)
             except:
                 pass
 
