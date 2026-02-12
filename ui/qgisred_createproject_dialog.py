@@ -1,0 +1,142 @@
+# -*- coding: utf-8 -*-
+from PyQt5.QtWidgets import QFileDialog, QDialog, QApplication
+from PyQt5.QtCore import Qt
+from qgis.core import QgsCoordinateReferenceSystem
+from qgis.PyQt import uic
+from qgis.gui import QgsProjectionSelectionDialog as QgsGenericProjectionSelector
+
+from ..tools.qgisred_utils import QGISRedUtils
+from ..tools.qgisred_dependencies import QGISRedDependencies as GISRed
+
+import os
+
+FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), "qgisred_createproject_dialog.ui"))
+
+
+class QGISRedCreateProjectDialog(QDialog, FORM_CLASS):
+    # Common variables
+    iface = None
+    NetworkName = ""
+    ProjectDirectory = ""
+    gplFile = ""
+
+    def __init__(self, parent=None):
+        """Constructor."""
+        super(QGISRedCreateProjectDialog, self).__init__(parent)
+        self.setupUi(self)
+        self.btCreateProject.clicked.connect(self.createProject)
+        self.btSelectDirectory.clicked.connect(self.selectDirectory)
+        self.btSelectCRS.clicked.connect(self.selectCRS)
+        # Variables:
+        gplFolder = os.path.join(os.getenv("APPDATA"), "QGISRed")
+        try:  # create directory if does not exist
+            os.stat(gplFolder)
+        except Exception:
+            os.mkdir(gplFolder)
+        self.gplFile = os.path.join(gplFolder, "qgisredprojectlist.gpl")
+
+    def config(self, ifac, direct, netw, parent):
+        self.iface = ifac
+        self.parent = parent
+        utils = QGISRedUtils(direct, netw, ifac)
+        self.crs = utils.getProjectCrs()
+        self.tbCRS.setText(self.crs.description())
+        self.NetworkName = netw
+        if direct == "Temporal folder":
+            direct = QGISRedUtils().getUserFolder()
+        self.ProjectDirectory = direct
+        self.tbNetworkName.setText(netw)
+        self.tbProjectDirectory.setText(direct)
+        # self.tbProjectDirectory.setCursorPosition(0)
+
+    def selectDirectory(self):
+        selected_directory = QFileDialog.getExistingDirectory(self, "Select folder", self.ProjectDirectory)
+        if not selected_directory == "":
+            self.tbProjectDirectory.setText(selected_directory)
+            # self.tbProjectDirectory.setCursorPosition(0)
+            self.ProjectDirectory = selected_directory
+            self.NetworkName = self.tbNetworkName.text()
+
+    def selectCRS(self):
+        projSelector = QgsGenericProjectionSelector()
+        if projSelector.exec_():
+            crsId = projSelector.crs().srsid()
+            if not crsId == 0:
+                self.crs = QgsCoordinateReferenceSystem()
+                self.crs.createFromId(crsId, QgsCoordinateReferenceSystem.InternalCrsId)
+                self.tbCRS.setText(self.crs.description())
+
+    def validationsCreateProject(self):
+        self.NetworkName = self.tbNetworkName.text()
+        if len(self.NetworkName) == 0:
+            self.iface.messageBar().pushMessage(self.tr("Validations"), self.tr("The project name is not valid"), level=1)
+            return False
+        self.ProjectDirectory = self.tbProjectDirectory.text()
+        if len(self.ProjectDirectory) == 0:
+            self.iface.messageBar().pushMessage(self.tr("Validations"), self.tr("The project folder is not valid"), level=1)
+            return False
+        else:
+            if not os.path.exists(self.ProjectDirectory):
+                self.iface.messageBar().pushMessage(self.tr("Validations"), self.tr("The project folder does not exist"), level=1)
+                return False
+            else:
+                if self.cbCreateSubfolder.isChecked():
+                    self.ProjectDirectory = os.path.join(self.ProjectDirectory, self.NetworkName)
+                if os.path.exists(self.ProjectDirectory):
+                    dirList = os.listdir(self.ProjectDirectory)
+                    layers = [
+                        "Pipes",
+                        "Junctions",
+                        "Tanks",
+                        "Reservoirs",
+                        "Valves",
+                        "Pumps",
+                        "IsolationValves",
+                        "Hydrants",
+                        "WashoutValves",
+                        "AirReleaseValves",
+                        "ServiceConnections",
+                        "Manometers",
+                        "Flowmeters",
+                        "Countermeters",
+                        "LevelSensors",
+                    ]
+                    for layer in layers:
+                        if self.NetworkName + "_" + layer + ".shp" in dirList:
+                            message = self.tr("The selected folder has some files with the same project name.")
+                            self.iface.messageBar().pushMessage(self.tr("Validations"), message, level=1)
+                            return False
+
+        if self.cbCreateSubfolder.isChecked() and not os.path.exists(self.ProjectDirectory):
+            try:  # create directory if does not exist
+                os.stat(self.ProjectDirectory)
+            except Exception:
+                os.mkdir(self.ProjectDirectory)
+
+        return True
+
+    def createProject(self):
+        # Validations
+        isValid = self.validationsCreateProject()
+        if isValid is True:
+            epsg = self.crs.authid().replace("EPSG:", "")
+            units = self.cbUnits.currentText()
+            headloss = self.cbHeadloss.currentText()
+            # Process
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            resMessage = GISRed.CreateProject(self.ProjectDirectory, self.NetworkName, epsg, units, headloss)
+            QApplication.restoreOverrideCursor()
+
+            # Message
+            if resMessage == "True":
+                self.iface.messageBar().pushMessage(self.tr("Information"), self.tr("Process successfully completed"), level=3, duration=5)
+                # Project manager list
+                QGISRedUtils().addProjectToGplFile(self.gplFile, self.NetworkName, self.ProjectDirectory)
+                # open layers
+                self.parent.openElementLayers(None, self.NetworkName, self.ProjectDirectory)
+            elif resMessage == "False":
+                self.iface.messageBar().pushMessage(self.tr("Warning"), self.tr("Some issues occurred in the process"), level=1, duration=5)
+            else:
+                self.iface.messageBar().pushMessage(self.tr("Error"), resMessage, level=2, duration=5)
+
+            self.close()
