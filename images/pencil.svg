@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="32px" height="32px" viewBox="0 0 32 32" version="1.1">
+<defs>
+<filter id="alpha" filterUnits="objectBoundingBox" x="0%" y="0%" width="100%" height="100%">
+  <feColorMatrix type="matrix" in="SourceGraphic" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0"/>
+</filter>
+<image id="image7" width="32" height="32" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAB4klEQVRYhe2WT0hUQRzHv7OzsntY3UBJFgJBTx2EQChBD4p0CF06LHQIkU6GgZgFdhPBQyCymgTBdogUQcqLSodOHtSD0EWXIPCQ+AfJlqTUVt9MfDtEi6/3dtPtzYawX5jDYwY+n9/w+zEPyBEetdVQhzS1pKdL7S5Sx6KEFP5cAvCH+oC0zHkmn4hIA4BZqMmkyHaGB5FKBOU6sBP0XOBEfFl3AhMPTMMBwPUG+EWGUVa7ASTLzOKbU+43UHrtnnk4ACbHHAJc6w1AXOo2DkfNIdLTz5xSVvqu52PnOoqJOPBHE/KVlBDxh+arDyvoT6PO6o+/3ipI9br+xW+mvQd8q33mq5fEj7fDDgGqN9chmuqM83lzTgTC7x0CwJ1HxuG/MnTywwcAnF/wQ9StA+WWUTRTi6Lk9VL2/YNIJRUHqK/umWm+rtbTiX5+WUrreQ/17W3v5n5qlZBZHz93kbXeAK37HVTxD/8scBxvPxPcJjIw6KOORalWlvMT6NzgO1mSt4BNRrU0Ut2YO5OANeP920IrdoX68vjff9maU9xtCXkukBE5GqymevyEuuq7e/OF+43BbSL7iYvOEa4+5LeFioIIZEQyI9yxRfV0pKBwm8jHzSD39i/8N4Fiiinm3OQnY86poH2EcQYAAAAASUVORK5CYII="/>
+<mask id="mask0">
+  <g filter="url(#alpha)">
+<use xlink:href="#image7"/>
+  </g>
+</mask>
+<clipPath id="clip1">
+  <rect x="0" y="0" width="32" height="32"/>
+</clipPath>
+<g id="surface6" clip-path="url(#clip1)">
+<path style=" stroke:none;fill-rule:nonzero;fill:rgb(49.803922%,65.882355%,15.686275%);fill-opacity:1;" d="M 7.378906 12.363281 C 8.160156 12.464844 10.109375 12.664062 10.109375 12.664062 L 8.984375 9.609375 L 7.105469 11.585938 C 7.105469 11.585938 6.824219 11.777344 6.882812 12.066406 C 6.964844 12.296875 7.199219 12.34375 7.328125 12.339844 M 26.03125 7.902344 L 23.917969 2.183594 L 12.21875 6.773438 C 12.21875 6.773438 11.675781 6.976562 11.09375 7.546875 C 10.632812 7.980469 10.027344 8.734375 10.027344 8.734375 L 11.453125 12.511719 C 11.453125 12.511719 12.625 12.734375 13.042969 12.796875 C 13.640625 12.882812 14.359375 12.570312 14.359375 12.570312 Z M 31.53125 4.308594 L 30.351562 1.097656 C 29.859375 -0.167969 28.675781 0.316406 28.675781 0.316406 L 25.253906 1.640625 L 27.367188 7.359375 L 30.789062 6.035156 C 32.050781 5.519531 31.585938 4.332031 31.585938 4.332031 "/>
+</g>
+</defs>
+<g id="surface1">
+<use xlink:href="#surface6" mask="url(#mask0)"/>
+</g>
+</svg>
